@@ -37,6 +37,12 @@ screen (with color to help identify the steps), and the output of
 those commands too. If any step fails, the program will signal an
 error and stop all the processing at that point.
 
+Setup
+-----
+
+  $ sudo apt install pip3
+  $ pip3 install psycopg2-binary jsonobject
+
 Usage
 -----
 

@@ -16,9 +16,10 @@ class Dhis2Api:
         >> api.put('/users/2', ...)
         >> api.patch('/users/3', ...)
     """
-    def __init__(self, url, username='admin', password='district'):
+
+    def __init__(self, url, username="admin", password="district"):
         self.username = username
-        self.api_url = url.rstrip('/') + '/api'
+        self.api_url = url.rstrip("/") + "/api"
         self.auth = requests.auth.HTTPBasicAuth(username, password)
 
     def _request(self, method, path, **kwargs):
@@ -32,23 +33,23 @@ class Dhis2Api:
             return response
 
     def get(self, path, params=None):
-        return self._request('get', path, params=params)
+        return self._request("get", path, params=params)
 
-    def post(self, path, payload, params=None, headers=None, contenttype='application/json'):
-        headers = {'content-type': contenttype}
-        if contenttype == 'application/json':
-            return self._request('post', path, params=params, json=payload, headers=headers)
+    def post(self, path, payload, params=None, headers=None, contenttype="application/json"):
+        headers = {"content-type": contenttype}
+        if contenttype == "application/json":
+            return self._request("post", path, params=params, json=payload, headers=headers)
         else:
-            return self._request('post', path, params=params, data=payload, headers=headers)
+            return self._request("post", path, params=params, data=payload, headers=headers)
 
     def put(self, path, payload):
-        return self._request('put', path, json=payload)
+        return self._request("put", path, json=payload)
 
     def patch(self, path, payload):
-        return self._request('patch', path, json=payload)
+        return self._request("patch", path, json=payload)
 
     def delete(self, path):
-        return self._request('delete', path)
+        return self._request("delete", path)
 
 
 class ImportSummary(JsonObject):
