@@ -1,18 +1,21 @@
 dhis2_clone
 ===========
 
-Clone a dhis2 installation from another server.
+Clone a dhis2 installation from another server. Supported:
+
+* Remote server: tomcat.
+* Local server: tomcat or d2-docker.
 
 This program will perform several steps on a running DHIS2 server to
 transform it into a clone of a remote one.
 
 The steps are:
 
-* Stop the running tomcat.
+* Stop the running tomcat/d2-docker.
 * Backup the DHIS2 war file and database.
 * Copy the webapps from the remote server into the local machine.
 * Empty the local database and fill it with a replica of the remote one.
-* Start the tomcat again.
+* Start the tomcat/d2-docker again.
 
 Any step can be individually switched off (``--no-backups``,
 ``--no-webapps``, ``--no-db``, ``--manual-restart``).
@@ -46,11 +49,11 @@ Setup
 Usage
 -----
 
-  usage: dhis2_clone [-h] [--check-only] [--no-backups] [--no-webapps] [--no-db]
+  usage: dhis2_clone [-h] [--no-backups] [--no-webapps] [--no-db]
                    [--no-postprocess] [--manual-restart]
                    [--post-sql POST_SQL [POST_SQL ...]] [--post-clone-scripts]
                    [--update-config] [--no-color]
-                   config
+                   CONFIG_FILE
 
 Clone a dhis2 installation from another server.
 
@@ -59,16 +62,15 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
-  --check-only          check config and exit
   --no-backups          don't make backups
   --no-webapps          don't clone the webapps
   --no-db               don't clone the database
   --no-postprocess      don't do postprocessing
   --manual-restart      don't stop/start tomcat
   --post-sql POST_SQL [POST_SQL ...]
-                        sql files to run post-clone
+                        sql files to run post-clone (pass a folder instead for d2-docker type)
   --post-clone-scripts  execute all py and sh scripts in
-                        post_clone_scripts_dir
+                        post_clone_scripts_dir (DHIS2 URL with auth passed as first argument)
   --update-config       update the config file
   --no-color            don't use colored output
 
