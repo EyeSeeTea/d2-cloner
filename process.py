@@ -105,19 +105,19 @@ def execute(api, entry, cfg, import_dir):
         raise ValueError("Unknown action: %s" % action)
 
 
-def wait_for_server(api, delay=90, timeout=900):
+def wait_for_server(api, timeout=900):
     "Sleep until server is ready to accept requests"
     debug("Check active API: %s" % api.api_url)
-    time.sleep(delay)  # in case tomcat is still starting
     start_time = time.time()
     while True:
         try:
             api.get("/me")
             break
-        except requests.exceptions.ConnectionError:
+        except (requests.exceptions.HTTPError, requests.exceptions.ConnectionError) as exc:
+            debug(exc)
             if time.time() - start_time > timeout:
                 raise RuntimeError("Timeout: could not connect to the API")
-            time.sleep(1)
+            time.sleep(10)
 
 
 def select_users(api, usernames, users_from_group_names):
