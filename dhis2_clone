@@ -225,6 +225,7 @@ def start_tomcat(cfg, args):
         run('"%s/bin/startup.sh"' % server_path)
     elif is_local_d2docker(cfg):
         post_sql = args.post_sql[0] if args.post_sql else None
+        deploy_path = cfg.get("local_docker_deploy_path", None)
         if post_sql and (len(args.post_sql) != 1 or not os.path.isdir(post_sql)):
             log("--post-sql for d2-docker requires a single directory")
             return
@@ -232,6 +233,7 @@ def start_tomcat(cfg, args):
             "d2-docker start {} --port={} --detach {}".format(
                 cfg["local_docker_image"],
                 cfg["local_docker_port"],
+                (("--deploy-path '%s'" % deploy_path) if deploy_path else ""),
                 (("--run-sql '%s'" % post_sql) if post_sql else ""),
             )
         )
