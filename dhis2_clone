@@ -231,7 +231,7 @@ def start_tomcat(cfg, args):
             log("--post-sql for d2-docker requires a single directory")
             return
         run(
-            "d2-docker start {} --port={} --detach {}".format(
+            "d2-docker start {} --port={} --detach {} {} {}".format(
                 cfg["local_docker_image"],
                 cfg["local_docker_port"],
                 (("--deploy-path '%s'" % deploy_path) if deploy_path else ""),
