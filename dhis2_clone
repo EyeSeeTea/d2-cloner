@@ -247,14 +247,14 @@ def start_tomcat(cfg, args):
         api = cfg["api_local"]
 
         run(
-            "d2-docker start {} --port={} --detach {} {} {}".format(
+            "d2-docker start {} --port={} --detach {} {} {} {} {}".format(
                 get_local_docker_image(cfg, args, "start"),
                 cfg["local_docker_port"],
                 (("--deploy-path '%s'" % deploy_path) if deploy_path else ""),
                 (("--tomcat-server-xml '%s'" % server_xml_path) if server_xml_path else ""),
-                "--auth '%s'" % (api["username"] + ":" + api["password"]),
                 (("--run-sql '%s'" % post_sql) if post_sql else ""),
                 (("--run-scripts '%s'" % post_scripts_dir) if post_scripts_dir else ""),
+                "--auth '%s'" % (api["username"] + ":" + api["password"])
             )
         )
 
