@@ -1,0 +1,45 @@
+{
+    "local_type": "d2-docker",
+    "local_docker_image": "eyeseetea/dhis2-data:2.32-training",
+    "local_docker_port": 8080,
+    "backups_dir": "/home/user/backups",
+    "backup_name": "TRAINING",
+    "server_dir_local": "/home/user/server",
+    "server_dir_remote": "/home/user/server",
+    "hostname_remote": "prod",
+    "db_remote": "postgresql://user:pass@server_remote:5432/db",
+    "war_remote": "ROOT.war",
+    "api_local": {
+        "url": "http://localhost:8080",
+        "username": "system",
+        "password": "System123"
+    },
+    "postprocess": [
+        {
+            "selectUsernames": ["guest"],
+            "action": "activate"
+        },
+        {
+            "selectUsernames": ["admin", "guest"],
+            "selectFromGroups": ["program1"],
+            "action": "deleteOthers"
+        },
+        {
+            "selectFromGroups": ["program1", "program2"],
+            "action": "addRoles",
+            "addRoles": ["role1", "role2"]
+        },
+        {
+            "selectUsernames": ["teacher1", "teacher2"],
+            "action": "addRolesFromTemplate",
+            "addRolesFromTemplate": "teacher.template"
+        },
+        {
+            "selectUsernames": ["guest"],
+            "selectFromGroups": ["program1"],
+            "action": "removeFromGroups",
+            "removeFromGroups": ["program1"]
+        },
+        "https://raw.githubusercontent.com/EyeSeeTea/ESTools/master/DHIS2/cloner/configuration_example_only_postprocess.json"
+    ]
+}
