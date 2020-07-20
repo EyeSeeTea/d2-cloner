@@ -2,6 +2,7 @@
     "local_type": "d2-docker",
     "local_docker_image": "eyeseetea/dhis2-data:2.32-training",
     "local_docker_port": 8080,
+    "local_docker_deploy_path": "d2",
     "backups_dir": "/home/user/backups",
     "backup_name": "TRAINING",
     "server_dir_local": "/home/user/server",
@@ -10,7 +11,7 @@
     "db_remote": "postgresql://user:pass@server_remote:5432/db",
     "war_remote": "ROOT.war",
     "api_local": {
-        "url": "http://localhost:8080",
+        "url": "http://localhost:8080/d2",
         "username": "system",
         "password": "System123"
     },

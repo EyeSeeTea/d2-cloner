@@ -89,6 +89,10 @@ An example configuration file is provided in this repository
 
 The sections in the configuration file are:
 
+* ``local_type``: Local instance type. "tomcat" or "d2-docker".
+* ``local_docker_image"``. Docker image to use  (example: "eyeseetea/dhis2-data:2.32-sierra-leone").
+* ``local_docker_port``: Docker port.
+* ``local_docker_deploy_path``: Docker instance deploy path namespace.
 * ``backups_dir``: directory where it will store the backups.
 * ``backup_name``: an identifier that it will append to the name of
   the war file and database backups.
