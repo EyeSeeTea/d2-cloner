@@ -40,6 +40,8 @@ screen (with color to help identify the steps), and the output of
 those commands too. If any step fails, the program will signal an
 error and stop all the processing at that point.
 
+Instances of type ``d2-docker`` might change its image (typically, in an upgrade) in the cloning process, so there is the concept of "transformed" images. Use options ``--stop-transformed`` to use config entry ``local_docker_image_stop_transformed`` and ``--start-transformed`` to use config entry ``local_docker_image_start_transformed`` instead of the default value ``local_docker_image``.
+
 Setup
 -----
 
@@ -91,6 +93,8 @@ The sections in the configuration file are:
 
 * ``local_type``: Local instance type. "tomcat" or "d2-docker".
 * ``local_docker_image"``. Docker image to use  (example: "eyeseetea/dhis2-data:2.32-sierra-leone").
+* ``local_docker_image_stop_transformed``. If ``--stop-transformed`` options is used, then instead of using ``local_docker_image``, it will use entry ``local_docker_image_stop_transformed``. This "stop" action is then used in the following d2-docker commands: stop_tomcat -> d2-docker stop, backup_db -> d2-docker copy, get_db -> d2-docker create data.
+  "local_docker_image_start_transformed": If ``--start-transformed`` options is used, then instead of using ``local_docker_image``, it will use entry ``local_docker_image_start_transformed``. This "start" action is then used in the following d2-docker commands: start_tomcat -> d2-docker start.
 * ``local_docker_port``: Docker port.
 * ``local_docker_deploy_path``: Docker instance deploy path namespace.
 * ``backups_dir``: directory where it will store the backups.

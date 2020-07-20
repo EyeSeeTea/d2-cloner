@@ -1,6 +1,8 @@
 {
     "local_type": "d2-docker",
     "local_docker_image": "eyeseetea/dhis2-data:2.32-training",
+    "local_docker_image_stop_transformed": "eyeseetea/dhis2-data:2.32-training",
+    "_local_docker_image_start_transformed": "eyeseetea/dhis2-data:2.33-training",
     "local_docker_port": 8080,
     "local_docker_deploy_path": "d2",
     "backups_dir": "/home/user/backups",
