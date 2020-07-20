@@ -73,6 +73,7 @@ optional arguments:
                         sql files to run post-clone (pass a folder instead for d2-docker type)
   --post-clone-scripts  execute all py and sh scripts in
                         post_clone_scripts_dir (DHIS2 URL with auth passed as first argument)
+                        or local_docker_post_clone_scripts_dir for local docker.
   --update-config       update the config file
   --no-color            don't use colored output
 
