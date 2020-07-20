@@ -198,7 +198,7 @@ def magenta(txt):
 
 
 def execute_scripts(cfg, is_post_tomcat=False):
-    if is_local_d2docker(cfg):
+    if is_local_d2docker(cfg) and not is_post_tomcat:
         # Scripts will be executed at d2-docker start --run-scripts=DIR
         return
     dirname = cfg["post_clone_scripts_dir"]
@@ -243,7 +243,7 @@ def start_tomcat(cfg, args):
         if post_sql and (len(args.post_sql) != 1 or not os.path.isdir(post_sql)):
             log("--post-sql for d2-docker requires a single directory")
             return
-        post_scripts_dir = cfg["post_clone_scripts_dir"]
+        post_scripts_dir = cfg.get("local_docker_post_clone_scripts_dir", None)
         api = cfg["api_local"]
 
         run(
@@ -254,7 +254,7 @@ def start_tomcat(cfg, args):
                 (("--tomcat-server-xml '%s'" % server_xml_path) if server_xml_path else ""),
                 (("--run-sql '%s'" % post_sql) if post_sql else ""),
                 (("--run-scripts '%s'" % post_scripts_dir) if post_scripts_dir else ""),
-                "--auth '%s'" % (api["username"] + ":" + api["password"])
+                (("--auth '%s'" % (api["username"] + ":" + api["password"])) if api else "")
             )
         )
 
