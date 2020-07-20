@@ -36,17 +36,17 @@ def main():
         sys.exit()
 
     if not args.manual_restart:
-        stop_tomcat(cfg)
+        stop_tomcat(cfg, args)
 
     if not args.no_backups:
-        backup_db(cfg)
+        backup_db(cfg, args)
         backup_war(cfg)
 
     if not args.no_webapps:
         get_webapps(cfg)
 
     if not args.no_db:
-        get_db(cfg)
+        get_db(cfg, args)
 
     if args.post_sql:
         run_sql(cfg, args.post_sql)
@@ -95,6 +95,8 @@ def get_args():
     )
     add("--update-config", action="store_true", help="update the config file")
     add("--no-color", action="store_true", help="don't use colored output")
+    add("--start-transformed", action="store_true", help="Override d2-docker image for start")
+    add("--stop-transformed", action="store_true", help="Override d2-docker image for stop")
     return parser.parse_args()
 
 
@@ -222,12 +224,22 @@ def is_local_d2docker(cfg):
     return server_type == "d2-docker"
 
 
+def get_local_docker_image(cfg, args, action):
+    if action == "start" and args.start_transformed:
+        return cfg["local_docker_image_start_transformed"]
+    elif action == "stop" and args.stop_transformed:
+        return cfg["local_docker_image_stop_transformed"]
+    else:
+        return cfg["local_docker_image"]
+
 def start_tomcat(cfg, args):
     if is_local_tomcat(cfg):
         server_path = cfg["server_dir_local"]
         run('"%s/bin/startup.sh"' % server_path)
     elif is_local_d2docker(cfg):
         post_sql = args.post_sql[0] if args.post_sql else None
+        deploy_path = cfg.get("local_docker_deploy_path", None)
+        server_xml_path = cfg.get("local_docker_server_xml", None)
         if post_sql and (len(args.post_sql) != 1 or not os.path.isdir(post_sql)):
             log("--post-sql for d2-docker requires a single directory")
             return
@@ -236,8 +248,10 @@ def start_tomcat(cfg, args):
 
         run(
             "d2-docker start {} --port={} --detach {} {} {}".format(
-                cfg["local_docker_image"],
+                get_local_docker_image(cfg, args, "start"),
                 cfg["local_docker_port"],
+                (("--deploy-path '%s'" % deploy_path) if deploy_path else ""),
+                (("--tomcat-server-xml '%s'" % server_xml_path) if server_xml_path else ""),
                 "--auth '%s'" % (api["username"] + ":" + api["password"]),
                 (("--run-sql '%s'" % post_sql) if post_sql else ""),
                 (("--run-scripts '%s'" % post_scripts_dir) if post_scripts_dir else ""),
@@ -245,15 +259,15 @@ def start_tomcat(cfg, args):
         )
 
 
-def stop_tomcat(cfg):
+def stop_tomcat(cfg, args):
     if is_local_tomcat(cfg):
         server_path = cfg["server_dir_local"]
         run('"%s/bin/shutdown.sh"' % server_path)
     elif is_local_d2docker(cfg):
-        run("d2-docker stop {}".format(cfg["local_docker_image"]))
+        run("d2-docker stop {}".format(get_local_docker_image(cfg, args, "stop")))
 
 
-def backup_db(cfg):
+def backup_db(cfg, args):
     backups_dir = cfg["backups_dir"]
     if is_local_tomcat(cfg):
         backup_name = cfg["backup_name"]
@@ -264,7 +278,7 @@ def backup_db(cfg):
             % (backup_file, db_local)
         )
     elif is_local_d2docker(cfg):
-        run("d2-docker copy {} '{}'".format(cfg["local_docker_image"], backups_dir))
+        run("d2-docker copy {} '{}'".format(get_local_docker_image(cfg, args, "stop"), backups_dir))
 
 
 def backup_war(cfg):
@@ -313,7 +327,7 @@ def get_webapps(cfg):
             run("; ".join(commands))
 
 
-def get_db(cfg):
+def get_db(cfg, args):
     "Replace the contents of db_local with db_remote"
     exclude = (
         "--exclude-table 'aggregated*' --exclude-table 'analytics*' "
@@ -336,7 +350,7 @@ def get_db(cfg):
         run(cmd)
         apps_dir = os.path.join(dir_local, "files", "apps")
         d2_docker_cmd = "d2-docker create data {} --sql={} --apps-dir {}".format(
-            cfg["local_docker_image"], sql_path, apps_dir
+            get_local_docker_image(cfg, args, "stop"), sql_path, apps_dir
         )
         run(d2_docker_cmd)
 
