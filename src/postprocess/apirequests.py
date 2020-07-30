@@ -80,7 +80,7 @@ def remove_groups(api, users, groups_to_remove_from):
         {
             "paging": False,
             "filter": "name:in:[%s]" % ",".join(groups_to_remove_from),
-            "fields": ("id,name,users"),
+            "fields": ("*"),
         },
     )
     for group in response["userGroups"]:
