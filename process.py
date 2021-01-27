@@ -117,7 +117,7 @@ def wait_for_server(api, delay=90, timeout=900):
         except requests.exceptions.HTTPError:
             if time.time() - start_time > timeout:
                 raise RuntimeError("Timeout: could not connect to the API")
-            time.sleep(1)
+            time.sleep(3000)
         except requests.exceptions.ConnectionError:
             if time.time() - start_time > timeout:
                 raise RuntimeError("Timeout: could not connect to the API")
@@ -194,7 +194,7 @@ def remove_groups(api, users, groups_to_remove_from):
         {
             "paging": False,
             "filter": "name:in:[%s]" % ",".join(groups_to_remove_from),
-            "fields": ("id,name,users"),
+            "fields": ("*"),
         },
     )
     for group in response["userGroups"]:
