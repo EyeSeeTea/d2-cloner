@@ -207,7 +207,10 @@ def remove_groups(api, users, groups_to_remove_from):
 
 
 def get_username(user):
-    return user["userCredentials"]["username"]
+    if "userCredentials" in user.keys():
+          return user["userCredentials"]["username"]
+    else:
+          return user["username"]
 
 
 def get_roles(user):
