@@ -7,7 +7,8 @@ from d2apy import dhis2api
 
 
 from src.postprocess.postprocess import get_roles, get_username
-from utils import debug, unique, pick
+from src.postprocess.list_modifier import *
+from src.common.debug import debug
 
 
 def init_api(url, username, password):

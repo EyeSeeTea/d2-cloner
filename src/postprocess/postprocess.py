@@ -14,7 +14,9 @@ Example:
 import sys
 import requests
 
-from src.postprocess.postprocess import apirequests
+from src.postprocess.list_modifier import *
+from src.common.debug import debug
+from src.postprocess import apirequests
 
 
 def postprocess(cfg, entries, import_dir):
@@ -126,31 +128,12 @@ def add_roles_from_template(api, users, template_with_roles):
 
 
 def get_username(user):
-    return user["userCredentials"]["username"]
+    if "userCredentials" in user.keys():
+          return user["userCredentials"]["username"]
+    else:
+          return user["username"]
 
 
 def get_roles(user):
     return user["userCredentials"]["userRoles"]
 
-
-def pick(element, properties):
-    result = {}
-    for property in properties:
-        result[property] = element[property]
-    return result
-
-
-def unique(xs):
-    "Return list of unique elements in xs, based on their x['id'] value"
-    xs_unique = []
-    seen = set()
-    for x in xs:
-        if x["id"] not in seen:
-            seen.add(x["id"])
-            xs_unique.append(x)
-    return xs_unique
-
-
-def debug(txt):
-    print(txt)
-    sys.stdout.flush()
