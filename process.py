@@ -18,6 +18,8 @@ import json
 
 import dhis2api
 
+add = "add"
+remove = "remove"
 
 def postprocess(cfg, entries, import_dir):
     """Execute actions on the appropriate users as specified in entries.
@@ -92,9 +94,13 @@ def execute(api, entry, cfg, import_dir):
     elif action == "deleteOthers":
         delete_others(api, users)
     elif action == "addRoles":
-        add_roles_by_name(api, users, get("addRoles"))
+        modify_roles_by_name(api, users, get("addRoles"), add)
+    elif action == "removeRoles":
+        modify_roles_by_name(api, users, get("removeRoles"), remove)
     elif action == "addRolesFromTemplate":
-        add_roles_from_template(api, users, get("addRolesFromTemplate"))
+        modify_roles_from_template(api, users, get("addRolesFromTemplate"), add)
+    elif action == "removeRolesFromTemplate":
+        modify_roles_from_template(api, users, get("removeRolesFromTemplate"), remove)
     elif action == "import":
         import_json(api, files)
     elif action == "changeServerName":
@@ -162,23 +168,37 @@ def delete_others(api, users):
         debug("Could not delete %d users: %s" % (len(users_with_error), users_with_error))
 
 
-def add_roles_by_name(api, users, rolenames):
+def modify_roles_by_name(api, users, rolenames, action):
     "Add roles to the given users"
     roles_to_add = get_user_roles_by_name(api, rolenames)
-    add_roles(api, users, roles_to_add)
+    if action == add:
+        add_roles(api, users, roles_to_add)
+    elif action == remove:
+        remove_roles(api, users, roles_to_add)
 
 
-def add_roles_from_template(api, users, template_with_roles):
+def modify_roles_from_template(api, users, template_with_roles, action):
     "Add roles in user template_with_roles to the given users"
     template = get_users_by_usernames(api, [template_with_roles])[0]
     roles_to_add = get_roles(template)
-    add_roles(api, users, roles_to_add)
+    if action == add:
+        add_roles(api, users, roles_to_add)
+    elif action == remove:
+        remove_roles(api, users, roles_to_add)
 
 
 def add_roles(api, users, roles_to_add):
     debug("Adding %d roles to %d users..." % (len(roles_to_add), len(users)))
     for user in users:
         roles = unique(get_roles(user) + roles_to_add)
+        user["userCredentials"]["userRoles"] = roles
+        api.put("/users/" + user["id"], user)
+
+
+def remove_roles(api, users, roles_to_remove):
+    debug("Removing %d roles to %d users..." % (len(roles_to_remove), len(users)))
+    for user in users:
+        roles = remove(get_roles(user), roles_to_remove)
         user["userCredentials"]["userRoles"] = roles
         api.put("/users/" + user["id"], user)
 
@@ -313,6 +333,16 @@ def unique(xs):
         if x["id"] not in seen:
             seen.add(x["id"])
             xs_unique.append(x)
+    return xs_unique
+
+
+def remove(item_list, remove_list):
+    "Return list removing the items in remove_list"
+    xs_unique = []
+    seen = set()
+    for item in item_list:
+        if item not in item_list:
+            xs_unique.append(item)
     return xs_unique
 
 
