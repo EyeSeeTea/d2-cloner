@@ -14,7 +14,7 @@ Example:
 import sys
 import requests
 
-import apirequests
+from src.postprocess.postprocess import apirequests
 
 
 def postprocess(cfg, entries, import_dir):

@@ -1,4 +1,4 @@
-from src import dhis2db
+from src.preprocess import dhis2db
 
 
 def preprocess(cfg, entries):

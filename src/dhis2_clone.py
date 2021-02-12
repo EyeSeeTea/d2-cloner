@@ -14,9 +14,8 @@ import argparse
 from subprocess import Popen
 
 import psycopg2
-import preprocess
-import postprocess
-
+from src.preprocess import preprocess
+from src.postprocess import postprocess
 
 TIME = time.strftime("%Y-%m-%d_%H%M")
 COLOR = True

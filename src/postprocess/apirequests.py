@@ -6,7 +6,7 @@ import requests
 from d2apy import dhis2api
 
 
-from src.postprocess import get_roles, get_username
+from src.postprocess.postprocess import get_roles, get_username
 from utils import debug, unique, pick
 
 
