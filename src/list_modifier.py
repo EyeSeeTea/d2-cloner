@@ -1,10 +1,7 @@
-import sys
-
-
 def pick(element, properties):
     result = {}
-    for property in properties:
-        result[property] = element[property]
+    for item in properties:
+        result[item] = element[item]
     return result
 
 
@@ -26,8 +23,3 @@ def remove(item_list, remove_list):
         if item not in remove_list:
             xs_unique.append(item)
     return xs_unique
-
-
-def debug(txt):
-    print(txt)
-    sys.stdout.flush()
