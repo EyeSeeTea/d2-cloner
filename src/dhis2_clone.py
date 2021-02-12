@@ -14,8 +14,8 @@ import argparse
 from subprocess import Popen
 
 import psycopg2
-
-import process
+import preprocess
+import postprocess
 
 
 TIME = time.strftime("%Y-%m-%d_%H%M")
@@ -48,6 +48,14 @@ def main():
     if not args.no_db:
         get_db(cfg, args)
 
+    if not args.manual_restart:
+        if args.no_preprocess:
+            log("No preprocessing done, as requested.")
+        elif "db_local" in cfg and "preprocess" in cfg:
+            preprocess.preprocess(cfg["api_local"], cfg["preprocess"])
+        else:
+            log("No postprocessing done.")
+
     if args.post_sql:
         run_sql(cfg, args.post_sql)
 
@@ -60,7 +68,7 @@ def main():
         if args.no_postprocess:
             log("No postprocessing done, as requested.")
         elif "api_local" in cfg and "postprocess" in cfg:
-            process.postprocess(cfg["api_local"], cfg["postprocess"], import_dir)
+            postprocess.postprocess(cfg["api_local"], cfg["postprocess"], import_dir)
         else:
             log("No postprocessing done.")
 
@@ -81,6 +89,7 @@ def get_args():
     add("--no-webapps", action="store_true", help="don't clone the webapps")
     add("--no-db", action="store_true", help="don't clone the database")
     add("--no-postprocess", action="store_true", help="don't do postprocessing")
+    add("--no-preprocess", action="store_true", help="don't do preprocessing")
     add("--manual-restart", action="store_true", help="don't stop/start tomcat")
     add("--post-sql", nargs="+", default=[], help="sql files to run post-clone")
     add(
@@ -231,6 +240,7 @@ def get_local_docker_image(cfg, args, action):
         return cfg["local_docker_image_stop_transformed"]
     else:
         return cfg["local_docker_image"]
+
 
 def start_tomcat(cfg, args):
     if is_local_tomcat(cfg):
