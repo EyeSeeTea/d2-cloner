@@ -17,6 +17,19 @@
         "username": "system",
         "password": "System123"
     },
+    "db_local": {
+        "database": "dhishq",
+        "host": "127.0.0.1",
+        "username": "postgres",
+        "password": "postgres",
+        "port": "5434"
+    },
+    "preprocess": [
+        {
+            "selectDatasets": ["m5MiTPdlK17", "p5z7F51v1ag"],
+            "action": "removeDataValues"
+        }
+    ],
     "postprocess": [
         {
             "selectUsernames": ["guest"],
