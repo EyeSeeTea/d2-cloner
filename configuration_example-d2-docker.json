@@ -26,7 +26,7 @@
     },
     "preprocess": [
         {
-            "selectDatasets": ["m5MiTPdlK17", "p5z7F51v1ag"],
+            "selectDatasets": ["dataset1", "dataset2"],
             "action": "removeDataValues"
         }
     ],
