@@ -1,58 +1,225 @@
-import psycopg2
-
-con = ""
+import json
 
 
-def init_db(database, user, password, host, port):
-    return psycopg2.connect(database=database, user=user, password=password, host=host, port=port)
+def remove_all_unnecessary_dependencies(f):
+    f.write("delete from programstageinstance_messageconversation;")
+    f.write("delete from programinstancecomments;")
+    f.write("delete from programinstanceaudit;")
+    f.write("delete from datavalueaudit;")
+    f.write("delete from trackedentitydatavalueaudit;")
+    f.write("delete from trackedentityattributevalueaudit;")
+    f.write("delete from programstageinstance_messageconversation;")
+    f.write("delete from dataapprovalaudit;")
+    f.write("delete from interpretation_comments;")
+    f.write("delete from interpretationcomment;")
+    f.write("delete from messageconversation_messages;")
+    f.write("delete from messageconversation_usermessages;")
+    f.write("delete from messageconversation;")
 
 
-def close(con):
-    con.close()
+def generate_delete_event_rules(event_program, data_elements, org_units, org_unit_descendants, all_uid, f):
+    f.write("--remove events")
+    sql_all = convert_to_sql_format(all_uid)
+    sql_event_program = convert_to_sql_format(event_program)
+    sql_data_elements = convert_to_sql_format(data_elements)
+    sql_org_units = convert_to_sql_format(org_units)
+    sql_org_unit_descendants = convert_to_sql_format(org_unit_descendants)
+    has_rule = False
+    if sql_event_program != "":
+        has_rule = True
+        sql_query = "delete from programstageinstance where programstageid in (select programstageid from programstage where programid in (select programid from program where uid in " + event_program + ")) and"
+    else:
+        sql_query = "delete from programstageinstance where programstageid in (select programstageid from programstage where programid in (select programid from program where uid in " + sql_all + ")) and"
+    if sql_data_elements != "":
+        has_rule = True
+        sql_data_elements = sql_data_elements.replace("(", "").replace(")", "")
+        sql_query = "update programstageinstance "
+        sql_query = sql_query + " set eventdatavalues = eventdatavalues - " + sql_data_elements + "  "
+        sql_query = sql_query + " where eventdatavalues ? " + sql_data_elements + " and"
+        if sql_event_program != "":
+            sql_query = sql_query + " programstageid in (select programstageid from programstage where programid in (select programid from program where uid in " + event_program + ")) and"
+        else:
+            sql_query = sql_query + " programstageid in (select programstageid from programstage where programid in (select programid from program where uid in " + sql_all + ")) and"
+    if sql_org_units != "":
+        has_rule = True
+        sql_query = sql_query + " organisationunitid in (select organisationunitid from organisationunit where uid in " + sql_org_units + ") and"
+    if sql_org_unit_descendants != "":
+        has_rule = True
+        sql_query = sql_query + " organisationunitid in (select organisationunitid from organisationunit where path like (select concat(path,'/%') from organisationunit where uid in " + sql_org_unit_descendants + ")) and"
+
+    if not has_rule:
+        delete_all_event_programs(all_uid, f)
+    else:
+        sql_query = sql_query + ";"
+        sql_query = sql_query.replace("and;", ";")
+        f.write(sql_query)
 
 
-def execute_query(con, query):
-    cur = con.cursor()
+def generate_delete_tracker_rules(trackers, data_elements, org_units, org_unit_descendants, all_uid, f):
+    f.write("--remove trackers")
+    sql_all = convert_to_sql_format(all_uid)
+    sql_trackers = convert_to_sql_format(trackers)
+    sql_data_elements = convert_to_sql_format(data_elements)
+    sql_org_units = convert_to_sql_format(org_units)
+    sql_org_unit_descendants = convert_to_sql_format(org_unit_descendants)
 
-    cur.execute(query)
+    has_rule = False
+    sql_query = "delete from programstageinstance where programstageid in (select programstageid from programstage where programid in (select programid from program where uid in " + sql_all + ")) "
+    if sql_data_elements != "":
+        has_rule = True
+        sql_data_elements = sql_data_elements.replace("(", "").replace(")", "")
+        sql_query = "update programstageinstance "
+        sql_query = sql_query + " set eventdatavalues = eventdatavalues - " + sql_data_elements + "  "
+        sql_query = sql_query + " where eventdatavalues ? " + sql_data_elements + " and"
 
-    rows = cur.fetchall()
-    for row in rows:
-        print(row[1])
+        if sql_trackers != "":
+            sql_query = sql_query + " programstageid in (select programstageid from programstage where programid in (select programid from program where uid in " + sql_trackers + ")) and"
+        else:
+            sql_query = sql_query + " programstageid in (select programstageid from programstage where programid in (select programid from program where uid in " + sql_all + ")) and"
 
-#con = init_db("dhis2", "dhis", "dhis", "192.168.160.3", "5432")
-#executeQuery(con, "select * from users limit 1;")
-#close(con)
+    elif sql_trackers != "":
+        has_rule = True
+        sql_query = sql_query + " and dataelementid in (select dataelementid from datasetelement where datasetid in ( select datasetid from dataset where uid in " + sql_trackers + ")) "
+    if sql_org_units != "":
+        has_rule = True
+        sql_query = sql_query + " and organisationunitid in (select organisationunitid from organisationunit where uid in " + sql_org_units + ") and"
+    if sql_org_unit_descendants != "":
+        has_rule = True
+        sql_query = sql_query + " and organisationunitid in (select organisationunitid from organisationunit where path like (select concat(path,'/%') from organisationunit where uid in " + sql_org_unit_descendants + ")) and"
 
-def checkDuplicates():
-    print("Database opened successfully")
+    if not has_rule:
+        delete_all_tracker_programs(all_uid, f)
+    else:
+        sql_query = sql_query + ";"
+        sql_query = sql_query.replace("and;", ";")
+        f.write(sql_query)
 
-    cur = con.cursor()
 
-    cur.execute("select t.table_schema, t.table_name from information_schema.tables t inner join information_schema.columns c on c.table_name = t.table_name and c.table_schema = t.table_schema where c.column_name = 'uid' and t.table_schema not in ('information_schema', 'pg_catalog') and t.table_type = 'BASE TABLE' order by t.table_schema;");
+def generate_delete_datasets_rules(datasets, data_elements, org_units, org_unit_descendants, all_uid, f):
+    f.write("--remove datasets")
+    sql_all = convert_to_sql_format(all_uid)
+    sql_datasets = convert_to_sql_format(datasets)
+    sql_data_elements = convert_to_sql_format(data_elements)
+    sql_org_units = convert_to_sql_format(org_units)
+    sql_org_unit_descendants = convert_to_sql_format(org_unit_descendants)
+    sql_query = "delete from datavalue where dataelementid in (select dataelementid from datasetelement where datasetid in ( select datasetid from dataset where uid in " + sql_all + ")) and"
+    has_rule = False
+    if sql_data_elements != "":
+        has_rule = True
+        if sql_datasets != "":
+            sql_query = sql_query + " dataelementid in (select dataelementid from dataelement where uid in " + sql_data_elements + " and dataelementid in (select dataelementid from datasetelement where datasetid in ( select datasetid from dataset where uid in " + sql_datasets + "))) and"
+        else:
+            sql_query = sql_query + " dataelementid in (select dataelementid from dataelement where uid in " + sql_data_elements + " and dataelementid in (select dataelementid from datasetelement where datasetid in ( select datasetid from dataset where uid in " + sql_all + "))) and"
+    elif sql_datasets != "":
+        has_rule = True
+        sql_query = sql_query + " dataelementid in (select dataelementid from datasetelement where datasetid in ( select datasetid from dataset where uid in " + sql_datasets + ")) and"
+    if sql_org_units != "":
+        has_rule = True
+        sql_query = sql_query + " sourceid in (select organisationunitid from organisationunit where uid in " + sql_org_units + ") and"
+    if sql_org_unit_descendants != "":
+        has_rule = True
+        sql_query = sql_query + " sourceid in (select organisationunitid from organisationunit where path like (select concat(path,'/%') from organisationunit where uid in " + sql_org_unit_descendants + ")) and"
 
-    rows = cur.fetchall()
-    tables = []
+    if not has_rule:
+        delete_all_data_sets(all_uid, f)
+    else:
+        sql_query = sql_query + ";"
+        sql_query = sql_query.replace("and;", ";")
+        f.write(sql_query)
 
-    for row in rows:
-        tables.append(row[1])
-    for table in tables:
-        if table in ["audit", "deletedobject", "visualization"]:
-            continue
-        print(table)
-        cur.execute("select uid from "+table+";");
-        rows = cur.fetchall()
-        active_uid = []
-        for row in rows:
-            active_uid.append(row[0])
-        for tableB in tables:
-            if tableB in ["audit", "deletedobject", "visualization"]:
-                continue
-            if tableB != table:
-                cur.execute("select uid from "+tableB+";");
-                rows = cur.fetchall()
-                for row in rows:
-                    if row[0] in active_uid:
-                            print ({"id": row[0], "typeA": table, "typeB": tableB},)
 
-    con.close()
+def delete_all_event_programs(programs, f):
+    programs = convert_to_sql_format(programs)
+    f.write("--remove all events")
+    f.write("delete from trackedentitydatavalueaudit where programstageinstanceid "
+          "in ( select psi.programstageinstanceid  from programstageinstance psi "
+          "inner join programstage ps on ps.programstageid=psi.programstageid "
+          "inner join program p on p.programid=ps.programid "
+          "where p.uid in " + programs + ");")
+    f.write("delete from programstageinstancecomments where programstageinstanceid "
+          "in ( select psi.programstageinstanceid  from programstageinstance psi "
+          "inner join programstage ps on ps.programstageid=psi.programstageid "
+          "inner join program p on p.programid=ps.programid "
+          "where p.uid in " + programs + ");")
+    f.write("delete from programstageinstance where programstageinstanceid "
+          "in ( select psi.programstageinstanceid  from programstageinstance psi "
+          "inner join programstage ps on ps.programstageid=psi.programstageid "
+          "inner join program p on p.programid=ps.programid "
+          "where p.uid in " + programs + ");")
+
+
+def delete_all_data_sets(datasets, f):
+    datasets = convert_to_sql_format(datasets)
+    f.write("--remove all datasets")
+    f.write("delete from datavalueaudit where dataelementid in "
+          "(select dataelementid from datasetelement "
+          "where datasetid in (select datasetid from dataset where uid in " + datasets + "));")
+    f.write("delete from datavalue where dataelementid in "
+          "(select dataelementid from datasetelement "
+          "where datasetid in (select datasetid from dataset where uid in " + datasets + "));")
+    pass
+
+
+def delete_all_tracker_programs(trackers, f):
+    trackers = convert_to_sql_format(trackers)
+    f.write("--remove all tracker")
+    f.write("delete from trackedentitydatavalueaudit where programstageinstanceid "
+          "in ( select psi.programstageinstanceid  from programstageinstance psi "
+          "inner join programstage ps on ps.programstageid=psi.programstageid "
+          "inner join program p on p.programid=ps.programid "
+          "where p.uid in " + trackers + ");")
+    f.write(
+        "delete from programstageinstancecomments where programstageinstanceid in ( select programstageinstanceid from programstageinstance where programstageid in ("
+        "select programstageid from programstage where programid in (select programid from program where uid in " + trackers + ")));")
+
+    f.write("delete from trackedentityattributevalue where trackedentityinstanceid "
+          "in ( select trackedentityinstanceid from programinstance where programid in(select programid from program where uid in " + trackers + "));")
+    f.write("delete from trackedentityattributevalueaudit where trackedentityinstanceid "
+          "in ( select trackedentityinstanceid from programinstance where programid in(select programid from program where uid in " + trackers + "));")
+
+    f.write(
+        "delete from programstageinstance where programstageid in ("
+        "select programstageid from programstage where programid in (select programid from program where uid in " + trackers + "));")
+
+    f.write("delete from programstageinstance where programstageinstanceid "
+          "in ( select psi.programstageinstanceid  from programstageinstance psi "
+          "inner join programstage ps on ps.programstageid=psi.programstageid "
+          "inner join program p on p.programid=ps.programid "
+          "where p.uid in " + trackers + ");")
+
+    f.write(
+        "create view tei_to_remove as select trackedentityinstanceid \"teiid\" from programinstance where programid in (select programid from program where uid in " + trackers + ");")
+    f.write(
+        "delete from programinstance where programid in (select programid from program where uid in " + trackers + ");")
+    f.write("delete from programinstance where trackedentityinstanceid in ( select * from tei_to_remove);")
+    f.write("delete from trackedentityinstance where trackedentityinstanceid in ( select * from tei_to_remove);")
+    f.write("delete from trackedentityprogramowner where trackedentityinstanceid in ( select * from tei_to_remove);")
+    f.write("drop view tei_to_remove ;")
+
+    # f.write("delete from programstageinstancecomments where programstageinstanceid "
+    #           "in ( select psi.programstageinstanceid  from programstageinstance psi "
+    #           "inner join programstage ps on ps.programstageid=psi.programstageid "
+    #           "inner join program p on p.programid=ps.programid "
+    #           "where p.uid in " + trackers + ");")
+    f.write("--remove tracker finish")
+
+
+def convert_to_sql_format(list_uid):
+    if len(list_uid) == 0:
+        return ""
+    return json.dumps(list_uid).replace("\"", "\'").replace("[", "(").replace("]", ")")
+
+
+def convert_period_to_sql_format(periods):
+    list_of_periods = list()
+    if len(periods) == 0:
+        return ""
+    for period in periods:
+        for period_year in period:
+            list_of_periods.append(str(period_year))
+
+        value = json.dumps(list_of_periods).replace('"', "'").replace("[", "").replace("]", "").replace(",",
+                                                                                                        "-01-01,").replace(
+            "'-01-01", "-01-01'")
+        lastindex = value.rfind("'")
+        return value[0:lastindex] + "-01-01'"
