@@ -14,6 +14,7 @@ Example:
 import sys
 import requests
 
+from src.postprocess.apirequests import get_username, get_roles
 from src.postprocess.list_modifier import *
 from src.common.debug import debug
 from src.postprocess import apirequests
@@ -125,15 +126,4 @@ def add_roles_from_template(api, users, template_with_roles):
     template = apirequests.get_users_by_usernames(api, [template_with_roles])[0]
     roles_to_add = get_roles(template)
     apirequests.add_roles(api, users, roles_to_add)
-
-
-def get_username(user):
-    if "userCredentials" in user.keys():
-          return user["userCredentials"]["username"]
-    else:
-          return user["username"]
-
-
-def get_roles(user):
-    return user["userCredentials"]["userRoles"]
 

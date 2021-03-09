@@ -5,8 +5,6 @@ import requests
 
 from d2apy import dhis2api
 
-
-from src.postprocess.postprocess import get_roles, get_username
 from src.postprocess.list_modifier import *
 from src.common.debug import debug
 
@@ -179,3 +177,14 @@ def change_server_name(api, new_name):
     debug("change server result: %s" % response["message"])
 
     return response
+
+
+def get_username(user):
+    if "userCredentials" in user.keys():
+          return user["userCredentials"]["username"]
+    else:
+          return user["username"]
+
+
+def get_roles(user):
+    return user["userCredentials"]["userRoles"]
