@@ -47,13 +47,20 @@ def main():
     if not args.no_db:
         get_db(cfg, args)
 
-    if not args.manual_restart:
-        if args.no_preprocess:
-            log("No preprocessing done, as requested.")
-        elif "db_local" in cfg and "preprocess" in cfg:
-            preprocess.preprocess(cfg["api_local"], cfg["preprocess"])
+    if args.no_preprocess:
+        log("No preprocessing done, as requested.")
+    elif "preprocess" in cfg:
+        if cfg["pre_sql_dir"]:
+            if is_local_tomcat(cfg):
+                args.post_sql.append(os.path.join(cfg["pre_sql_dir"], preprocess.get_file()))
+            elif is_local_d2docker(cfg):
+                args.post_sql.append(cfg["pre_sql_dir"])
+            preprocess.preprocess(cfg["preprocess"], cfg["departments"], cfg["pre_sql_dir"])
         else:
-            log("No postprocessing done.")
+            log("pre_sql_dir not exist in config file")
+    else:
+        log("No detected preprocessing rules, skipping.")
+
 
     if args.post_sql:
         run_sql(cfg, args.post_sql)
