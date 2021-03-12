@@ -88,7 +88,7 @@ def add_preprocess_sql_file(args, cfg):
         args.post_sql.append(os.path.join(cfg["pre_sql_dir"], preprocess.get_file()))
     elif is_local_d2docker(cfg):
         if args.post_sql:
-            preprocess.move_file(os.path.join(cfg["pre_sql_dir"], preprocess.get_file()), args.post_sql[0])
+            preprocess.move_file(os.path.join(cfg["pre_sql_dir"], preprocess.get_file()), os.path.join(args.post_sql[0], preprocess.get_file()))
         else:
             args.post_sql.append(cfg["pre_sql_dir"])
 
