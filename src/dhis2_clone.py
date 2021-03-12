@@ -51,11 +51,8 @@ def main():
         log("No preprocessing done, as requested.")
     elif "preprocess" in cfg:
         if cfg["pre_sql_dir"]:
-            if is_local_tomcat(cfg):
-                args.post_sql.append(os.path.join(cfg["pre_sql_dir"], preprocess.get_file()))
-            elif is_local_d2docker(cfg):
-                args.post_sql.append(cfg["pre_sql_dir"])
             preprocess.preprocess(cfg["preprocess"], cfg["departments"], cfg["pre_sql_dir"])
+            add_preprocess_sql_file(args, cfg)
         else:
             log("pre_sql_dir not exist in config file")
     else:
@@ -84,6 +81,16 @@ def main():
     else:
         log("Server not started automatically, as requested.")
         log("No postprocessing done.")
+
+
+def add_preprocess_sql_file(args, cfg):
+    if is_local_tomcat(cfg):
+        args.post_sql.append(os.path.join(cfg["pre_sql_dir"], preprocess.get_file()))
+    elif is_local_d2docker(cfg):
+        if args.post_sql:
+            preprocess.move_file(os.path.join(cfg["pre_sql_dir"], preprocess.get_file()), args.post_sql[0])
+        else:
+            args.post_sql.append(cfg["pre_sql_dir"])
 
 
 def get_args():
