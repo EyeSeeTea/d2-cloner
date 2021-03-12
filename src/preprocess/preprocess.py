@@ -5,9 +5,9 @@ from src.preprocess.query_generator import generate_delete_datasets_rules, gener
     remove_all_unnecessary_dependencies
 
 remove_rule = "removeData"
-program_type = "program"
-tracker_type = "tracker"
-dataset_type = "dataset"
+program_type = "eventprograms"
+tracker_type = "trackerprograms"
+dataset_type = "datasets"
 file_name = "preprocess.sql"
 
 
@@ -35,11 +35,11 @@ def preprocess(entries, departments, directory):
 
 def remove_all(list_uid, f):
     for key in list_uid.keys():
-        if key == "eventprograms":
+        if key == program_type:
             delete_all_event_programs(list_uid[key], f)
-        if key == "datasets":
+        if key == dataset_type:
             delete_all_data_sets(list_uid[key], f)
-        if key == "trackerprograms":
+        if key == tracker_type:
             delete_all_tracker_programs(list_uid[key], f)
 
 
@@ -55,11 +55,11 @@ def generate_queries(departament, f):
                 has_tracker_program = False
                 if "selectMDType" in rule.keys():
                     for type in rule["selectMDType"]:
-                        if type.lower() == "dataset":
+                        if type.lower() == dataset_type:
                             has_datasets = True
-                        if type.lower() == "eventprogram":
+                        if type.lower() == program_type:
                             has_event_program = True
-                        if type.lower() == "trackerprogram":
+                        if type.lower() == tracker_type:
                             has_tracker_program = True
 
                 org_units = ""
@@ -74,17 +74,17 @@ def generate_queries(departament, f):
                 datasets = ""
                 if "selectDatasets" in rule.keys():
                     datasets = rule["selectDatasets"]
-                    if "dataset" not in type:
+                    if dataset_type not in type:
                         has_datasets = True
                 event_program = ""
                 if "selectEventProgram" in rule.keys():
                     data_elements = rule["selectEventProgram"]
-                    if "eventProgram" not in type:
+                    if program_type not in type:
                         has_event_program = True
                 tracker_program = ""
                 if "selectEventProgram" in rule.keys():
                     tracker_program = rule["selectTrackerProgram"]
-                    if "trackerProgram" not in type:
+                    if tracker_program not in type:
                         has_tracker_program = True
                 if has_datasets:
                     generate_delete_datasets_rules(datasets, data_elements, org_units, org_unit_descendants, departament[key]["datasets"], f)
