@@ -1,3 +1,4 @@
+import datetime
 import json
 from datetime import time
 
@@ -10,24 +11,23 @@ from src.common.debug import debug
 
 
 def init_api(url, username, password):
-    api = dhis2api.Dhis2Api(url, username, password)
-
-    wait_for_server(api)
+    return dhis2api.Dhis2Api(url, username, password)
 
 
 def wait_for_server(api, timeout=900):
     "Sleep until server is ready to accept requests"
     debug("Check active API: %s" % api.api_url)
-    start_time = time.time()
+    import time as time_
+    start_time = time_.time()
     while True:
         try:
             api.get("/me")
             break
         except (requests.exceptions.HTTPError, requests.exceptions.ConnectionError) as exc:
             debug(exc)
-            if time.time() - start_time > timeout:
+            if time_.time() - start_time > timeout:
                 raise RuntimeError("Timeout: could not connect to the API")
-            time.sleep(10)
+            time_.sleep(10)
 
 
 def activate(api, users):
