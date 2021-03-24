@@ -85,7 +85,7 @@ def generate_queries(departament, f):
                     if program_type not in type:
                         has_event_program = True
                 tracker_program = ""
-                if "selectEventProgram" in rule.keys():
+                if "selectTrackerProgram" in rule.keys():
                     tracker_program = rule["selectTrackerProgram"]
                     if tracker_program not in type:
                         has_tracker_program = True
