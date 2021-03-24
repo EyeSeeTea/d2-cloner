@@ -150,7 +150,7 @@ def delete_all_event_programs(programs, f):
 
 def delete_all_data_sets(datasets, f):
     datasets = convert_to_sql_format(datasets)
-    f.write("--remove all datasets")
+    f.write("--remove all datasets"+ "\n")
     f.write("delete from datavalueaudit where dataelementid in "
           "(select dataelementid from datasetelement "
           "where datasetid in (select datasetid from dataset where uid in " + datasets + "));" + "\n")
@@ -162,7 +162,7 @@ def delete_all_data_sets(datasets, f):
 
 def delete_all_tracker_programs(trackers, f):
     trackers = convert_to_sql_format(trackers)
-    f.write("--remove all tracker")
+    f.write("--remove all tracker"+ "\n")
     f.write("delete from trackedentitydatavalueaudit where programstageinstanceid "
           "in ( select psi.programstageinstanceid  from programstageinstance psi "
           "inner join programstage ps on ps.programstageid=psi.programstageid "

@@ -64,6 +64,21 @@ def generate_queries(departament, f):
                             has_event_program = True
                         if type.lower() == tracker_type:
                             has_tracker_program = True
+                        datasets = ""
+                        if "selectDatasets" in rule.keys():
+                            datasets = rule["selectDatasets"]
+                            if dataset_type not in type:
+                                has_datasets = True
+                        event_program = ""
+                        if "selectEventProgram" in rule.keys():
+                            data_elements = rule["selectEventProgram"]
+                            if program_type not in type:
+                                has_event_program = True
+                        tracker_program = ""
+                        if "selectTrackerProgram" in rule.keys():
+                            tracker_program = rule["selectTrackerProgram"]
+                            if tracker_program not in type:
+                                has_tracker_program = True
 
                 org_units = ""
                 if "selectOrgUnits" in rule.keys():
@@ -74,21 +89,7 @@ def generate_queries(departament, f):
                 data_elements = ""
                 if "selectDataElements" in rule.keys():
                     data_elements = rule["selectDataElements"]
-                datasets = ""
-                if "selectDatasets" in rule.keys():
-                    datasets = rule["selectDatasets"]
-                    if dataset_type not in type:
-                        has_datasets = True
-                event_program = ""
-                if "selectEventProgram" in rule.keys():
-                    data_elements = rule["selectEventProgram"]
-                    if program_type not in type:
-                        has_event_program = True
-                tracker_program = ""
-                if "selectTrackerProgram" in rule.keys():
-                    tracker_program = rule["selectTrackerProgram"]
-                    if tracker_program not in type:
-                        has_tracker_program = True
+
                 if has_datasets:
                     generate_delete_datasets_rules(datasets, data_elements, org_units, org_unit_descendants, departament[key]["datasets"], f)
                 if has_tracker_program:
