@@ -52,10 +52,13 @@ def generate_queries(departament, f):
         if "actions" not in departament[key]:
             continue
         for rule in departament[key]["actions"]:
+            has_datasets = False
+            has_event_program = False
+            has_tracker_program = False
             if rule["action"] == remove_rule:
-                has_datasets = False
-                has_event_program = False
-                has_tracker_program = False
+                datasets = ""
+                event_program = ""
+                tracker_program = ""
                 if "selectMDType" in rule.keys():
                     for type in rule["selectMDType"]:
                         if type.lower() == dataset_type:
@@ -64,17 +67,14 @@ def generate_queries(departament, f):
                             has_event_program = True
                         if type.lower() == tracker_type:
                             has_tracker_program = True
-                        datasets = ""
                         if "selectDatasets" in rule.keys():
                             datasets = rule["selectDatasets"]
                             if dataset_type not in type:
                                 has_datasets = True
-                        event_program = ""
                         if "selectEventProgram" in rule.keys():
-                            data_elements = rule["selectEventProgram"]
+                            event_program = rule["selectEventProgram"]
                             if program_type not in type:
                                 has_event_program = True
-                        tracker_program = ""
                         if "selectTrackerProgram" in rule.keys():
                             tracker_program = rule["selectTrackerProgram"]
                             if tracker_program not in type:
