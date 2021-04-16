@@ -1,5 +1,6 @@
 {
     "local_type": "tomcat",
+    "pre_sql_dir": "/tmp/presql",
     "backups_dir": "/home/user/backups",
     "backup_name": "TRAINING",
     "server_dir_local": "/home/user/server",
@@ -14,6 +15,65 @@
         "username": "system",
         "password": "System123"
     },
+    "departments":
+    {
+      "DEP1": {
+        "datasets": [
+          "example_uid", "example_uid2"
+        ]
+      },
+      "DEP2": {
+        "eventprograms": [
+          "example_uid"
+        ],
+        "datasets": [
+          "example_uid"
+        ]
+      },
+      "DEP3": {
+        "eventprograms": [
+          "example_uid"
+        ],
+        "datasets": [
+          "example_uid"
+        ],
+        "trackerprograms": [
+          "example_uid"
+        ]
+      }
+    },
+    "preprocess": [
+    {
+      "selectDepartament": "DEP1",
+      "selectMDType": ["datasets"],
+      "action": "removeData"
+    },
+    {
+      "selectDepartament": "DEP2",
+      "selectMDType": ["datasets","eventPrograms"],
+      "action": "removeData"
+    },
+    {
+      "selectDepartament": "DEP3",
+      "selectMDType": ["datasets"],
+      "selectDatasets": [
+        "HtZb6Cg7TXo", "Tu81BTLUuCT", "Wxl8hxuOsIQ", "m5MiTPdlK17", "pZ3XRBi9gYE"
+      ],
+      "action": "removeData"
+    },
+    {
+      "selectDepartament": "DEP3",
+      "selectMDType": ["eventPrograms"],
+      "selectOrgUnits": ["example_uid"],
+      "action": "removeData"
+    },
+    {
+      "selectDepartament": "DEP3",
+      "selectMDType": ["trackerPrograms"],
+      "selectOrgUnitAndDescendants": ["example_uid"],
+      "action": "removeData"
+    }
+  ],
     "postprocess": [
         {
             "selectUsernames": ["guest"],

@@ -14,9 +14,8 @@ import argparse
 from subprocess import Popen
 
 import psycopg2
-
-import process
-
+from src.preprocess import preprocess
+from src.postprocess import postprocess
 
 TIME = time.strftime("%Y-%m-%d_%H%M")
 COLOR = True
@@ -48,6 +47,18 @@ def main():
     if not args.no_db:
         get_db(cfg, args)
 
+    if args.no_preprocess:
+        log("No preprocessing done, as requested.")
+    elif "preprocess" in cfg:
+        if cfg["pre_sql_dir"]:
+            preprocess.preprocess(cfg["preprocess"], cfg["departments"], cfg["pre_sql_dir"])
+            add_preprocess_sql_file(args, cfg)
+        else:
+            log("pre_sql_dir not exist in config file")
+    else:
+        log("No detected preprocessing rules, skipping.")
+
+
     if args.post_sql:
         run_sql(cfg, args.post_sql)
 
@@ -60,7 +71,7 @@ def main():
         if args.no_postprocess:
             log("No postprocessing done, as requested.")
         elif "api_local" in cfg and "postprocess" in cfg:
-            process.postprocess(cfg["api_local"], cfg["postprocess"], import_dir)
+            postprocess.postprocess(cfg["api_local"], cfg["postprocess"], import_dir)
         else:
             log("No postprocessing done.")
 
@@ -72,6 +83,16 @@ def main():
         log("No postprocessing done.")
 
 
+def add_preprocess_sql_file(args, cfg):
+    if is_local_tomcat(cfg):
+        args.post_sql.append(os.path.join(cfg["pre_sql_dir"], preprocess.get_file()))
+    elif is_local_d2docker(cfg):
+        if args.post_sql:
+            preprocess.move_file(os.path.join(cfg["pre_sql_dir"], preprocess.get_file()), os.path.join(args.post_sql[0], preprocess.get_file()))
+        else:
+            args.post_sql.append(cfg["pre_sql_dir"])
+
+
 def get_args():
     "Return arguments"
     parser = argparse.ArgumentParser(description=__doc__)
@@ -81,6 +102,7 @@ def get_args():
     add("--no-webapps", action="store_true", help="don't clone the webapps")
     add("--no-db", action="store_true", help="don't clone the database")
     add("--no-postprocess", action="store_true", help="don't do postprocessing")
+    add("--no-preprocess", action="store_true", help="don't do preprocessing")
     add("--manual-restart", action="store_true", help="don't stop/start tomcat")
     add("--post-sql", nargs="+", default=[], help="sql files to run post-clone")
     add(
@@ -231,6 +253,7 @@ def get_local_docker_image(cfg, args, action):
         return cfg["local_docker_image_stop_transformed"]
     else:
         return cfg["local_docker_image"]
+
 
 def start_tomcat(cfg, args):
     if is_local_tomcat(cfg):
