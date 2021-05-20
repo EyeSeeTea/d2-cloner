@@ -161,7 +161,7 @@ called ``python-psycopg2`` and ``python-requests``).
 Also, it relies on two more modules included here:
 
 * ``process.py``: includes all the post-processing logic.
-* ``dhis2api.py``: handles communications with a DHIS2 server through its api.
+* ``d2apy.py``: handles communications with a DHIS2 server through its api.
 
 System programs
 ~~~~~~~~~~~~~~~
