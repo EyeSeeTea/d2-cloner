@@ -21,27 +21,27 @@
   "departments": {
     "DEP1": {
       "dataSets": [
-        "example_uid",
-        "example_uid2"
+        "Taf8Lrsm6LU",
+        "bIp9NutmrUj"
       ]
     },
     "DEP2": {
       "eventPrograms": [
-        "example_uid"
+        "qUwUUhMnsKF"
       ],
       "dataSets": [
-        "example_uid"
+        "b9WbZfTFD9q"
       ]
     },
     "DEP3": {
       "eventPrograms": [
-        "example_uid"
+        "tcxqWsp1Mrb"
       ],
       "dataSets": [
-        "example_uid"
+        "RX8TGB6VJOi"
       ],
       "trackerPrograms": [
-        "example_uid"
+        "q49tR53YqUX"
       ]
     }
   },
@@ -81,7 +81,7 @@
         "eventPrograms"
       ],
       "selectOrgUnits": [
-        "example_uid"
+        "Xr8zZSxYAXC"
       ],
       "action": "removeData"
     },
@@ -91,7 +91,7 @@
         "trackerPrograms"
       ],
       "selectOrgUnitAndDescendants": [
-        "example_uid"
+        "Xr8zZSxYAXC"
       ],
       "action": "removeData"
     }
@@ -109,19 +109,19 @@
         "guest"
       ],
       "selectFromGroups": [
-        "program1"
+        "tAzaaAOmOZ0"
       ],
       "action": "deleteOthers"
     },
     {
       "selectFromGroups": [
-        "program1",
-        "program2"
+        "IRVMI11U2tW",
+        "OBIso8u3eZv"
       ],
       "action": "addRoles",
       "addRoles": [
-        "role1",
-        "role2"
+        "Run analytics",
+        "Import data"
       ]
     },
     {
@@ -137,11 +137,11 @@
         "guest"
       ],
       "selectFromGroups": [
-        "program1"
+        "pcfrBt05hZi"
       ],
       "action": "removeFromGroups",
       "removeFromGroups": [
-        "program1"
+        "FZ0bOUzMMGQ"
       ]
     },
     "https://raw.githubusercontent.com/EyeSeeTea/ESTools/master/DHIS2/cloner/configuration_example_only_postprocess.json"
