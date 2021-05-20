@@ -9,6 +9,7 @@ remove_rule = "removeData"
 program_type = "eventprograms"
 tracker_type = "trackerprograms"
 dataset_type = "datasets"
+metadata_type = "selectMetadataType"
 file_name = "preprocess.sql"
 
 def get_file():
@@ -59,8 +60,8 @@ def generate_queries(departament, f):
                 datasets = ""
                 event_program = ""
                 tracker_program = ""
-                if "selectMDType" in rule.keys():
-                    for type in rule["selectMDType"]:
+                if metadata_type in rule.keys():
+                    for type in rule[metadata_type]:
                         if type.lower() == dataset_type:
                             has_datasets = True
                         if type.lower() == program_type:

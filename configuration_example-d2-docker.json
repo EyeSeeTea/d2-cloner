@@ -48,17 +48,17 @@
     "preprocess": [
     {
       "selectDepartament": "DEP1",
-      "selectMDType": ["datasets"],
+      "selectMetadataType": ["datasets"],
       "action": "removeData"
     },
     {
       "selectDepartament": "DEP2",
-      "selectMDType": ["datasets","eventPrograms"],
+      "selectMetadataType": ["datasets","eventPrograms"],
       "action": "removeData"
     },
     {
       "selectDepartament": "DEP3",
-      "selectMDType": ["datasets"],
+      "selectMetadataType": ["datasets"],
       "selectDatasets": [
         "HtZb6Cg7TXo", "Tu81BTLUuCT", "Wxl8hxuOsIQ", "m5MiTPdlK17", "pZ3XRBi9gYE"
       ],
@@ -66,13 +66,13 @@
     },
     {
       "selectDepartament": "DEP3",
-      "selectMDType": ["eventPrograms"],
+      "selectMetadataType": ["eventPrograms"],
       "selectOrgUnits": ["example_uid"],
       "action": "removeData"
     },
     {
       "selectDepartament": "DEP3",
-      "selectMDType": ["trackerPrograms"],
+      "selectMetadataType": ["trackerPrograms"],
       "selectOrgUnitAndDescendants": ["example_uid"],
       "action": "removeData"
     }
