@@ -61,24 +61,24 @@ def generate_queries(departament, f):
                 event_program = ""
                 tracker_program = ""
                 if metadata_type in rule.keys():
-                    for type in rule[metadata_type]:
-                        if type.lower() == dataset_type:
+                    for rule_type in rule[metadata_type]:
+                        if rule_type.lower() == dataset_type:
                             has_datasets = True
-                        if type.lower() == program_type:
+                        if rule_type.lower() == program_type:
                             has_event_program = True
-                        if type.lower() == tracker_type:
+                        if rule_type.lower() == tracker_type:
                             has_tracker_program = True
                         if "selectDatasets" in rule.keys():
                             datasets = rule["selectDatasets"]
-                            if dataset_type not in type:
+                            if dataset_type not in rule_type:
                                 has_datasets = True
                         if "selectEventProgram" in rule.keys():
                             event_program = rule["selectEventProgram"]
-                            if program_type not in type:
+                            if program_type not in rule_type:
                                 has_event_program = True
                         if "selectTrackerProgram" in rule.keys():
                             tracker_program = rule["selectTrackerProgram"]
-                            if tracker_program not in type:
+                            if tracker_program not in rule_type:
                                 has_tracker_program = True
 
                 org_units = ""
