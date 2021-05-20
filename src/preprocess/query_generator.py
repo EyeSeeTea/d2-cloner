@@ -207,7 +207,7 @@ def delete_all_tracker_programs(trackers, f):
 def convert_to_sql_format(list_uid):
     if len(list_uid) == 0:
         return ""
-    return json.dumps(list_uid).replace("\"", "\'").replace("[", "(").replace("]", ")")
+    return  "(" + ", ".join(["'{}'".format(uid) for uid in list_uid]) + ")"
 
 
 def convert_period_to_sql_format(periods):
