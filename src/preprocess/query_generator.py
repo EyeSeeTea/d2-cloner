@@ -208,18 +208,3 @@ def convert_to_sql_format(list_uid):
     if len(list_uid) == 0:
         return ""
     return "(" + ", ".join(["'{}'".format(uid) for uid in list_uid]) + ")"
-
-
-def convert_period_to_sql_format(periods):
-    list_of_periods = []
-    if len(periods) == 0:
-        return ""
-    for period in periods:
-        for period_year in period:
-            list_of_periods.append(str(period_year))
-
-        value = json.dumps(list_of_periods).replace('"', "'").replace("[", "").replace("]", "").replace(",",
-                                                                                                        "-01-01,").replace(
-            "'-01-01", "-01-01'")
-        lastindex = value.rfind("'")
-        return value[0:lastindex] + "-01-01'"
