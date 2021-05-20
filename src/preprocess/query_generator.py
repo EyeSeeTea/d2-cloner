@@ -211,7 +211,7 @@ def convert_to_sql_format(list_uid):
 
 
 def convert_period_to_sql_format(periods):
-    list_of_periods = list()
+    list_of_periods = []
     if len(periods) == 0:
         return ""
     for period in periods:
