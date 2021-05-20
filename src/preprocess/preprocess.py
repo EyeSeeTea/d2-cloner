@@ -6,9 +6,9 @@ from src.preprocess.query_generator import generate_delete_datasets_rules, gener
 import shutil
 
 remove_rule = "removeData"
-program_type = "eventprograms"
-tracker_type = "trackerprograms"
-dataset_type = "datasets"
+program_type = "eventPrograms"
+tracker_type = "trackerPrograms"
+dataset_type = "dataSets"
 metadata_type = "selectMetadataType"
 file_name = "preprocess.sql"
 
@@ -92,17 +92,17 @@ def generate_queries(departament, f):
                     data_elements = rule["selectDataElements"]
 
                 if has_datasets:
-                    generate_delete_datasets_rules(datasets, data_elements, org_units, org_unit_descendants, departament[key]["datasets"], f)
+                    generate_delete_datasets_rules(datasets, data_elements, org_units, org_unit_descendants, departament[key][dataset_type], f)
                 if has_tracker_program:
-                    generate_delete_tracker_rules(tracker_program, data_elements, org_units, org_unit_descendants, departament[key]["trackerprograms"], f)
+                    generate_delete_tracker_rules(tracker_program, data_elements, org_units, org_unit_descendants, departament[key][tracker_type], f)
                 if has_event_program:
-                    generate_delete_event_rules(event_program, data_elements, org_units, org_unit_descendants, departament[key]["eventprograms"], f)
+                    generate_delete_event_rules(event_program, data_elements, org_units, org_unit_descendants, departament[key][program_type], f)
                 if not has_datasets and not has_event_program and not has_tracker_program:
                     remove_all(departament[key], f)
 
 
 def add_rules_by_departament(departament, entries):
-    for entry in [x for x in entries]:
+    for entry in entries:
         exist = False
         for key in departament.keys():
             if entry["selectDepartament"].upper() == key.upper():
