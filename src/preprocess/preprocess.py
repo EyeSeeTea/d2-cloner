@@ -5,6 +5,7 @@ from src.preprocess.query_generator import generate_delete_datasets_rules, gener
     remove_all_unnecessary_dependencies
 import shutil
 
+
 remove_rule = "removeData"
 program_type = "eventPrograms"
 tracker_type = "trackerPrograms"
@@ -21,8 +22,10 @@ select_data_elements = "selectDataElements"
 action = "action"
 select_departament = "selectDepartament"
 
+
 def get_file():
     return file_name
+
 
 def move_file(file, new_folder):
     shutil.move(file, new_folder)
@@ -65,7 +68,7 @@ def generate_queries(departament, f):
             has_datasets = False
             has_event_program = False
             has_tracker_program = False
-            if rule["action"] == remove_rule:
+            if rule[action] == remove_rule:
 
                 # get metadata types
                 if metadata_type in rule.keys():
