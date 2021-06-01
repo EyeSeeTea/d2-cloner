@@ -11,6 +11,15 @@ tracker_type = "trackerPrograms"
 dataset_type = "dataSets"
 metadata_type = "selectMetadataType"
 file_name = "preprocess.sql"
+actions = "actions"
+select_datasets = "selectDatasets"
+select_event_program = "selectEventProgram"
+select_tracker_program = "selectTrackerProgram"
+select_org_units = "selectOrgUnits"
+select_org_unit_and_descendants = "selectOrgUnitAndDescendants"
+select_data_elements = "selectDataElements"
+action = "action"
+select_departament = "selectDepartament"
 
 def get_file():
     return file_name
@@ -50,46 +59,29 @@ def remove_all(list_uid, f):
 def generate_queries(departament, f):
     for key in departament.keys():
         f.write("--"+key + "\n")
-        if "actions" not in departament[key]:
+        if actions not in departament[key]:
             continue
-        for rule in departament[key]["actions"]:
+        for rule in departament[key][actions]:
             has_datasets = False
             has_event_program = False
             has_tracker_program = False
             if rule["action"] == remove_rule:
-                datasets = ""
-                event_program = ""
-                tracker_program = ""
-                if metadata_type in rule.keys():
-                    for rule_type in rule[metadata_type]:
-                        if rule_type.lower() == dataset_type:
-                            has_datasets = True
-                        if rule_type.lower() == program_type:
-                            has_event_program = True
-                        if rule_type.lower() == tracker_type:
-                            has_tracker_program = True
-                        if "selectDatasets" in rule.keys():
-                            datasets = rule["selectDatasets"]
-                            if dataset_type not in rule_type:
-                                has_datasets = True
-                        if "selectEventProgram" in rule.keys():
-                            event_program = rule["selectEventProgram"]
-                            if program_type not in rule_type:
-                                has_event_program = True
-                        if "selectTrackerProgram" in rule.keys():
-                            tracker_program = rule["selectTrackerProgram"]
-                            if tracker_program not in rule_type:
-                                has_tracker_program = True
 
-                org_units = ""
-                if "selectOrgUnits" in rule.keys():
-                    org_units = rule["selectOrgUnits"]
-                org_unit_descendants = ""
-                if "selectOrgUnitAndDescendants" in rule.keys():
-                    org_unit_descendants = rule["selectOrgUnitAndDescendants"]
-                data_elements = ""
-                if "selectDataElements" in rule.keys():
-                    data_elements = rule["selectDataElements"]
+                # get metadata types
+                if metadata_type in rule.keys():
+                    has_datasets = check_if_has_metadata_type(rule, dataset_type)
+                    has_event_program = check_if_has_metadata_type(rule, program_type)
+                    has_tracker_program = check_if_has_metadata_type(rule, tracker_type)
+
+                # gets uid list if exists
+                datasets = get_rule_content(rule, select_datasets)
+                event_program = get_rule_content(rule, select_event_program)
+                tracker_program = get_rule_content(rule, select_tracker_program)
+
+                # get restriction if exist
+                org_units = get_rule_content(rule, select_org_units)
+                org_unit_descendants = get_rule_content(rule, select_org_unit_and_descendants)
+                data_elements = get_rule_content(rule, select_data_elements)
 
                 if has_datasets:
                     generate_delete_datasets_rules(datasets, data_elements, org_units, org_unit_descendants, departament[key][dataset_type], f)
@@ -101,14 +93,27 @@ def generate_queries(departament, f):
                     remove_all(departament[key], f)
 
 
+def get_rule_content(rule, rule_type):
+    if rule_type in rule.keys():
+        return rule[rule_type]
+    return ""
+
+
+def check_if_has_metadata_type(rule, check_type):
+    for rule_type in rule[metadata_type]:
+        if rule_type == check_type:
+            return True
+    return False
+
+
 def add_rules_by_departament(departament, entries):
     for entry in entries:
         exist = False
         for key in departament.keys():
-            if entry["selectDepartament"].upper() == key.upper():
-                if "actions" not in departament[key].keys():
-                    departament[key]["actions"] = list()
-                departament[key]["actions"].append(entry)
+            if entry[select_departament].upper() == key.upper():
+                if actions not in departament[key].keys():
+                    departament[key][actions] = list()
+                departament[key][actions].append(entry)
                 exist = True
         if not exist:
-            print("--unknown departament key for entry:" + entry["selectDepartament"])
+            print("--unknown departament key for entry:" + entry[select_departament])
