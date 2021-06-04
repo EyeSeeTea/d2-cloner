@@ -372,8 +372,9 @@ def get_db(cfg, args):
         cmd = "ssh %s %s | gzip > %s" % (cfg["hostname_remote"], dump, sql_path)
         run(cmd)
         apps_dir = os.path.join(dir_local, "files", "apps")
-        d2_docker_cmd = "d2-docker create data {} --sql={} --apps-dir {}".format(
-            get_local_docker_image(cfg, args, "stop"), sql_path, apps_dir
+        documents_dir = os.path.join(dir_local, "files", "document")
+        d2_docker_cmd = "d2-docker create data {} --sql={} --apps-dir {} --documents-dir {}".format(
+            get_local_docker_image(cfg, args, "stop"), sql_path, apps_dir, documents_dir
         )
         run(d2_docker_cmd)
 
