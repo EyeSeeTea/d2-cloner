@@ -1,48 +1,149 @@
 {
-    "local_type": "d2-docker",
-    "local_docker_image": "eyeseetea/dhis2-data:2.32-training",
-    "local_docker_image_stop_transformed": "eyeseetea/dhis2-data:2.32-training",
-    "_local_docker_image_start_transformed": "eyeseetea/dhis2-data:2.33-training",
-    "local_docker_port": 8080,
-    "local_docker_deploy_path": "d2",
-    "backups_dir": "/home/user/backups",
-    "backup_name": "TRAINING",
-    "server_dir_local": "/home/user/server",
-    "server_dir_remote": "/home/user/server",
-    "hostname_remote": "prod",
-    "db_remote": "postgresql://user:pass@server_remote:5432/db",
-    "war_remote": "ROOT.war",
-    "api_local": {
-        "url": "http://localhost:8080/d2",
-        "username": "system",
-        "password": "System123"
+  "local_type": "d2-docker",
+  "local_docker_image": "eyeseetea/dhis2-data:2.32-training",
+  "local_docker_image_stop_transformed": "eyeseetea/dhis2-data:2.32-training",
+  "_local_docker_image_start_transformed": "eyeseetea/dhis2-data:2.33-training",
+  "local_docker_port": 8080,
+  "local_docker_deploy_path": "d2",
+  "backups_dir": "/home/user/backups",
+  "pre_sql_dir": "/tmp/presql",
+  "backup_name": "TRAINING",
+  "server_dir_local": "/home/user/server",
+  "server_dir_remote": "/home/user/server",
+  "hostname_remote": "prod",
+  "db_remote": "postgresql://user:pass@server_remote:5432/db",
+  "war_remote": "ROOT.war",
+  "api_local": {
+    "url": "http://localhost:8080/d2",
+    "username": "system",
+    "password": "System123"
+  },
+  "departments": {
+    "DEP1": {
+      "dataSets": [
+        "Taf8Lrsm6LU",
+        "bIp9NutmrUj"
+      ]
     },
-    "postprocess": [
-        {
-            "selectUsernames": ["guest"],
-            "action": "activate"
-        },
-        {
-            "selectUsernames": ["admin", "guest"],
-            "selectFromGroups": ["program1"],
-            "action": "deleteOthers"
-        },
-        {
-            "selectFromGroups": ["program1", "program2"],
-            "action": "addRoles",
-            "addRoles": ["role1", "role2"]
-        },
-        {
-            "selectUsernames": ["teacher1", "teacher2"],
-            "action": "addRolesFromTemplate",
-            "addRolesFromTemplate": "teacher.template"
-        },
-        {
-            "selectUsernames": ["guest"],
-            "selectFromGroups": ["program1"],
-            "action": "removeFromGroups",
-            "removeFromGroups": ["program1"]
-        },
-        "https://raw.githubusercontent.com/EyeSeeTea/ESTools/master/DHIS2/cloner/configuration_example_only_postprocess.json"
-    ]
+    "DEP2": {
+      "eventPrograms": [
+        "qUwUUhMnsKF"
+      ],
+      "dataSets": [
+        "b9WbZfTFD9q"
+      ]
+    },
+    "DEP3": {
+      "eventPrograms": [
+        "tcxqWsp1Mrb"
+      ],
+      "dataSets": [
+        "RX8TGB6VJOi"
+      ],
+      "trackerPrograms": [
+        "q49tR53YqUX"
+      ]
+    }
+  },
+  "preprocess": [
+    {
+      "selectDepartament": "DEP1",
+      "selectMetadataType": [
+        "dataSets"
+      ],
+      "action": "removeData"
+    },
+    {
+      "selectDepartament": "DEP2",
+      "selectMetadataType": [
+        "dataSets",
+        "eventPrograms"
+      ],
+      "action": "removeData"
+    },
+    {
+      "selectDepartament": "DEP3",
+      "selectMetadataType": [
+        "dataSets"
+      ],
+      "selectdataSets": [
+        "HtZb6Cg7TXo",
+        "Tu81BTLUuCT",
+        "Wxl8hxuOsIQ",
+        "m5MiTPdlK17",
+        "pZ3XRBi9gYE"
+      ],
+      "action": "removeData"
+    },
+    {
+      "selectDepartament": "DEP3",
+      "selectMetadataType": [
+        "eventPrograms"
+      ],
+      "selectOrgUnits": [
+        "Xr8zZSxYAXC"
+      ],
+      "action": "removeData"
+    },
+    {
+      "selectDepartament": "DEP3",
+      "selectMetadataType": [
+        "trackerPrograms"
+      ],
+      "selectOrgUnitAndDescendants": [
+        "Xr8zZSxYAXC"
+      ],
+      "action": "removeData"
+    }
+  ],
+  "postprocess": [
+    {
+      "selectUsernames": [
+        "guest"
+      ],
+      "action": "activate"
+    },
+    {
+      "selectUsernames": [
+        "admin",
+        "guest"
+      ],
+      "selectFromGroups": [
+        "tAzaaAOmOZ0"
+      ],
+      "action": "deleteOthers"
+    },
+    {
+      "selectFromGroups": [
+        "IRVMI11U2tW",
+        "OBIso8u3eZv"
+      ],
+      "action": "addRoles",
+      "addRoles": [
+        "Run analytics",
+        "Import data"
+      ]
+    },
+    {
+      "selectUsernames": [
+        "teacher1",
+        "teacher2"
+      ],
+      "action": "addRolesFromTemplate",
+      "addRolesFromTemplate": "teacher.template"
+    },
+    {
+      "selectUsernames": [
+        "guest"
+      ],
+      "selectFromGroups": [
+        "pcfrBt05hZi"
+      ],
+      "action": "removeFromGroups",
+      "removeFromGroups": [
+        "FZ0bOUzMMGQ"
+      ]
+    },
+    "https://raw.githubusercontent.com/EyeSeeTea/ESTools/master/DHIS2/cloner/configuration_example_only_postprocess.json"
+  ]
 }
