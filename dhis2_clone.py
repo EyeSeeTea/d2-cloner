@@ -373,10 +373,14 @@ def get_db(cfg, args):
         run(cmd)
         apps_dir = os.path.join(dir_local, "files", "apps")
         documents_dir = os.path.join(dir_local, "files", "document")
-        d2_docker_cmd = "d2-docker create data {} --sql={} --apps-dir {} --documents-dir {}".format(
-            get_local_docker_image(cfg, args, "stop"), sql_path, apps_dir, documents_dir
+        run(
+            "d2-docker create data {} --sql={} {} {}".format(
+                get_local_docker_image(cfg, args, "stop"),
+                sql_path,
+                (("--apps-dir '%s'" % apps_dir) if os.path.isdir(apps_dir) else ""),
+                (("--documents-dir '%s'" % documents_dir) if os.path.isdir(documents_dir) else ""),
+            )
         )
-        run(d2_docker_cmd)
 
     # Errors like 'ERROR: role "u_dhis2" does not exist' are expected
     # and safe to ignore.
