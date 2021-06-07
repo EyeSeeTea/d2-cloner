@@ -98,7 +98,7 @@ python-magic==0.4.16
 PyTMX==3.21.7
 pytz==2018.3
 pyxdg==0.25
-PyYAML==3.12
+PyYAML==5.4
 readme-renderer==28.0
 reportbug===7.1.8ubuntu1
 reportlab==3.4.0
