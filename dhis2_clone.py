@@ -320,7 +320,7 @@ def get_webapps(cfg):
     route_remote = "%s:%s" % (cfg["hostname_remote"], cfg["server_dir_remote"])
 
     for mandatory, subdir in [[True, "webapps"], [False, "files"]]:
-        cmd = "rsync -avP --delete %s/%s %s" % (route_remote, subdir, route_local)
+        cmd = "rsync -avP -LK --delete %s/%s %s" % (route_remote, subdir, route_local)
         log(cmd)
         p = Popen(
             cmd,
