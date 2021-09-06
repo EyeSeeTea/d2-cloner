@@ -34,8 +34,8 @@ def main():
         update_config(args.config)
         sys.exit()
 
-    if not args.manual_restart:
-        stop_tomcat(cfg, args)
+    #if not args.manual_restart:
+    #    stop_tomcat(cfg, args)
 
     if not args.no_backups:
         backup_db(cfg, args)
