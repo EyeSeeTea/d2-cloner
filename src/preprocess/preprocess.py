@@ -118,10 +118,10 @@ def generate_queries(departament, f):
                         generate_anonymize_datasets_rules(datasets, data_elements, org_units, org_unit_descendants,
                                                            departament[key][dataset_type], f)
                     if has_tracker_program:
-                        generate_anonymize_tracker_rules(tracker_program, tracker_entity_attributes, data_elements,
+                        generate_anonymize_tracker_rules(tracker_program, tracker_entity_attributes, org_units, data_elements,
                                                          departament[key][tracker_type], f)
                     if has_event_program:
-                        generate_anonymize_event_rules(event_program, data_elements,
+                        generate_anonymize_event_rules(event_program, org_units, data_elements,
                                                        departament[key][program_type], f)
                     # if not have specific rules apply to all the departament
                     if not has_datasets and not has_event_program and not has_tracker_program:
