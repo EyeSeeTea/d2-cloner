@@ -3,7 +3,8 @@ import os
 from src.preprocess.query_generator import generate_delete_datasets_rules, generate_delete_tracker_rules, \
     generate_delete_event_rules, delete_all_event_programs, delete_all_data_sets, delete_all_tracker_programs, \
     remove_all_unnecessary_dependencies, anonymize_all_event_programs, anonymize_all_data_sets, \
-    anonymize_all_tracker_programs, generate_anonymize_tracker_rules, generate_anonymize_event_rules
+    anonymize_all_tracker_programs, generate_anonymize_tracker_rules, generate_anonymize_event_rules, \
+    generate_anonymize_datasets_rules
 import shutil
 
 anonymize_rule = "anonymizeData"
@@ -113,9 +114,9 @@ def generate_queries(departament, f):
                     if not has_datasets and not has_event_program and not has_tracker_program:
                         remove_all(departament[key], f)
                 elif rule[action] == anonymize_rule:
-                    # if has_datasets:
-                    #     generate_anonymize_datasets_rules(datasets, data_elements, org_units, org_unit_descendants,
-                    #                                       departament[key][dataset_type], f)
+                    if has_datasets:
+                        generate_anonymize_datasets_rules(datasets, data_elements, org_units, org_unit_descendants,
+                                                           departament[key][dataset_type], f)
                     if has_tracker_program:
                         generate_anonymize_tracker_rules(tracker_program, tracker_entity_attributes, data_elements,
                                                          departament[key][tracker_type], f)

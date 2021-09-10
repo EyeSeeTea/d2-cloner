@@ -251,16 +251,23 @@ def anonymize_all_event_programs(programs, f):
 def anonymize_all_data_sets(datasets, f):
     datasets = convert_to_sql_format(datasets)
     write(f,"--anonymize all datasets\n")
-    write(f,"update datavalueaudit as dv set organisationunitid=(select organisationunitid "
-            "from organisationunit ORDER BY RANDOM()+"
-            "dv.organisationunitid limit 1) where dataelementid in "
-            "(select dataelementid from datasetelement "
-            "where datasetid in (select datasetid from dataset where uid in {}));\n".format(datasets))
-    write(f,"update datavalue as dv set sourceid=(select organisationunitid from organisationunit ORDER BY RANDOM()+"
-            "dv.organisationunitid limit 1) where dataelementid in "
-            "(select dataelementid from datasetelement "
-            "where datasetid in (select datasetid from dataset where uid in {}));\n".format(datasets))
-    pass
+    sql_query = "UPDATE datavalue " \
+                "SET value = compare.update " \
+                "FROM ( SELECT dataelementid AS lookup FROM datasetelement WHERE datasetid IN ( " \
+                     "SELECT datasetid FROM dataset WHERE uid IN {} ) as valid_dataelements " \
+                "CROSS JOIN LATERAL ( " \
+                "SELECT t1.dataelementid, t1.sourceid, t1.periodid, t1.categoryoptioncomboid, t1.attributeoptioncomboid, t1.actual, t2.update " \
+                "FROM (SELECT row_number() OVER () AS index, dataelementid, sourceid, periodid, categoryoptioncomboid, attributeoptioncomboid, value AS actual " \
+                "FROM datavalue t1 " \
+                "WHERE t1.dataelementid = lookup " \
+                ") t1 JOIN (SELECT row_number() OVER (ORDER BY random()) AS index, value AS update FROM datavalue t2 WHERE t2.dataelementid = lookup ) t2 USING (index) " \
+                ") AS lookup " \
+                ") compare " \
+                "WHERE datavalue.dataelementid = compare.dataelementid AND datavalue.sourceid = compare.sourceid AND " \
+                "datavalue.periodid = compare.periodid AND " \
+                "datavalue.categoryoptioncomboid = compare.categoryoptioncomboid AND " \
+                "datavalue.attributeoptioncomboid = compare.attributeoptioncomboid;".format(datasets)
+    write(f, sql_query)
 
 
 def anonymize_all_tracker_programs(programs, f):
@@ -292,7 +299,65 @@ def anonymize_all_tracker_programs(programs, f):
 
 def write(f, text):
     print(text)
-    write(f,text)
+    f.write(text)
+
+def generate_anonymize_datasets_rules(dataset_uids, data_elements, org_units, org_unit_descendants, all_uid, f):
+    write(f,"--anonymize datasets\n")
+    sql_all = convert_to_sql_format(all_uid)
+    sql_datasets_uids = convert_to_sql_format(dataset_uids)
+    sql_data_elements = convert_to_sql_format(data_elements)
+    sql_org_units = convert_to_sql_format(org_units)
+    has_rule = False
+    where_dataelements= ""
+    where_orgunits = ""
+
+    if sql_datasets_uids != "":
+        has_rule = True
+        datasets = sql_datasets_uids
+    else:
+        datasets = sql_all
+    sql_query = "UPDATE datavalue " \
+                "SET value = compare.update " \
+                "FROM ( {} ) as valid_dataelements " \
+                "CROSS JOIN LATERAL ( " \
+                "SELECT t1.dataelementid, t1.sourceid, t1.periodid, t1.categoryoptioncomboid, t1.attributeoptioncomboid, t1.actual, t2.update " \
+                "FROM (SELECT row_number() OVER () AS index, dataelementid, sourceid, periodid, categoryoptioncomboid, attributeoptioncomboid, value AS actual " \
+                "FROM datavalue t1 " \
+                "WHERE t1.dataelementid = lookup " \
+                ") t1 JOIN (SELECT row_number() OVER (ORDER BY random()) AS index, value AS update FROM datavalue t2 WHERE t2.dataelementid = lookup ) t2 USING (index) " \
+                ") AS lookup " \
+                ") compare " \
+                "WHERE datavalue.dataelementid = compare.dataelementid AND datavalue.sourceid = compare.sourceid AND " \
+                "datavalue.periodid = compare.periodid AND " \
+                "datavalue.categoryoptioncomboid = compare.categoryoptioncomboid AND " \
+                "datavalue.attributeoptioncomboid = compare.attributeoptioncomboid;"
+
+    where_datasets = "SELECT dataelementid AS lookup FROM datasetelement WHERE datasetid IN ( " \
+                "SELECT datasetid FROM dataset WHERE uid IN {} ".format(datasets)
+   # sql_query = (
+    #    "update datavalue as dv set sourceid=(select organisationunitid from organisationunit ORDER BY RANDOM() "
+     #   " where organisationunitid not in (select sourceid from datavalue dv2 where dv2.dataelementid=dv.dataelementid and "
+      #  "dv2.periodid = dv.periodid and "
+      #  "dv2.attributecategoryoptionid=dv.attributecategoryoptionid and dv2.categoryoptioncomboid = dv.categoryoptioncomboid)"
+      #  "limit 1) where dataelementid in "
+      #  "(select dataelementid from datasetelement "
+      #  "where datasetid in (select datasetid from dataset where uid in {})) and".format(datasets.replace("(", "").replace(")", "")))
+    if sql_data_elements != "":
+        has_rule = True
+        where_dataelements = " and uid in {} ".format(
+            sql_data_elements)
+
+    if org_units != "":
+        has_rule = True
+        where_orgunits = " and sourceid in (select organisationunitid from organisationuint where uid in {})".format(
+            sql_org_units)
+    if not has_rule:
+        anonymize_all_event_programs(all_uid, f)
+    else:
+        where_clausules = where_datasets + where_dataelements + where_orgunits
+        where = "SELECT * FROM ( {} )".format(where_clausules)
+        sql_query = sql_query.format(where)
+        write(f,sql_query + "\n")
 
 
 def generate_anonymize_event_rules(event_program, data_elements, all_uid, f):
@@ -340,7 +405,8 @@ def generate_anonymize_tracker_rules(trackers, tracker_attribute_values, data_el
     if sql_trackers == "":
         list_of_tracker_uid = sql_all
 
-    anonymize_all_tracker_programs(list_of_tracker_uid, f)
+    if trackers!="":
+        anonymize_all_tracker_programs(trackers, f)
     # update coordinates dataelements and trackedentityinstances
     #done
     write(f,"---coordinates\n")
@@ -398,6 +464,7 @@ def generate_anonymize_tracker_rules(trackers, tracker_attribute_values, data_el
             "inner join program p on tet.trackedentitytypeid=p.trackedentitytypeid "
             "where p.uid in {} );\n".format(anonymize_phone, list_of_tracker_uid))
     # update email trackedentityinstances
+    #todo change by single user@email.com for all
     write(f,";DO\n"
             "$$DECLARE\n"
             " c CURSOR FOR SELECT * FROM trackedentityattributevalue where trackedentityinstanceid \n"
@@ -420,6 +487,7 @@ def generate_anonymize_tracker_rules(trackers, tracker_attribute_values, data_el
             "END;$$;;\n".format(list_of_tracker_uid, sql_tracker_entity_attributes, anonymize_email))
 
     # update email dataelements
+    #todo cambiar el i where current por random
     write(f,";DO\n"
             "$$DECLARE\n"
             " c CURSOR FOR SELECT * FROM trackedentityattributevalue where trackedentityinstanceid \n"
