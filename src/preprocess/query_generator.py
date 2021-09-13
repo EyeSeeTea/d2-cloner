@@ -304,7 +304,40 @@ def anonymize_all_tracker_programs(programs, f):
     programs = convert_to_sql_format(programs)
     write(f, "--anonymize all tracker\n")
     remove_tracker_coordinates(programs, f)
-    write(f, "---coordinates\n")
+    write(f, "---remove event coor orgunits and phonenumbers\n")
+
+    # remove event values in valuetype (coordinates, phone_number, organisation_unit)
+    write(f,
+          "UPDATE programstageinstance SET "
+          "eventdatavalues = eventdatavalues - array(SELECT uid FROM   dataelement WHERE "
+          "( valuetype = 'PHONE_NUMBER' OR valuetype = 'COORDINATES' OR valuetype = 'ORGANISATION_UNIT' ) "
+          "AND dataelementid IN"
+          "(SELECT psde.dataelementid FROM   program p INNER JOIN programstage ps "
+          "ON p.programid = ps.programid INNER JOIN programstagedataelement psde "
+          "ON psde.programstageid = ps.programstageid WHERE "
+          " p.uid IN {})) "
+          "WHERE  eventdatavalues ?| array(SELECT uid FROM   dataelement "
+          "WHERE  ( valuetype = 'PHONE_NUMBER' OR valuetype = 'COORDINATES' OR valuetype = 'ORGANISATION_UNIT' ) "
+          "AND dataelementid IN (SELECT psde.dataelementid"
+          " FROM program p INNER JOIN programstage ps ON p.programid = ps.programid INNER JOIN "
+          "programstagedataelement psde ON psde.programstageid = ps.programstageid WHERE  p.uid IN {})); \n"
+          .format(programs, programs))
+    write(f,
+          "UPDATE programstageinstance SET "
+          "eventdatavalues = eventdatavalues - array(SELECT uid FROM   dataelement WHERE "
+          "( valuetype = 'PHONE_NUMBER' OR valuetype = 'COORDINATES' OR valuetype = 'ORGANISATION_UNIT' ) "
+          "AND dataelementid IN"
+          "(SELECT psde.dataelementid FROM   program p INNER JOIN programstage ps "
+          "ON p.programid = ps.programid INNER JOIN programstagedataelement psde "
+          "ON psde.programstageid = ps.programstageid WHERE "
+          " p.uid IN {})) "
+          "WHERE  eventdatavalues ?| array(SELECT uid FROM   dataelement "
+          "WHERE  ( valuetype = 'PHONE_NUMBER' OR valuetype = 'COORDINATES' OR valuetype = 'ORGANISATION_UNIT' ) "
+          "AND dataelementid IN (SELECT psde.dataelementid"
+          " FROM program p INNER JOIN programstage ps ON p.programid = ps.programid INNER JOIN "
+          "programstagedataelement psde ON psde.programstageid = ps.programstageid WHERE  p.uid IN {})); \n"
+          .format(programs, programs))
+
     # done delete coordinate
     write(f, "delete from trackedentityattributevalue where "
              "trackedentityinstanceid \n"
@@ -469,23 +502,69 @@ def generate_anonymize_tracker_rules(trackers, tracker_attribute_values, organis
         anonymize_all_tracker_programs(all_uid, f)
     else:
         remove_tracker_coordinates(trackers, f)
+        if sql_data_elements != "":
+            for uid in data_elements:
+                write(f, "UPDATE programstageinstance SET    eventdatavalues = jsonb_set(eventdatavalues, "
+                         "'{" + uid + ",value}', concat(\'\',concat(concat(\'" + "\"" + "\',(select concat(\'random\',"
+                         "round(random()*dataelementid+programstageinstanceid))"
+                         ' FROM   dataelement WHERE  uid = \'sPadHOO4SQY\'),\'' + '\"' + '\'),\'\'))::jsonb)'
+                         ' WHERE  programstageinstanceid in (select programstageinstanceid from programstageinstance'
+                         ' where  eventdatavalues ? (SELECT de.uid FROM   dataelement as de'
+                         ' where  ( de.valuetype = \'TEXT\' OR de.valuetype = \'LONG_TEXT\' )'
+                         ' AND de.dataelementid IN (SELECT psde.dataelementid'
+                         ' FROM program p INNER JOIN programstage ps ON p.programid = ps.programid INNER JOIN'
+                         ' programstagedataelement psde ON psde.programstageid = ps.programstageid WHERE  p.uid IN (\'' + "', '".join(
+                    all_uid) + '\')) and de.uid = \'' + uid + '\'));')
         where = ""
         if sql_trackers != "":
-            where = " and trackedentityinstanceid \n"\
-                        "in ( select ps.trackedentityinstanceid  from programinstance ps \n"\
-                        "inner join program p on p.programid=ps.programid \n"\
-                        "where p.uid in {}) \n".format(sql_trackers)
+            where = " and trackedentityinstanceid \n" \
+                    "in ( select ps.trackedentityinstanceid  from programinstance ps \n" \
+                    "inner join program p on p.programid=ps.programid \n" \
+                    "where p.uid in {}) \n".format(sql_trackers)
         if sql_tracker_entity_attributes != "":
-            where = where + " and trackedentityattributeid \n"\
-                    "in (select trackedentityattributeid  from trackedentityattribute "\
-                    "where uid in {})  \n".format(sql_tracker_entity_attributes)
+            where = where + " and trackedentityattributeid \n" \
+                            "in (select trackedentityattributeid  from trackedentityattribute " \
+                            "where uid in {})  \n".format(sql_tracker_entity_attributes)
         if sql_organisationunits != "":
-            where = where + " and organisationunitid \n"\
-                    "in (select organisationunitid  from organisationunit "\
-                    "where uid in {})  \n".format(sql_organisationunits)
+            where = where + " and organisationunitid \n" \
+                            "in (select organisationunitid  from organisationunit " \
+                            "where uid in {})  \n".format(sql_organisationunits)
 
         if sql_data_elements != "":
-            print("#todo")
+            # remove event values in valuetype (coordinates, phone_number, organisation_unit)
+            write(f,
+                  "UPDATE programstageinstance SET "
+                  "eventdatavalues = eventdatavalues - array(SELECT uid FROM   dataelement WHERE "
+                  "( valuetype = 'PHONE_NUMBER' OR valuetype = 'COORDINATES' OR valuetype = 'ORGANISATION_UNIT' ) "
+                  "AND dataelementid IN"
+                  "(SELECT psde.dataelementid FROM   program p INNER JOIN programstage ps "
+                  "ON p.programid = ps.programid INNER JOIN programstagedataelement psde "
+                  "ON psde.programstageid = ps.programstageid WHERE "
+                  " p.uid IN {})) "
+                  "WHERE eventadatavalues ?| {} "
+                  "and eventdatavalues ?| array(SELECT uid FROM   dataelement "
+                  "WHERE  ( valuetype = 'PHONE_NUMBER' OR valuetype = 'COORDINATES' "
+                  "OR valuetype = 'ORGANISATION_UNIT' ) AND dataelementid IN (SELECT psde.dataelementid"
+                  " FROM program p INNER JOIN programstage ps ON p.programid = ps.programid INNER JOIN "
+                  "programstagedataelement psde ON psde.programstageid = ps.programstageid WHERE  p.uid IN {})); \n"
+                  .format(sql_trackers, sql_data_elements, sql_trackers))
+        else:
+            # remove event values in valuetype (coordinates, phone_number, organisation_unit)
+            write(f,
+                  "UPDATE programstageinstance SET "
+                  "eventdatavalues = eventdatavalues - array(SELECT uid FROM   dataelement WHERE "
+                  "( valuetype = 'PHONE_NUMBER' OR valuetype = 'COORDINATES' OR valuetype = 'ORGANISATION_UNIT' ) "
+                  "AND dataelementid IN"
+                  "(SELECT psde.dataelementid FROM   program p INNER JOIN programstage ps "
+                  "ON p.programid = ps.programid INNER JOIN programstagedataelement psde "
+                  "ON psde.programstageid = ps.programstageid WHERE "
+                  " p.uid IN {})) "
+                  "WHERE eventdatavalues ?| array(SELECT uid FROM   dataelement "
+                  "WHERE  ( valuetype = 'PHONE_NUMBER' OR valuetype = 'COORDINATES' "
+                  "OR valuetype = 'ORGANISATION_UNIT' ) AND dataelementid IN (SELECT psde.dataelementid"
+                  " FROM program p INNER JOIN programstage ps ON p.programid = ps.programid INNER JOIN "
+                  "programstagedataelement psde ON psde.programstageid = ps.programstageid WHERE  p.uid IN {})); \n"
+                  .format(sql_trackers, sql_trackers))
 
         # done delete coordinate
         write(f, "delete from trackedentityattributevalue where "
