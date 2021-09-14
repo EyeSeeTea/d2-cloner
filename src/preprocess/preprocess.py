@@ -2,8 +2,7 @@ import os
 
 from src.preprocess.query_generator import generate_delete_datasets_rules, generate_delete_tracker_rules, \
     generate_delete_event_rules, delete_all_event_programs, delete_all_data_sets, delete_all_tracker_programs, \
-    remove_all_unnecessary_dependencies, anonymize_all_event_programs, anonymize_all_data_sets, \
-    anonymize_all_tracker_programs, generate_anonymize_tracker_rules, generate_anonymize_event_rules, \
+    remove_all_unnecessary_dependencies, generate_anonymize_tracker_rules, generate_anonymize_event_rules, \
     generate_anonymize_datasets_rules
 import shutil
 
@@ -20,6 +19,10 @@ select_event_program = "selectEventProgram"
 select_tracker_program = "selectTrackerProgram"
 select_org_units = "selectOrgUnits"
 select_org_unit_and_descendants = "selectOrgUnitAndDescendants"
+anonymize_phone_rule = "anonymizePhone"
+anonymize_mail_rule = "anonymizeMail"
+anonymize_org_unit_rule = "anonymizeOrgUnit"
+anonymize_coordinates_rule = "anonymizeCoordinates"
 select_data_elements = "selectDataElements"
 select_tracked_entity_attributes = "selectTrackedEntityAttributes"
 action = "action"
@@ -62,19 +65,10 @@ def remove_all(list_uid, f):
             delete_all_tracker_programs(list_uid[key], f)
 
 
-def anonymize_all(list_uid, f):
-    for key in list_uid.keys():
-        if key == program_type:
-            anonymize_all_event_programs(list_uid[key], f)
-        if key == dataset_type:
-            anonymize_all_data_sets(list_uid[key], f)
-        if key == tracker_type:
-            anonymize_all_tracker_programs(list_uid[key], f)
-
-
 def generate_queries(departament, f):
     for key in departament.keys():
-        f.write("--" + key + "\n")
+        f.write("--Departament:" + key + "\n")
+        print("--Departament:" + key + "\n")
         if actions not in departament[key]:
             continue
         for rule in departament[key][actions]:
@@ -97,6 +91,10 @@ def generate_queries(departament, f):
                 # get restriction if exist
                 org_units = get_rule_content(rule, select_org_units)
                 org_unit_descendants = get_rule_content(rule, select_org_unit_and_descendants)
+                anonimize_org_units = get_rule_content(rule, anonymize_org_unit_rule)
+                anonimize_mail = get_rule_content(rule, anonymize_mail_rule)
+                anonimize_phone = get_rule_content(rule, anonymize_phone_rule)
+                anonimize_coordinate = get_rule_content(rule, anonymize_coordinates_rule)
                 data_elements = get_rule_content(rule, select_data_elements)
                 tracker_entity_attributes = get_rule_content(rule, select_tracked_entity_attributes)
 
@@ -115,23 +113,48 @@ def generate_queries(departament, f):
                         remove_all(departament[key], f)
                 elif rule[action] == anonymize_rule:
                     if has_datasets:
-                        generate_anonymize_datasets_rules(datasets, data_elements, org_units, org_unit_descendants,
-                                                           departament[key][dataset_type], f)
+                        generate_anonymize_datasets_rules(datasets, org_units, data_elements,
+                                anonimize_org_units, anonimize_phone, anonimize_mail,
+                                anonimize_coordinate, departament[key][dataset_type], f)
                     if has_tracker_program:
                         generate_anonymize_tracker_rules(tracker_program, tracker_entity_attributes, org_units, data_elements,
+                                anonimize_org_units, anonimize_phone, anonimize_mail,
+                                anonimize_coordinate,
                                                          departament[key][tracker_type], f)
                     if has_event_program:
                         generate_anonymize_event_rules(event_program, org_units, data_elements,
+                                anonimize_org_units, anonimize_phone, anonimize_mail,
+                                anonimize_coordinate,
                                                        departament[key][program_type], f)
                     # if not have specific rules apply to all the departament
                     if not has_datasets and not has_event_program and not has_tracker_program:
-                        anonymize_all(departament[key], f)
+                        for key_type in departament[key].keys():
+                            if key_type == program_type:
+                                generate_anonymize_event_rules(event_program, org_units, data_elements,
+                                                               anonimize_org_units, anonimize_phone, anonimize_mail,
+                                                               anonimize_coordinate,
+                                                               departament[key][program_type], f)
+                            if key_type == dataset_type:
+                                generate_anonymize_datasets_rules(datasets, org_units, data_elements,
+                                anonimize_org_units, anonimize_phone, anonimize_mail,
+                                anonimize_coordinate, departament[key][dataset_type], f)
+                            if key_type == tracker_type:
+                                generate_anonymize_tracker_rules(tracker_program, tracker_entity_attributes,
+                                                                 org_units, data_elements,
+                                                                 anonimize_org_units, anonimize_phone, anonimize_mail,
+                                                                 anonimize_coordinate,
+                                                                 departament[key][tracker_type], f)
 
 
 def get_rule_content(rule, rule_type):
     if rule_type in rule.keys():
         return rule[rule_type]
-    return ""
+    if rule_type in [anonymize_phone_rule, anonymize_coordinates_rule, anonymize_mail_rule]:
+        return True
+    elif rule_type == anonymize_org_unit_rule:
+        return False
+    else:
+        return ""
 
 
 def check_if_has_metadata_type(rule, check_type):
