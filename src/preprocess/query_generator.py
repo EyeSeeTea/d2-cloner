@@ -1,9 +1,4 @@
-anonymize_coordinates = "'46.232889,6.13426'"
-anonymize_email = "'user@example.com'"
-anonymize_phone = "'+100001'"
-anonymize_name = "'user'"
-anonymize_value = "'value'"
-anonymize_last_name = "'last_name'"
+anonymize_email = "'@example.com'"
 
 
 def remove_all_unnecessary_dependencies(f):
@@ -237,22 +232,6 @@ def delete_all_tracker_programs(trackers, f):
     write(f, "--remove tracker finish\n")
 
 
-def anonymize_all_event_programs(programs, f):
-    programs = convert_to_sql_format(programs)
-    write(f, "--remove all events\n")
-    write(f, "update programinstance set geometry=null, organisationunitid=(select organisationunitid "
-             "from organisationunit ORDER BY RANDOM() limit 1) where programinstanceid "
-             "in ( select psi.programinstanceid  from programstageinstance psi "
-             "inner join programstage ps on ps.programstageid=psi.programstageid "
-             "inner join program p on p.programid=ps.programid where p.uid in {});\n".format(programs))
-    write(f, "update programstageinstance set geometry=null, organisationunitid=(select organisationunitid "
-             "from organisationunit ORDER BY RANDOM() limit 1) where programstageinstanceid "
-             "in ( select psi.programstageinstanceid  from programstageinstance psi "
-             "inner join programstage ps on ps.programstageid=psi.programstageid "
-             "inner join program p on p.programid=ps.programid "
-             "where p.uid in {});\n".format(programs))
-
-
 def anonymize_all_data_sets(datasets, f):
     datasets = convert_to_sql_format(datasets)
     write(f, "--anonymize all datasets\n")
@@ -279,8 +258,6 @@ def anonymize_all_tracker_programs(programs, f):
     programs = convert_to_sql_format(programs)
     write(f, "--anonymize all tracker\n")
     write(f, "---remove event coor orgunits and phonenumbers\n")
-    where = ""
-    # remove event values in valuetype (coordinates, phone_number, organisation_unit)
     write(f,
           "UPDATE programstageinstance SET "
           "eventdatavalues = eventdatavalues - array(SELECT uid FROM   dataelement WHERE "
@@ -312,21 +289,13 @@ def anonymize_all_tracker_programs(programs, f):
           "programstagedataelement psde ON psde.programstageid = ps.programstageid WHERE  p.uid IN {})); \n"
           .format(programs, programs))
 
-    # done delete coordinate
     write(f, "delete from trackedentityattributevalue where "
              "trackedentityinstanceid \n"
              "in ( select ps.trackedentityinstanceid  from programinstance ps \n"
              "inner join program p on p.programid=ps.programid \n"
              "where p.uid in {}) and trackedentityinstanceid in (select trackedentityattributeid from trackedentityattribute "
              "where valuetype like 'COORDINATE'); \n".format(programs))
-    # done delete orgunit not by default
-    # write(f, "delete from trackedentityattributevalue where "
-    #         "trackedentityinstanceid \n"
-    #         "in ( select ps.trackedentityinstanceid  from programinstance ps \n"
-    #         "inner join program p on p.programid=ps.programid \n"
-    #         "where p.uid in {}) and trackedentityinstanceid in (select trackedentityattributeid from trackedentityattribute "
-    #         "where valuetype like 'ORGANISATION_UNIT'); \n".format(programs))
-    # done delete PHONE_NUMBER
+
     write(f, "delete from trackedentityattributevalue where "
              "trackedentityinstanceid \n"
              "in ( select ps.trackedentityinstanceid  from programinstance ps \n"
@@ -335,7 +304,6 @@ def anonymize_all_tracker_programs(programs, f):
              "where valuetype like 'PHONE_NUMBER'); \n".format(programs))
 
     write(f, "---email\n")
-    # done randomize mail
     write(f,
           "UPDATE trackedentityattributevalue set value=('randomuser' || round(random()*trackedentityinstanceid+trackedentityattributeid)::text || {}) "
           "where trackedentityattributeid in (select trackedentityattributeid "
@@ -346,7 +314,6 @@ def anonymize_all_tracker_programs(programs, f):
           "trackedentitytype tet on tet.trackedentitytypeid=tei.trackedentitytypeid "
           "inner join program p on tet.trackedentitytypeid=p.trackedentitytypeid "
           "where p.uid in {} );\n".format(anonymize_email, programs))
-    # done randomize texts
     write(f,
           "UPDATE trackedentityattributevalue set value=('Redacted ' || round(random()*trackedentityinstanceid+trackedentityattributeid)::text) "
           "where trackedentityattributeid in (select trackedentityattributeid "
@@ -372,12 +339,9 @@ def generate_anonymize_datasets_rules(dataset_uids, org_units, data_elements,
     sql_datasets_uids = convert_to_sql_format(dataset_uids)
     sql_data_elements = convert_to_sql_format(data_elements)
     sql_org_units = convert_to_sql_format(org_units)
-    has_rule = False
     where_dataelements = ""
-    where_orgunits = ""
 
     if sql_datasets_uids != "":
-        has_rule = True
         datasets = sql_datasets_uids
     else:
         datasets = sql_all
@@ -386,7 +350,6 @@ def generate_anonymize_datasets_rules(dataset_uids, org_units, data_elements,
                      "SELECT datasetid FROM dataset WHERE uid IN {} ".format(datasets)
 
     if sql_data_elements != "":
-        has_rule = True
         where_dataelements = " and uid in {} ".format(
             sql_data_elements)
 
@@ -453,11 +416,12 @@ def generate_anonymize_event_rules(event_program, organisationunits, data_elemen
                                    anonimize_org_units, anonimize_phone, anonimize_mail,
                                    anonimize_coordinate, all_uid, f):
     write(f, "--anonymize events\n")
-    sql_all = convert_to_sql_format(all_uid)
-    sql_event_program = convert_to_sql_format(event_program)
+    if event_program != "":
+        sql_event_program = convert_to_sql_format(event_program)
+    else:
+        sql_event_program = convert_to_sql_format(all_uid)
     sql_data_elements = convert_to_sql_format(data_elements)
-    has_rule = False
-    # todo
+
     if anonimize_mail:
         write(f,
               "UPDATE programstageinstance SET "
@@ -494,36 +458,27 @@ def generate_anonymize_event_rules(event_program, organisationunits, data_elemen
         write(f, "update programinstance as rand set geometry=null where programinstanceid "
                  "in ( select psi.programinstanceid  from programstageinstance psi "
                  "inner join programstage ps on ps.programstageid=psi.programstageid "
-                 "inner join program p on p.programid=ps.programid where p.uid in {});\n".format(event_program))
+                 "inner join program p on p.programid=ps.programid where p.uid in {});\n".format(sql_event_program))
         write(f, "update programstageinstance as rand set geometry=null where programstageinstanceid "
                  "in ( select psi.programstageinstanceid  from programstageinstance psi "
                  "inner join programstage ps on ps.programstageid=psi.programstageid "
                  "inner join program p on p.programid=ps.programid "
-                 "where p.uid in {});\n".format(event_program))
+                 "where p.uid in {});\n".format(sql_event_program))
     if anonimize_org_units:
         write(f, "update programinstance as rand set organisationunitid=(select organisationunitid "
                  "from organisationunit where length(path)=(select length(path) from organisationunit where rand.organisationunitid= organisationunitid) ORDER BY RANDOM() limit 1) where programinstanceid "
                  "in ( select psi.programinstanceid  from programstageinstance psi "
                  "inner join programstage ps on ps.programstageid=psi.programstageid "
-                 "inner join program p on p.programid=ps.programid where p.uid in {});\n".format(event_program))
+                 "inner join program p on p.programid=ps.programid where p.uid in {});\n".format(sql_event_program))
         write(f, "update programstageinstance as rand set organisationunitid="
                  "(select organisationunitid from organisationunit where length(path)=(select length(path) from organisationunit where rand.organisationunitid= organisationunitid) ORDER BY RANDOM()"
                  "limit 1) where programstageinstanceid "
                  "in ( select psi.programstageinstanceid  from programstageinstance psi "
                  "inner join programstage ps on ps.programstageid=psi.programstageid "
                  "inner join program p on p.programid=ps.programid "
-                 "where p.uid in {});\n".format(event_program))
-    if sql_event_program != "":
-        has_rule = True
-        sql_query = "delete from programstageinstance where programstageid in " \
-                    "(select programstageid from programstage where programid in " \
-                    "(select programid from program where uid in {})) and".format(event_program)
-    else:
-        sql_query = "delete from programstageinstance where programstageid in " \
-                    "(select programstageid from programstage where programid in " \
-                    "(select programid from program where uid in {})) and".format(sql_all)
+                 "where p.uid in {});\n".format(sql_event_program))
+
     if sql_data_elements != "":
-        has_rule = True
         if sql_data_elements != "":
             for uid in data_elements:
                 write(f, "UPDATE programstageinstance SET    eventdatavalues = jsonb_set(eventdatavalues, "
@@ -538,13 +493,6 @@ def generate_anonymize_event_rules(event_program, organisationunits, data_elemen
                          ' programstagedataelement psde ON psde.programstageid = ps.programstageid WHERE  p.uid IN (\'' + "', '".join(
                     all_uid) + '\')) and de.uid = \'' + uid + '\'));')
 
-    if not has_rule:
-        anonymize_all_event_programs(all_uid, f)
-    else:
-        sql_query = sql_query + ";"
-        sql_query = sql_query.replace("and;", ";")
-        write(f, sql_query + "\n")
-
 
 def generate_anonymize_tracker_rules(trackers, tracker_attribute_values, organisationunits, data_elements,
                                      anonimize_org_units, anonimize_phone, anonimize_mail,
@@ -558,6 +506,12 @@ def generate_anonymize_tracker_rules(trackers, tracker_attribute_values, organis
     sql_tracker_entity_attributes = convert_to_sql_format(tracker_attribute_values)
     sql_data_elements = convert_to_sql_format(data_elements)
 
+    where = " and trackedentityinstanceid \n " \
+            "in ( select ps.trackedentityinstanceid  " \
+            "from programinstance ps \n" \
+            "inner join program p on p.programid=ps.programid \n" \
+            "where p.uid in {}) \n".format(sql_trackers)
+
     if sql_data_elements != "":
         for uid in data_elements:
             write(f, "UPDATE programstageinstance SET    eventdatavalues = jsonb_set(eventdatavalues, "
@@ -569,16 +523,10 @@ def generate_anonymize_tracker_rules(trackers, tracker_attribute_values, organis
                      ' where  ( de.valuetype = \'TEXT\' OR de.valuetype = \'LONG_TEXT\' )'
                      ' AND de.dataelementid IN (SELECT psde.dataelementid'
                      ' FROM program p INNER JOIN programstage ps ON p.programid = ps.programid INNER JOIN'
-                     ' programstagedataelement psde ON psde.programstageid = ps.programstageid WHERE  p.uid IN (\'' + "', '".join(
-                sql_trackers) + '\')) and de.uid = \'' + uid + '\'));')
-    where = ""
-    if sql_trackers != "":
-        where = " and trackedentityinstanceid \n" \
-                "in ( select ps.trackedentityinstanceid  from programinstance ps \n" \
-                "inner join program p on p.programid=ps.programid \n" \
-                "where p.uid in {}) \n".format(sql_trackers)
+                     ' programstagedataelement psde ON psde.programstageid = ps.programstageid WHERE  p.uid IN '
+                  + sql_trackers + ') and de.uid = \'' + uid + '\'));')
+
     if sql_tracker_entity_attributes != "":
-        # done randomize texts
         write(f,
               "UPDATE trackedentityattributevalue set "
               "value=('Redacted ' || round(random()*trackedentityinstanceid+trackedentityattributeid)::text) "
@@ -587,31 +535,27 @@ def generate_anonymize_tracker_rules(trackers, tracker_attribute_values, organis
               " and trackedentityattributeid in (select trackedentityattributeid "
               "from trackedentityattribute where uid in {} );\n"
               .format(sql_tracker_entity_attributes))
-        # where = where + " and trackedentityattributeid \n" \
-        #                "in (select trackedentityattributeid  from trackedentityattribute " \
-        #                "where uid in {})  \n".format(sql_tracker_entity_attributes)
+
     if sql_organisationunits != "":
         where = where + " and organisationunitid \n" \
                         "in (select organisationunitid  from organisationunit " \
                         "where uid in {})  \n".format(sql_organisationunits)
     if anonimize_coordinate:
-        # remove event values in valuetype (coordinates)
-
         write(f, "update programinstance as rand set geometry=null where programinstanceid "
                  "in ( select psi.programinstanceid  from programstageinstance psi "
                  "inner join programstage ps on ps.programstageid=psi.programstageid "
-                 "inner join program p on p.programid=ps.programid where p.uid in {});\n".format(trackers))
+                 "inner join program p on p.programid=ps.programid where p.uid in {});\n".format(sql_trackers))
         write(f,
-              "update programstageinstance as rand set geometry=null where programinstanceid where programstageinstanceid "
+              "update programstageinstance as rand set geometry=null where programstageinstanceid "
               "in ( select psi.programstageinstanceid  from programstageinstance psi "
               "inner join programstage ps on ps.programstageid=psi.programstageid "
               "inner join program p on p.programid=ps.programid "
-              "where p.uid in {});\n".format(trackers))
+              "where p.uid in {});\n".format(sql_trackers))
         write(f,
-              "update trackedentityinstance as rand set coordinate=null where programinstanceid where trackedentityinstanceid "
+              "update trackedentityinstance as rand set coordinates=null where trackedentityinstanceid "
               "in ( select ps.trackedentityinstanceid  from programinstance ps "
               "inner join program p on p.programid=ps.programid "
-              "where p.uid in {});\n".format(trackers))
+              "where p.uid in {});\n".format(sql_trackers))
         write(f,
               "UPDATE programstageinstance SET "
               "eventdatavalues = eventdatavalues - array(SELECT uid FROM   dataelement WHERE "
@@ -634,27 +578,31 @@ def generate_anonymize_tracker_rules(trackers, tracker_attribute_values, organis
                  "where valuetype like 'COORDINATE') {}; \n".format(where))
     if anonimize_org_units:
         write(f, "update programinstance as rand set organisationunitid=(select organisationunitid "
-                 "from organisationunit where length(path)=(select length(path) from organisationunit where rand.organisationunitid= organisationunitid) ORDER BY RANDOM() limit 1) where programinstanceid "
+                 "from organisationunit where length(path)=(select length(path) from organisationunit where "
+                 "rand.organisationunitid= organisationunitid) ORDER BY RANDOM() limit 1) where programinstanceid "
                  "in ( select psi.programinstanceid  from programstageinstance psi "
                  "inner join programstage ps on ps.programstageid=psi.programstageid "
-                 "inner join program p on p.programid=ps.programid where p.uid in {});\n".format(trackers))
+                 "inner join program p on p.programid=ps.programid where p.uid in {});\n".format(sql_trackers))
         write(f, "update programstageinstance as rand set organisationunitid="
-                 "(select organisationunitid from organisationunit where length(path)=(select length(path) from organisationunit where rand.organisationunitid= organisationunitid) ORDER BY RANDOM()"
+                 "(select organisationunitid from organisationunit where length(path)=(select length(path) from "
+                 "organisationunit where rand.organisationunitid= organisationunitid) ORDER BY RANDOM()"
                  "limit 1) where programstageinstanceid "
                  "in ( select psi.programstageinstanceid  from programstageinstance psi "
                  "inner join programstage ps on ps.programstageid=psi.programstageid "
                  "inner join program p on p.programid=ps.programid "
-                 "where p.uid in {});\n".format(trackers))
+                 "where p.uid in {});\n".format(sql_trackers))
         write(f, "update trackedentityinstance as rand set organisationunitid=(select "
-                 "organisationunitid from organisationunit where length(path)=(select length(path) from organisationunit where rand.organisationunitid= organisationunitid) ORDER BY RANDOM() "
+                 "organisationunitid from organisationunit where length(path)=(select length(path) from "
+                 "organisationunit where rand.organisationunitid= organisationunitid) ORDER BY RANDOM() "
                  "limit 1) where trackedentityinstanceid "
                  "in ( select ps.trackedentityinstanceid  from programinstance ps "
                  "inner join program p on p.programid=ps.programid "
-                 "where p.uid in {});\n".format(trackers))
+                 "where p.uid in {});\n".format(sql_trackers))
         write(f, "update trackedentityprogramowner as rand set organisationunitid=(select organisationunitid from "
-                 "organisationunit where length(path)=(select length(path) from organisationunit where rand.organisationunitid= organisationunitid) ORDER BY RANDOM() limit 1) "
+                 "organisationunit where length(path)=(select length(path) from organisationunit where "
+                 "rand.organisationunitid= organisationunitid) ORDER BY RANDOM() limit 1) "
                  "where trackedentityinstanceid in (select trackedentityinstanceid from "
-                 " program where uid in {});\n".format(trackers))
+                 " program where uid in {});\n".format(sql_trackers))
         write(f, "delete from trackedentityattributevalue where "
                  "trackedentityinstanceid in (select trackedentityattributeid from trackedentityattribute "
                  "where valuetype like 'ORGANISATION_UNIT') {}; \n".format(where))
@@ -695,9 +643,9 @@ def generate_anonymize_tracker_rules(trackers, tracker_attribute_values, organis
               .format(sql_trackers, sql_trackers))
     if anonimize_mail:
         write(f, "---email\n")
-        # done randomize mail
         write(f,
-              "UPDATE trackedentityattributevalue set value=('randomuser' || round(random()*trackedentityinstanceid+trackedentityattributeid)::text || {}) "
+              "UPDATE trackedentityattributevalue set value=('randomuser' || round(random()*"
+              "trackedentityinstanceid+trackedentityattributeid)::text || {}) "
               "where trackedentityattributeid in (select trackedentityattributeid "
               "from trackedentityattribute where valuetype='EMAIL') {} ;\n".format(anonymize_email, where))
         write(f,
@@ -714,7 +662,7 @@ def generate_anonymize_tracker_rules(trackers, tracker_attribute_values, organis
               " AND dataelementid IN (SELECT psde.dataelementid"
               " FROM program p INNER JOIN programstage ps ON p.programid = ps.programid INNER JOIN "
               "programstagedataelement psde ON psde.programstageid = ps.programstageid WHERE  p.uid IN {})); \n".format(
-                  trackers, trackers))
+                  sql_trackers, sql_trackers))
 
 
 def convert_to_sql_format(list_uid):
