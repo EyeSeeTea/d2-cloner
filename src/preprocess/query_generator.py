@@ -305,7 +305,7 @@ def generate_anonymize_datasets_rules(dataset_uids, org_units, data_elements,
     if anonimize_mail:
         write(f,
               "Update datavalue set value=concat(\'user\',round(random()*dataelementid+categoryoptioncomboid+sourceid)) || '@example.com'"
-              " where dataelementid in (select dataelementid from dataelement where valuetype='PHONE_NUMBER')" \
+              " where dataelementid in (select dataelementid from dataelement where valuetype='EMAIL')" \
               " and dataelementid in ({})); ".format(where_clausules))
     if anonimize_coordinate:
         write(f,
