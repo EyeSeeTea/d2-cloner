@@ -23,9 +23,12 @@ def wait_for_server(api, timeout=3900):
         try:
             api.get("/me")
             break
-        except (requests.exceptions.HTTPError, requests.exceptions.ConnectionError) as exc:
-            debug(exc)
-            if time_.time() - start_time > timeout:
+        except requests.exceptions.HTTPError:
+            if time.time() - start_time > timeout:
+                raise RuntimeError("Timeout: could not connect to the API")
+            time.sleep(3000)
+        except requests.exceptions.ConnectionError:
+            if time.time() - start_time > timeout:
                 raise RuntimeError("Timeout: could not connect to the API")
             time_.sleep(10)
 
