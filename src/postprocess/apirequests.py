@@ -14,7 +14,7 @@ def init_api(url, username, password):
     return dhis2api.Dhis2Api(url, username, password)
 
 
-def wait_for_server(api, timeout=3900):
+def wait_for_server(api, timeout=1800):
     "Sleep until server is ready to accept requests"
     debug("Check active API: %s" % api.api_url)
     import time as time_
@@ -24,13 +24,13 @@ def wait_for_server(api, timeout=3900):
             api.get("/me")
             break
         except requests.exceptions.HTTPError:
-            if time.time() - start_time > timeout:
+            if time_.time() - start_time > timeout:
                 raise RuntimeError("Timeout: could not connect to the API")
-            time.sleep(3000)
+            time_.sleep(120)
         except requests.exceptions.ConnectionError:
-            if time.time() - start_time > timeout:
+            if time_.time() - start_time > timeout:
                 raise RuntimeError("Timeout: could not connect to the API")
-            time_.sleep(10)
+            time_.sleep(120)
 
 
 def activate(api, users):
