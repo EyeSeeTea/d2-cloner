@@ -2,9 +2,10 @@ import os
 
 from src.preprocess.query_generator import generate_delete_datasets_rules, generate_delete_tracker_rules, \
     generate_delete_event_rules, delete_all_event_programs, delete_all_data_sets, delete_all_tracker_programs, \
-    remove_all_unnecessary_dependencies
+    remove_all_unnecessary_dependencies, generate_delete_org_unit_tree_rules
 import shutil
 
+remove_orgunit_tree = "removeOrganisationUnitTree"
 remove_rule = "removeData"
 program_type = "eventPrograms"
 tracker_type = "trackerPrograms"
@@ -56,6 +57,9 @@ def generate_queries(departament, f):
             has_datasets = False
             has_event_program = False
             has_tracker_program = False
+            if rule["action"] == remove_orgunit_tree:
+                generate_delete_org_unit_tree_rules(rule["selectOrganisationUnit"], f)
+
             if rule["action"] == remove_rule:
                 datasets = ""
                 event_program = ""

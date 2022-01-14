@@ -60,6 +60,7 @@ def main():
 
 
     if args.post_sql:
+        log("Running postsql...")
         run_sql(cfg, args)
 
     if args.post_clone_scripts:
@@ -450,6 +451,7 @@ def empty_db(db_local):
 def run_sql(cfg, args):
     if is_local_tomcat(cfg):
         for fname in args.post_sql:
+            log("Running postsql...  "+fname)
             run("psql -d '%s' < '%s'" % (args.db_local, fname))
 
 

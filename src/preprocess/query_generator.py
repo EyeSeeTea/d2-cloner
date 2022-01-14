@@ -109,6 +109,67 @@ def generate_delete_tracker_rules(trackers, data_elements, org_units, org_unit_d
         f.write(sql_query + "\n")
 
 
+def delete_all_org_unit_data(org_unit, f):
+        f.write("--remove organisationUnits -- data" + "\n")
+        f.write("delete from programstageinstance where " + " organisationunitid in (select organisationunitid from organisationunit " \
+                                "where path like '%{}%'); \n".format(org_unit+"/"))
+        f.write("delete from programinstance where " + " organisationunitid in (select organisationunitid from organisationunit " \
+                                "where path like '%{}%'); \n".format(org_unit+"/"))
+        f.write("delete from datavalue where " + " sourceid in (select organisationunitid from organisationunit " \
+                                "where path like '%{}%'); \n".format(org_unit+"/"))
+        f.write("delete from datavalueaudit where " + " organisationunitid in (select organisationunitid from organisationunit " \
+                                "where path like '%{}%'); \n".format(org_unit+"/"))
+
+
+def generate_delete_org_unit_tree_rules(orgunits, f):
+    for org_unit in orgunits:
+        delete_all_org_unit_data(org_unit, f)
+        f.write("--remove organisationUnits -- org unit" + "\n")
+        f.write("DROP VIEW if exists orgUnitsToDelete;" + "\n")
+        f.write("CREATE VIEW orgUnitsToDelete AS select organisationunitid from organisationunit where path like '%{}%' and uid <> '{}';".format(org_unit, org_unit) + "\n")
+        f.write("DELETE FROM trackedentitydatavalueaudit where programstageinstanceid in (select programstageinstanceid from  programstageinstance where organisationunitid in (select * from orgUnitsToDelete));\n")
+        f.write("DELETE FROM programstageinstancecomments where programstageinstanceid in (select programstageinstanceid from  programstageinstance where organisationunitid in (select * from orgUnitsToDelete));\n")
+        f.write("DELETE FROM programstageinstance where organisationunitid in (select * from orgUnitsToDelete);\n")
+        f.write("DELETE FROM trackedentityattributevalue where trackedentityinstanceid in (select trackedentityinstanceid from  trackedentityinstance where organisationunitid in (select * from orgUnitsToDelete));\n")
+        f.write("DELETE FROM trackedentityattributevalueaudit where trackedentityinstanceid in (select trackedentityinstanceid from  trackedentityinstance where organisationunitid in (select * from orgUnitsToDelete));\n")
+        f.write("DELETE FROM datasetsource where sourceid in (select * from orgUnitsToDelete);\n")
+        f.write("DELETE FROM orgunitgroupmembers where organisationunitid in (select * from orgUnitsToDelete);\n")
+        f.write("DELETE FROM program_organisationunits where organisationunitid in (select * from orgUnitsToDelete);\n")
+        f.write("DELETE FROM programstageinstance where organisationunitid in (select * from orgUnitsToDelete);\n")
+        f.write("DELETE FROM  _orgunitstructure where organisationunitid in (select * from orgUnitsToDelete);\n")
+        f.write("DELETE FROM  _datasetorganisationunitcategory where organisationunitid in (select * from orgUnitsToDelete);\n")
+        f.write("DELETE FROM  _organisationunitgroupsetstructure where organisationunitid in (select * from orgUnitsToDelete);\n")
+        f.write("DELETE FROM  datavalueaudit where organisationunitid in (select * from orgUnitsToDelete);\n")
+        f.write("DELETE FROM  categoryoption_organisationunits where organisationunitid in (select * from orgUnitsToDelete);\n")
+        f.write("DELETE FROM  chart_organisationunits where organisationunitid in (select * from orgUnitsToDelete);\n")
+        f.write("DELETE FROM  dataapproval where organisationunitid in (select * from orgUnitsToDelete);\n")
+        f.write("DELETE FROM  dataapprovalaudit where organisationunitid in (select * from orgUnitsToDelete);\n")
+        f.write("DELETE FROM  eventchart_organisationunits where organisationunitid in (select * from orgUnitsToDelete);\n")
+        f.write("DELETE FROM  eventreport_organisationunits where organisationunitid in (select * from orgUnitsToDelete);\n")
+        f.write("DELETE FROM  interpretation where organisationunitid in (select * from orgUnitsToDelete);\n")
+        f.write("DELETE FROM  lockexception where organisationunitid in (select * from orgUnitsToDelete);\n")
+        f.write("DELETE FROM  mapview_organisationunits where organisationunitid in (select * from orgUnitsToDelete);\n")
+        f.write("DELETE FROM  organisationunitattributevalues where organisationunitid in (select * from orgUnitsToDelete);\n")
+        f.write("DELETE FROM  program_organisationunits where organisationunitid in (select * from orgUnitsToDelete);\n")
+        f.write("DELETE FROM  programinstanceaudit where programinstanceid in (select programinstanceid from programinstance where organisationunitid in (select * from orgUnitsToDelete));\n")
+        f.write("DELETE FROM  programinstance where organisationunitid in (select * from orgUnitsToDelete);\n")
+        f.write("DELETE FROM  programmessage where organisationunitid in (select * from orgUnitsToDelete);\n")
+        f.write("DELETE FROM  reporttable_organisationunits where organisationunitid in (select * from orgUnitsToDelete);\n")
+        f.write("DELETE FROM trackedentityprogramowner WHERE organisationunitid in (select * from orgUnitsToDelete);\n")
+        f.write("DELETE FROM  trackedentityinstance where organisationunitid in (select * from orgUnitsToDelete);\n")
+        f.write("DELETE FROM  userdatavieworgunits where organisationunitid in (select * from orgUnitsToDelete);\n")
+        f.write("DELETE FROM  usermembership where organisationunitid in (select * from orgUnitsToDelete);\n")
+        f.write("DELETE FROM  userteisearchorgunits where organisationunitid in (select * from orgUnitsToDelete);\n")
+        f.write("DELETE FROM  validationresult where organisationunitid in (select * from orgUnitsToDelete);\n")
+        f.write("DELETE FROM completedatasetregistration where sourceid in (select * from orgUnitsToDelete);\n")
+        f.write("DELETE FROM configuration WHERE selfregistrationorgunit in (select * from orgUnitsToDelete);\n")
+        f.write("DELETE FROM minmaxdataelement WHERE sourceid in (select * from orgUnitsToDelete);\n")
+        f.write("DELETE FROM visualization_organisationunits WHERE organisationunitid in (select * from orgUnitsToDelete);\n")
+        f.write("drop view if exists _view_nhwa_data_audit;")
+        f.write("drop view if exists _view_test2;\n")
+        f.write("DELETE FROM organisationunit WHERE organisationunitid in (select * from orgUnitsToDelete);\n")
+        f.write("DROP VIEW if exists orgUnitsToDelete;" + "\n")
+
 def generate_delete_datasets_rules(datasets, data_elements, org_units, org_unit_descendants, all_uid, f):
     f.write("--remove datasets" + "\n")
     sql_all = convert_to_sql_format(all_uid)
