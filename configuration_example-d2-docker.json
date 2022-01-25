@@ -13,11 +13,7 @@
   "hostname_remote": "prod",
   "db_remote": "postgresql://user:pass@server_remote:5432/db",
   "war_remote": "ROOT.war",
-  "api_local": {
-    "url": "http://localhost:8080/d2",
-    "username": "system",
-    "password": "System123"
-  },
+  "api_local_url": "http://localhost:8080/d2",
   "departments": {
     "DEP1": {
       "dataSets": [

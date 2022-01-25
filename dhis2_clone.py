@@ -60,23 +60,23 @@ def main():
 
 
     if args.post_sql:
-        run_sql(cfg, args.post_sql)
+        run_sql(cfg, args)
 
     if args.post_clone_scripts:
-        execute_scripts(cfg)
+        execute_scripts(cfg, args)
 
     if not args.manual_restart:
         start_tomcat(cfg, args)
         import_dir = cfg["post_process_import_dir"] if "post_process_import_dir" in cfg else None
         if args.no_postprocess:
             log("No postprocessing done, as requested.")
-        elif "api_local" in cfg and "postprocess" in cfg:
-            postprocess.postprocess(cfg["api_local"], cfg["postprocess"], import_dir)
+        elif "api_local_url" in cfg and "postprocess" in cfg:
+            postprocess.postprocess(cfg["api_local_url"], args.api_local_username, args.api_local_password, cfg["postprocess"], import_dir)
         else:
             log("No postprocessing done.")
 
         if args.post_clone_scripts:
-            execute_scripts(cfg, is_post_tomcat=True)
+            execute_scripts(cfg, args, is_post_tomcat=True)
 
     else:
         log("Server not started automatically, as requested.")
@@ -98,6 +98,10 @@ def get_args():
     parser = argparse.ArgumentParser(description=__doc__)
     add = parser.add_argument  # shortcut
     add("config", help="file with configuration")
+    add("--db-local", help="db to be override")
+    add("--db-remote", help="db to be copied in the db-local")
+    add("--api-local-username", help="api local user")
+    add("--api-local-password", help="api local password")
     add("--no-backups", action="store_true", help="don't make backups")
     add("--no-webapps", action="store_true", help="don't clone the webapps")
     add("--no-db", action="store_true", help="don't clone the database")
@@ -219,7 +223,7 @@ def magenta(txt):
     return "\x1b[35m%s\x1b[0m" % txt
 
 
-def execute_scripts(cfg, is_post_tomcat=False):
+def execute_scripts(cfg, args, is_post_tomcat=False):
     if is_local_d2docker(cfg) and not is_post_tomcat:
         # Scripts will be executed at d2-docker start --run-scripts=DIR
         return
@@ -229,8 +233,8 @@ def execute_scripts(cfg, is_post_tomcat=False):
     is_post = lambda fname: fname.startswith("post")
     applied_filter = is_post if is_post_tomcat else is_normal
     files_list = filter(applied_filter, os.listdir(dirname))
-    api = cfg["api_local"]
-    base_url = api["url"].replace("://", "://{}:{}@".format(api["username"], api["password"]))
+
+    base_url = cfg["api_local_url"].replace("://", "://{}:{}@".format(args.api_local_username, args.api_local_password))
 
     for script in sorted(filter(is_script, files_list)):
         run('"%s/%s" "%s"' % (dirname, script, base_url))
@@ -267,7 +271,7 @@ def start_tomcat(cfg, args):
             log("--post-sql for d2-docker requires a single directory")
             return
         post_scripts_dir = cfg.get("local_docker_post_clone_scripts_dir", None)
-        api = cfg["api_local"]
+        api_url = cfg["api_local_url"]
 
         run(
             "d2-docker start {} --port={} --detach {} {} {} {} {}".format(
@@ -277,7 +281,7 @@ def start_tomcat(cfg, args):
                 (("--tomcat-server-xml '%s'" % server_xml_path) if server_xml_path else ""),
                 (("--run-sql '%s'" % post_sql) if post_sql else ""),
                 (("--run-scripts '%s'" % post_scripts_dir) if post_scripts_dir else ""),
-                (("--auth '%s'" % (api["username"] + ":" + api["password"])) if api else "")
+                (("--auth '%s'" % (args.api_local_username + ":" + args.api_local_password)) if api_url else "")
             )
         )
 
@@ -294,7 +298,7 @@ def backup_db(cfg, args):
     backups_dir = cfg["backups_dir"]
     if is_local_tomcat(cfg):
         backup_name = cfg["backup_name"]
-        db_local = cfg["db_local"]
+        db_local = args.db_local
         backup_file = "%s/%s_%s.dump" % (backups_dir, backup_name, TIME)
         run(
             "pg_dump --file '%s' --format custom --exclude-schema sys --clean '%s' "
@@ -359,14 +363,14 @@ def get_db(cfg, args):
     dir_local = cfg["server_dir_local"]
 
     if is_local_tomcat(cfg):
-        db_remote = cfg["db_remote"]
+        db_remote = args.db_remote
         dump = "pg_dump -U dhis -d '%s' --no-owner %s" % (db_remote, exclude)
-        db_local = cfg["db_local"]
+        db_local = args.db_local
         empty_db(db_local)
         cmd = "ssh %s %s | psql -d '%s'" % (cfg["hostname_remote"], dump, db_local)
         run(cmd + " 2>&1 | paste - - - | uniq -c")  # run with more compact output
     elif is_local_d2docker(cfg):
-        db_remote = cfg["db_remote"]
+        db_remote = args.db_remote
         dump = "pg_dump -U dhis -d '%s' --no-owner %s" % (db_remote, exclude)
         sql_path = os.path.join(dir_local, "db.sql.gz")
         cmd = "ssh %s %s | gzip > %s" % (cfg["hostname_remote"], dump, sql_path)
@@ -443,10 +447,10 @@ def empty_db(db_local):
             # but we may not have those permissions.
 
 
-def run_sql(cfg, post_sql):
+def run_sql(cfg, args):
     if is_local_tomcat(cfg):
-        for fname in post_sql:
-            run("psql -d '%s' < '%s'" % (cfg["db_local"], fname))
+        for fname in args.post_sql:
+            run("psql -d '%s' < '%s'" % (args.db_local, fname))
 
 
 if __name__ == "__main__":
