@@ -3,7 +3,7 @@ import os
 from src.preprocess.query_generator import generate_delete_datasets_rules, generate_delete_tracker_rules, \
     generate_delete_event_rules, delete_all_event_programs, delete_all_data_sets, delete_all_tracker_programs, \
     remove_all_unnecessary_dependencies, generate_anonymize_tracker_rules, generate_anonymize_event_rules, \
-    generate_anonymize_datasets_rules
+    generate_anonymize_datasets_rules, generate_anonymize_user_queries
 import shutil
 
 anonymize_rule = "anonymizeData"
@@ -11,6 +11,10 @@ remove_rule = "removeData"
 program_type = "eventPrograms"
 tracker_type = "trackerPrograms"
 dataset_type = "dataSets"
+users_type = "users"
+select_new_admin_user = "selectAdminUser"
+select_old_admin_user = "selectOldAdminUser"
+anonymize_users = "anonymizeUsers"
 metadata_type = "selectMetadataType"
 file_name = "preprocess.sql"
 actions = "actions"
@@ -75,7 +79,12 @@ def generate_queries(departament, f):
             has_datasets = False
             has_event_program = False
             has_tracker_program = False
-            if rule[action] == remove_rule or rule[action] == anonymize_rule:
+            if rule[action] == anonymize_users:
+                new_admin = get_rule_content(rule, select_new_admin_user)
+                old_admin = get_rule_content(rule, select_old_admin_user)
+                generate_anonymize_user_queries(new_admin, old_admin, f)
+
+            elif rule[action] == remove_rule or rule[action] == anonymize_rule:
 
                 # get metadata types
                 if metadata_type in rule.keys():
