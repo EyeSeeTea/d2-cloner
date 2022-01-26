@@ -43,6 +43,12 @@
   },
   "preprocess": [
     {
+      "selectDepartament": "ALL",
+      "selectAdminUser": "eyeseetea",
+      "selectOldAdminUser": "widp.admin",
+      "action": "anonymizeUsers"
+    },
+    {
       "selectDepartament": "DEP1",
       "selectMetadataType": [
         "dataSets"
