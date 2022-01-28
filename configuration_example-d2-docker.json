@@ -45,7 +45,10 @@
     {
       "selectDepartament": "ALL",
       "selectAdminUser": "eyeseetea",
-      "selectOldAdminUser": "widp.admin",
+      "excludeUsernames": [
+        "example1", "example2", "example3"
+      ],
+      "selectOldAdminUser": "adminuserq",
       "action": "anonymizeUsers"
     },
     {
@@ -99,6 +102,13 @@
     }
   ],
   "postprocess": [
+    {
+      "selectUsernames": "*",
+      "excludeUsernames": [
+        "example1","example2"
+      ],
+      "action": "fakerizeAllUserFields"
+    },
     {
       "selectUsernames": [
         "guest"
