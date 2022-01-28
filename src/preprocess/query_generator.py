@@ -112,18 +112,24 @@ def generate_delete_tracker_rules(trackers, data_elements, org_units, org_unit_d
         write(f, sql_query + "\n")
 
 
-def generate_anonymize_user_queries(new_admin,old_admin, f):
+def generate_anonymize_user_queries(new_admin,old_admin, exclude_users, f):
     write(f, "--anonimize users" + "\n")
+    exclude_users_query = ""
+    if len(exclude_users) > 0:
+        exclude_users_query = " username not in ({}) and ".format(convert_to_sql_format(exclude_users))
+
     write(f, "DELETE FROM userrolemembers where userid=(select userid from users where username = '{}'); \n".format(new_admin))
     write(f, "update userrolemembers set userid=(select userid from users where username = '{}' ) "
              "where userid=(select userid from users where username = '{}'); \n".format(new_admin,old_admin))
     write(f, "update users set restorecode='-', password ='-', restoretoken='-', "
-             "disabled='t',secret='-' where username not like '{}'; \n".format(new_admin))
+             "disabled='t',secret='-', ldapid='', openid='' where {} username not like '{}'; \n".format(exclude_users_query, new_admin))
+
     write(f, "update userinfo  set surname='-',firstname='-',email='',phonenumber='',"
              "jobtitle='',introduction='',gender='',birthday=null,nationality='',employer='',"
              "education='',interests='',languages='',welcomemessage='',whatsapp='',"
              "skype='',facebookmessenger='',telegram='',twitter='',avatar=null, attributevalues='{}' "
-             " where userinfoid not in (select userid from users where username = '{}'); \n".format("{}",new_admin, old_admin))
+             " where userinfoid in "
+             "(select userid from users where ({} username not like '{}'); \n".format("{}",exclude_users_query, new_admin))
 
 
 def generate_delete_datasets_rules(datasets, data_elements, org_units, org_unit_descendants, all_uid, f):

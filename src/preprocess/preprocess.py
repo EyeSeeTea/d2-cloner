@@ -14,6 +14,7 @@ dataset_type = "dataSets"
 users_type = "users"
 select_new_admin_user = "selectAdminUser"
 select_old_admin_user = "selectOldAdminUser"
+exclude_user_names = "excludeUsernames"
 anonymize_users = "anonymizeUsers"
 metadata_type = "selectMetadataType"
 file_name = "preprocess.sql"
@@ -82,7 +83,8 @@ def generate_queries(departament, f):
             if rule[action] == anonymize_users:
                 new_admin = get_rule_content(rule, select_new_admin_user)
                 old_admin = get_rule_content(rule, select_old_admin_user)
-                generate_anonymize_user_queries(new_admin, old_admin, f)
+                exclude_users = get_rule_content(rule, exclude_user_names)
+                generate_anonymize_user_queries(new_admin, old_admin, exclude_users, f)
 
             elif rule[action] == remove_rule or rule[action] == anonymize_rule:
 
