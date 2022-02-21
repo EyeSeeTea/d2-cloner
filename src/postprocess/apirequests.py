@@ -106,7 +106,7 @@ def get_users_by_usernames(api, usernames):
         {
             "paging": False,
             "filter": "userCredentials.username:in:[%s]" % ",".join(usernames),
-            "fields": ":all,userCredentials[:all,userRoles[id,name]]",
+            "fields": "*,userCredentials[*,userRoles[id,name]]",
         },
     )
     return response["users"]
@@ -120,14 +120,14 @@ def get_users_by_group_names(api, user_group_names):
         return []
 
     response = api.get(
-        "/userGroups",
+        "/users",
         {
             "paging": False,
-            "filter": "name:in:[%s]" % ",".join(user_group_names),
-            "fields": ("id,name," "users[:all,userCredentials[:all,userRoles[id,name]]]"),
+            "filter": "userGroups.name:in:[%s]" % ",".join(user_group_names),
+            "fields": ("id,name," "*,[*,userCredentials[*,userRoles[id,name]]]"),
         },
     )
-    return sum((x["users"] for x in response["userGroups"]), [])
+    return response["users"]
 
 
 def get_user_roles_by_name(api, user_role_names):
@@ -135,7 +135,7 @@ def get_user_roles_by_name(api, user_role_names):
     debug("Get user roles: name=%s" % user_role_names)
     response = api.get(
         "/userRoles",
-        {"paging": False, "filter": "name:in:[%s]" % ",".join(user_role_names), "fields": ":all"},
+        {"paging": False, "filter": "name:in:[%s]" % ",".join(user_role_names), "fields": "*"},
     )
     return response["userRoles"]
 
