@@ -1,12 +1,9 @@
-import datetime
 import json
-from datetime import time
-
 import requests
 
 from d2apy import dhis2api
 
-from src.postprocess.list_modifier import *
+from src.postprocess.list_modifier import unique, pick
 from src.common.debug import debug
 
 
@@ -18,6 +15,7 @@ def wait_for_server(api, timeout=1800):
     "Sleep until server is ready to accept requests"
     debug("Check active API: %s" % api.api_url)
     import time as time_
+
     start_time = time_.time()
     while True:
         try:
@@ -184,9 +182,9 @@ def change_server_name(api, new_name):
 
 def get_username(user):
     if "userCredentials" in user.keys():
-          return user["userCredentials"]["username"]
+        return user["userCredentials"]["username"]
     else:
-          return user["username"]
+        return user["username"]
 
 
 def get_roles(user):
