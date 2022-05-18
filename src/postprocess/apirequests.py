@@ -24,11 +24,11 @@ def wait_for_server(api, timeout=1800):
         except requests.exceptions.HTTPError:
             if time_.time() - start_time > timeout:
                 raise RuntimeError("Timeout: could not connect to the API")
-            time_.sleep(120)
+            time_.sleep(60)
         except requests.exceptions.ConnectionError:
             if time_.time() - start_time > timeout:
                 raise RuntimeError("Timeout: could not connect to the API")
-            time_.sleep(120)
+            time_.sleep(60)
 
 
 def activate(api, users):
