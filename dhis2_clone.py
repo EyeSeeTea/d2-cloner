@@ -72,7 +72,8 @@ def main():
         if args.no_postprocess:
             log("No postprocessing done, as requested.")
         elif "api_local_url" in cfg and "postprocess" in cfg:
-            postprocess.postprocess(cfg["api_local_url"], args.api_local_username, args.api_local_password, cfg["postprocess"], import_dir)
+            timeout = cfg["timeout"] if "timeout" in cfg else 900
+            postprocess.postprocess(cfg["api_local_url"], args.api_local_username, args.api_local_password, cfg["postprocess"], import_dir, timeout)
         else:
             log("No postprocessing done.")
 

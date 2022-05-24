@@ -20,7 +20,7 @@ from src.common.debug import debug
 from src.postprocess import apirequests
 
 
-def postprocess(url, username, password, entries, import_dir):
+def postprocess(url, username, password, entries, import_dir, timeout):
     """Execute actions on the appropriate users as specified in entries.
 
     The entries structure looks like:
