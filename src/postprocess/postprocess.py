@@ -47,7 +47,7 @@ def postprocess(url, username, password, entries, import_dir, timeout):
 
     api = apirequests.init_api(url, username, password)
 
-    apirequests.wait_for_server(api)
+    apirequests.wait_for_server(api, timeout)
 
     for entry in [expand_url(x) for x in entries]:
         execute(api, entry, import_dir)

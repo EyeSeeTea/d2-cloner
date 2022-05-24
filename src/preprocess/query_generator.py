@@ -119,9 +119,9 @@ def delete_org_unit_data_in_view(f):
         (select programstageinstanceid from  programstageinstance where 
         organisationunitid in (select * from orgUnitsToDelete)); \n
         DELETE FROM programstageinstance where organisationunitid in (select * from orgUnitsToDelete);\n 
-        delete from programinstance where " + " organisationunitid in (select organisationunitid from orgUnitsToDelete); \n
-        delete from datavalue where " + " sourceid in (select organisationunitid from orgUnitsToDelete); \n
-        delete from datavalueaudit where " + " organisationunitid in (select organisationunitid  from orgUnitsToDelete); \n""")
+        delete from programinstance where organisationunitid in (select organisationunitid from orgUnitsToDelete); \n
+        delete from datavalue where sourceid in (select organisationunitid from orgUnitsToDelete); \n
+        delete from datavalueaudit where organisationunitid in (select organisationunitid  from orgUnitsToDelete); \n""")
 
 
 def delete_org_units_in_view(f):
@@ -175,8 +175,8 @@ def generate_delete_org_unit_level_rules(level, f):
 
 
 def generate_delete_org_unit_tree_rules(orgunits, f):
-    f.write("""--remove organisationUnits -- org unit" + "\n
-    DROP MATERIALIZED VIEW if exists orgUnitsToDelete;" + "\n""")
+    f.write("""--remove organisationUnits -- org unit\n
+    DROP MATERIALIZED VIEW if exists orgUnitsToDelete;\n""")
     path_query = ""
     for org_unit in orgunits:
         path_query = " (path like '%{}%' and uid <> '{}') or ".format(org_unit, org_unit)
@@ -189,7 +189,7 @@ def generate_delete_org_unit_tree_rules(orgunits, f):
 
 
 def generate_delete_datasets_rules(datasets, data_elements, org_units, org_unit_descendants, all_uid, f):
-    f.write("--remove datasets" + "\n")
+    f.write("--remove datasets\n")
     sql_all = convert_to_sql_format(all_uid)
     sql_datasets = convert_to_sql_format(datasets)
     sql_data_elements = convert_to_sql_format(data_elements)
