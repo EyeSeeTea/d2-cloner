@@ -267,6 +267,7 @@ def start_tomcat(cfg, args):
         post_sql = args.post_sql[0] if args.post_sql else None
         deploy_path = cfg.get("local_docker_deploy_path", None)
         server_xml_path = cfg.get("local_docker_server_xml", None)
+        dhis_conf_path = cfg.get("local_docker_dhis_conf", None)
         if post_sql and (len(args.post_sql) != 1 or not os.path.isdir(post_sql)):
             log("--post-sql for d2-docker requires a single directory")
             return
@@ -279,6 +280,7 @@ def start_tomcat(cfg, args):
                 cfg["local_docker_port"],
                 (("--deploy-path '%s'" % deploy_path) if deploy_path else ""),
                 (("--tomcat-server-xml '%s'" % server_xml_path) if server_xml_path else ""),
+                (("--dhis-conf '%s'" % dhis_conf_path) if dhis_conf_path else ""),
                 (("--run-sql '%s'" % post_sql) if post_sql else ""),
                 (("--run-scripts '%s'" % post_scripts_dir) if post_scripts_dir else ""),
                 (("--auth '%s'" % (args.api_local_username + ":" + args.api_local_password)) if api_url else "")
