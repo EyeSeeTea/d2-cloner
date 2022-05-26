@@ -15,7 +15,7 @@ def init_api(url, username, password):
     return dhis2api.Dhis2Api(url, username, password)
 
 
-def wait_for_server(api, timeout=1800):
+def wait_for_server(api, timeout=48800):
     "Sleep until server is ready to accept requests"
     debug("Check active API: %s" % api.api_url)
     import time as time_
@@ -47,11 +47,11 @@ def fakerize_users(api, users, excludeUsers):
     fake = Faker()
     for user in users:
         if user["userCredentials"]["username"] not in excludeUsers:
-            name = fake.name()
-            user["surname"] = name.split()[1]
-            user["firstName"] = name.split()[0]
-            user["name"] = name.split()[0]
-            user["userCredentials"]["name"] = name.split()[0]
+            name, surname = fake.name()
+            user["surname"] = surname
+            user["firstName"] = name
+            user["name"] = name
+            user["userCredentials"]["name"] = name
             user["phoneNumber"] = fake.phone_number()
             user["jobTitle"] = fake.job()
             user["nationality"] = fake.country()
@@ -120,8 +120,7 @@ def get_users_by_usernames(api, usernames):
     if not usernames:
         return []
 
-    contains = lambda x: x in usernames
-    if contains("*"):
+    if "*" in usernames:
         response = api.get(
             "/users",
             {

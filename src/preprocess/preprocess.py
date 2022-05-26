@@ -145,11 +145,11 @@ def generate_queries(departament, f):
                                                                anonimize_org_units, anonimize_phone, anonimize_mail,
                                                                anonimize_coordinate,
                                                                departament[key][program_type], f)
-                            if key_type == dataset_type:
+                            elif key_type == dataset_type:
                                 generate_anonymize_datasets_rules(datasets, org_units, data_elements,
                                 anonimize_org_units, anonimize_phone, anonimize_mail,
                                 anonimize_coordinate, departament[key][dataset_type], f)
-                            if key_type == tracker_type:
+                            elif key_type == tracker_type:
                                 generate_anonymize_tracker_rules(tracker_program, tracker_entity_attributes,
                                                                  org_units, data_elements,
                                                                  anonimize_org_units, anonimize_phone, anonimize_mail,
@@ -160,7 +160,7 @@ def generate_queries(departament, f):
 def get_rule_content(rule, rule_type):
     if rule_type in rule.keys():
         return rule[rule_type]
-    if rule_type in [anonymize_phone_rule, anonymize_coordinates_rule, anonymize_mail_rule]:
+    elif rule_type in [anonymize_phone_rule, anonymize_coordinates_rule, anonymize_mail_rule]:
         return True
     elif rule_type == anonymize_org_unit_rule:
         return False
@@ -169,10 +169,11 @@ def get_rule_content(rule, rule_type):
 
 
 def check_if_has_metadata_type(rule, check_type):
+    exist = False
     for rule_type in rule[metadata_type]:
         if rule_type == check_type:
-            return True
-    return False
+            exist = True
+    return exist
 
 
 def add_rules_by_departament(departament, entries):
