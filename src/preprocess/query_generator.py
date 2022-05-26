@@ -503,7 +503,7 @@ and de.uid = '{uid}'));
 """).format(uid=uid, sql_trackers=sql_trackers)
 
     if sql_tracker_entity_attributes != "":
-        write(f,""""
+        write(f,"""
 UPDATE trackedentityattributevalue set 
 value=('Redacted ' || round(random()*trackedentityinstanceid+trackedentityattributeid)::text) 
 where trackedentityattributeid in (select trackedentityattributeid 
