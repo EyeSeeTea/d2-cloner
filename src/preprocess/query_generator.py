@@ -28,35 +28,35 @@ def generate_delete_event_rules(event_program, data_elements, org_units, org_uni
     has_rule = False
     if sql_event_program != "":
         has_rule = True
-        sql_query = "delete from programstageinstance where programstageid in " \
-                    "(select programstageid from programstage where programid in " \
-                    "(select programid from program where uid in {})) and".format(event_program)
+        sql_query = " delete from programstageinstance where programstageid in " \
+                    " (select programstageid from programstage where programid in " \
+                    " (select programid from program where uid in {})) and".format(event_program)
     else:
-        sql_query = "delete from programstageinstance where programstageid in " \
-                    "(select programstageid from programstage where programid in " \
-                    "(select programid from program where uid in {})) and".format(sql_all)
+        sql_query = " delete from programstageinstance where programstageid in " \
+                    " (select programstageid from programstage where programid in " \
+                    " (select programid from program where uid in {})) and".format(sql_all)
     if sql_data_elements != "":
         has_rule = True
         sql_data_elements = sql_data_elements.replace("(", "").replace(")", "")
-        sql_query = "update programstageinstance set eventdatavalues = eventdatavalues - {} " \
-                    "where eventdatavalues ? {} and ".format(sql_data_elements, sql_data_elements)
+        sql_query = " update programstageinstance set eventdatavalues = eventdatavalues - {} " \
+                    " where eventdatavalues ? {} and ".format(sql_data_elements, sql_data_elements)
         if sql_event_program != "":
             sql_query = sql_query + " programstageid in (select programstageid from programstage " \
-                                    "where programid in (select programid from program where uid in {})) and".format(
+                                    " where programid in (select programid from program where uid in {})) and".format(
                 event_program)
         else:
             sql_query = sql_query + " programstageid in (select programstageid from programstage " \
-                                    "where programid in (select programid from program where uid in {})) and".format(
+                                    " where programid in (select programid from program where uid in {})) and".format(
                 sql_all)
     if sql_org_units != "":
         has_rule = True
         sql_query = sql_query + " organisationunitid in (select organisationunitid from organisationunit " \
-                                "where uid in {}) and".format(sql_org_units)
+                                " where uid in {}) and".format(sql_org_units)
     if sql_org_unit_descendants != "":
         has_rule = True
         sql_query = sql_query + " organisationunitid in (select organisationunitid from organisationunit " \
-                                "where path like (select concat(path,'/%') from organisationunit " \
-                                "where uid in {})) and".format(sql_org_unit_descendants)
+                                " where path like (select concat(path,'/%') from organisationunit " \
+                                " where uid in {})) and".format(sql_org_unit_descendants)
 
     if not has_rule:
         delete_all_event_programs(all_uid, f)
@@ -76,33 +76,33 @@ def generate_delete_tracker_rules(trackers, data_elements, org_units, org_unit_d
 
     has_rule = False
     sql_query = "delete from programstageinstance where programstageid in " \
-                "(select programstageid from programstage where programid in " \
-                "(select programid from program where uid in {})) ".format(sql_all)
+                " (select programstageid from programstage where programid in " \
+                " (select programid from program where uid in {})) ".format(sql_all)
     if sql_data_elements != "":
         has_rule = True
         sql_data_elements = sql_data_elements.replace("(", "").replace(")", "")
-        sql_query = "update programstageinstance set eventdatavalues = eventdatavalues - {}  where eventdatavalues ? " \
-                    "{} and ".format(sql_data_elements, sql_data_elements)
+        sql_query = " update programstageinstance set eventdatavalues = eventdatavalues - {}  where eventdatavalues ? " \
+                    " {} and ".format(sql_data_elements, sql_data_elements)
 
         if sql_trackers != "":
             sql_query = sql_query + " programstageid in (select programstageid from programstage where programid in " \
-                                    "(select programid from program where uid in {})) and".format(sql_trackers)
+                                    " (select programid from program where uid in {})) and".format(sql_trackers)
         else:
             sql_query = sql_query + " programstageid in (select programstageid from programstage where programid in " \
-                                    "(select programid from program where uid in {})) and".format(sql_all)
+                                    " (select programid from program where uid in {})) and".format(sql_all)
 
     elif sql_trackers != "":
         has_rule = True
         sql_query = sql_query + " and dataelementid in (select dataelementid from datasetelement where datasetid in " \
-                                "( select datasetid from dataset where uid in {})) ".format(sql_trackers)
+                                " ( select datasetid from dataset where uid in {})) ".format(sql_trackers)
     if sql_org_units != "":
         has_rule = True
-        sql_query = sql_query + " and organisationunitid in (select organisationunitid from organisationunit where " \
-                                "uid in {}) and".format(sql_org_units)
+        sql_query = sql_query + "  and organisationunitid in (select organisationunitid from organisationunit where " \
+                                " uid in {}) and".format(sql_org_units)
     if sql_org_unit_descendants != "":
         has_rule = True
         sql_query = sql_query + " and organisationunitid in (select organisationunitid from organisationunit where " \
-                                "path like (select concat(path,'/%') from organisationunit where uid in {})) and".format(sql_org_unit_descendants)
+                                " path like (select concat(path,'/%') from organisationunit where uid in {})) and".format(sql_org_unit_descendants)
 
     if not has_rule:
         delete_all_tracker_programs(all_uid, f)
@@ -118,17 +118,17 @@ def generate_anonymize_user_queries(new_admin,old_admin, exclude_users, f):
     if len(exclude_users) > 0:
         exclude_users_query = " username not in ({}) and ".format(convert_to_sql_format(exclude_users))
 
-    write(f, "DELETE FROM userrolemembers where userid=(select userid from users where username = '{}'); \n".format(new_admin))
-    write(f, "update userrolemembers set userid=(select userid from users where username = '{}' ) "
-             "where userid=(select userid from users where username = '{}'); \n".format(new_admin,old_admin))
-    write(f, "update users set restorecode='-', password ='-', restoretoken='-', "
-             "disabled='t',secret='-', ldapid='', openid='' where {} username not like '{}'; \n".format(exclude_users_query, new_admin))
+    write(f, " DELETE FROM userrolemembers where userid=(select userid from users where username = '{}'); \n".format(new_admin))
+    write(f, " update userrolemembers set userid=(select userid from users where username = '{}' ) "
+             " where userid=(select userid from users where username = '{}'); \n".format(new_admin,old_admin))
+    write(f, " update users set restorecode='-', password ='-', restoretoken='-', "
+             " disabled='t',secret='-', ldapid='', openid='' where {} username not like '{}'; \n".format(exclude_users_query, new_admin))
 
     write(f, """
-update userinfo  set surname='-',firstname='-',email='',phonenumber='',
-jobtitle='',introduction='',gender='',birthday=null,nationality='',employer='',
-education='',interests='',languages='',welcomemessage='',whatsapp='',
-skype='',facebookmessenger='',telegram='',twitter='',avatar=null, attributevalues='{}' 
+ update userinfo  set surname='-',firstname='-',email='',phonenumber='',
+ jobtitle='',introduction='',gender='',birthday=null,nationality='',employer='',
+ education='',interests='',languages='',welcomemessage='',whatsapp='',
+ skype='',facebookmessenger='',telegram='',twitter='',avatar=null, attributevalues='{}' 
  where userinfoid in 
  (select userid from users where ({} username not like '{}'); 
  """.format("{}",exclude_users_query, new_admin))
@@ -142,27 +142,29 @@ def generate_delete_datasets_rules(datasets, data_elements, org_units, org_unit_
     sql_org_units = convert_to_sql_format(org_units)
     sql_org_unit_descendants = convert_to_sql_format(org_unit_descendants)
     sql_query = """
-delete from datavalue where dataelementid in (select dataelementid from datasetelement 
-where datasetid in ( select datasetid from dataset where uid in {})) and""".format(sql_all)
+ delete from datavalue where dataelementid in (select dataelementid from datasetelement 
+ where datasetid in ( select datasetid from dataset where uid in {})) and""".format(sql_all)
     has_rule = False
     if sql_data_elements != "":
         has_rule = True
         if sql_datasets != "":
             sql_query = sql_query + """ 
-dataelementid in (select dataelementid from dataelement where uid in {} 
-and dataelementid in (select dataelementid from datasetelement where datasetid 
-in ( select datasetid from dataset where uid in {})))
-and""".format(sql_data_elements, sql_datasets)
+ dataelementid in (select dataelementid from dataelement where uid in {} 
+ and dataelementid in (select dataelementid from datasetelement where datasetid 
+ in ( select datasetid from dataset where uid in {})))
+ and
+ """.format(sql_data_elements, sql_datasets)
         else:
             sql_query = sql_query + """ 
-dataelementid in (select dataelementid from dataelement where uid in {} 
-and dataelementid in (select dataelementid from datasetelement 
-where datasetid in ( select datasetid from dataset where uid in {})))
-and""".format(sql_data_elements, sql_all)
+ dataelementid in (select dataelementid from dataelement where uid in {} 
+ and dataelementid in (select dataelementid from datasetelement 
+ where datasetid in ( select datasetid from dataset where uid in {})))
+ and
+ """.format(sql_data_elements, sql_all)
     elif sql_datasets != "":
         has_rule = True
         sql_query = sql_query + """ 
-dataelementid in (select dataelementid from datasetelement
+ dataelementid in (select dataelementid from datasetelement
  where datasetid in ( select datasetid from dataset where uid in {}))
  and""".format(sql_datasets)
     if sql_org_units != "":
@@ -351,7 +353,7 @@ in (select datasetid from dataset where uid in {}));
 
     if anonimize_phone:
         write(f,"""
-Update datavalue set value=concat('',round(random()*dataelementid+categoryoptioncomboid+sourceid))
+Update datavalue set value=concat('+',round(random()*dataelementid+categoryoptioncomboid+sourceid))
 where dataelementid in (select dataelementid from dataelement where valuetype='PHONE_NUMBER')
 and dataelementid in ({})); 
 """.format(where_clausules))
@@ -384,24 +386,25 @@ def generate_anonymize_event_rules(event_program, organisationunits, data_elemen
     sql_data_elements = convert_to_sql_format(data_elements)
 
     if anonimize_mail:
-        write(f,
-"""UPDATE programstageinstance SET 
-eventdatavalues = eventdatavalues - array(SELECT uid FROM   dataelement WHERE 
+        write(f,"""
+ UPDATE programstageinstance SET 
+ eventdatavalues = eventdatavalues - array(SELECT uid FROM   dataelement WHERE 
  valuetype = 'EMAIL' 
  AND dataelementid IN
  (SELECT psde.dataelementid FROM   program p INNER JOIN programstage ps 
  ON p.programid = ps.programid INNER JOIN programstagedataelement psde 
  ON psde.programstageid = ps.programstageid WHERE 
  p.uid IN {})) 
-WHERE eventdatavalues ?| array(SELECT uid FROM   dataelement 
-WHERE   valuetype = 'PHONE_NUMBER' 
-AND dataelementid IN (SELECT psde.dataelementid
-FROM program p INNER JOIN programstage ps ON p.programid = ps.programid INNER JOIN 
-programstagedataelement psde ON psde.programstageid = ps.programstageid WHERE  p.uid IN {}));
+ WHERE eventdatavalues ?| array(SELECT uid FROM   dataelement 
+ WHERE   valuetype = 'PHONE_NUMBER' 
+ AND dataelementid IN (SELECT psde.dataelementid 
+ FROM program p INNER JOIN programstage ps ON p.programid = ps.programid INNER JOIN 
+ programstagedataelement psde ON psde.programstageid = ps.programstageid WHERE  p.uid IN {}));
 """.format(sql_event_program, sql_event_program))
     if anonimize_phone:
         write(f,
-"""UPDATE programstageinstance SET 
+"""
+  UPDATE programstageinstance SET 
   eventdatavalues = eventdatavalues - array(SELECT uid FROM   dataelement WHERE 
   valuetype = 'PHONE_NUMBER' 
   AND dataelementid IN
@@ -413,48 +416,47 @@ programstagedataelement psde ON psde.programstageid = ps.programstageid WHERE  p
   WHERE   valuetype = 'PHONE_NUMBER' 
   AND dataelementid IN (SELECT psde.dataelementid
   FROM program p INNER JOIN programstage ps ON p.programid = ps.programid INNER JOIN 
-  programstagedataelement psde ON psde.programstageid = ps.programstageid WHERE  p.uid IN {}));
-    
+  programstagedataelement psde ON psde.programstageid = ps.programstageid WHERE  p.uid IN {}));   
 """.format(sql_event_program, sql_event_program))
     if anonimize_coordinate:
         write(f, """
-update programinstance as rand set geometry=null where programinstanceid 
-in ( select psi.programinstanceid  from programstageinstance psi 
-inner join programstage ps on ps.programstageid=psi.programstageid 
-inner join program p on p.programid=ps.programid where p.uid in {});
+ update programinstance as rand set geometry=null where programinstanceid 
+ in ( select psi.programinstanceid  from programstageinstance psi 
+ inner join programstage ps on ps.programstageid=psi.programstageid 
+ inner join program p on p.programid=ps.programid where p.uid in {});
 """.format(sql_event_program))
         write(f, """
-update programstageinstance as rand set geometry=null where programstageinstanceid 
-in ( select psi.programstageinstanceid  from programstageinstance psi 
-inner join programstage ps on ps.programstageid=psi.programstageid 
-inner join program p on p.programid=ps.programid 
-where p.uid in {});
+ update programstageinstance as rand set geometry=null where programstageinstanceid 
+ in ( select psi.programstageinstanceid  from programstageinstance psi 
+ inner join programstage ps on ps.programstageid=psi.programstageid 
+ inner join program p on p.programid=ps.programid 
+ where p.uid in {});
 """.format(sql_event_program))
     if anonimize_org_units:
         write(f, """
-update programinstance as rand set organisationunitid=(select organisationunitid 
-from organisationunit where length(path)=(select length(path) from organisationunit where rand.organisationunitid= organisationunitid) ORDER BY RANDOM() limit 1) where programinstanceid 
-in ( select psi.programinstanceid  from programstageinstance psi 
-inner join programstage ps on ps.programstageid=psi.programstageid 
-inner join program p on p.programid=ps.programid where p.uid in {});
+ update programinstance as rand set organisationunitid=(select organisationunitid 
+ from organisationunit where length(path)=(select length(path) from organisationunit where rand.organisationunitid= organisationunitid) ORDER BY RANDOM() limit 1) where programinstanceid 
+ in ( select psi.programinstanceid  from programstageinstance psi 
+ inner join programstage ps on ps.programstageid=psi.programstageid 
+ inner join program p on p.programid=ps.programid where p.uid in {});
 """.format(sql_event_program))
         write(f, """
-update programstageinstance as rand set organisationunitid=
-(select organisationunitid from organisationunit where length(path)=(select length(path) from organisationunit where rand.organisationunitid= organisationunitid) ORDER BY RANDOM()
-limit 1) where programstageinstanceid 
-in ( select psi.programstageinstanceid  from programstageinstance psi 
-inner join programstage ps on ps.programstageid=psi.programstageid 
-inner join program p on p.programid=ps.programid 
-where p.uid in {});
+ update programstageinstance as rand set organisationunitid=
+ (select organisationunitid from organisationunit where length(path)=(select length(path) from organisationunit where rand.organisationunitid= organisationunitid) ORDER BY RANDOM()
+ limit 1) where programstageinstanceid 
+ in ( select psi.programstageinstanceid  from programstageinstance psi 
+ inner join programstage ps on ps.programstageid=psi.programstageid 
+ inner join program p on p.programid=ps.programid 
+ where p.uid in {});
 """.format(sql_event_program))
 
     if sql_data_elements != "":
         if sql_data_elements != "":
             for uid in data_elements:
                 write(f, """
-UPDATE programstageinstance SET    eventdatavalues = jsonb_set(eventdatavalues, 
-'{ {x] ,value}', concat('',concat(concat('"',
-(select concat('Redacted:',round(random()*dataelementid+programstageinstanceid))
+ UPDATE programstageinstance SET    eventdatavalues = jsonb_set(eventdatavalues, 
+ '{ {x] ,value}', concat('',concat(concat('"',
+ (select concat('Redacted:',round(random()*dataelementid+programstageinstanceid))
  FROM   dataelement WHERE  uid = 'sPadHOO4SQY'),'"',''))::jsonb)
  WHERE  programstageinstanceid in (select programstageinstanceid from programstageinstance
  where  eventdatavalues ? (SELECT de.uid FROM   dataelement as de
@@ -479,35 +481,35 @@ def generate_anonymize_tracker_rules(trackers, tracker_attribute_values, organis
     sql_data_elements = convert_to_sql_format(data_elements)
 
     where = """ 
-and trackedentityinstanceid 
-in ( select ps.trackedentityinstanceid 
-from programinstance ps 
-inner join program p on p.programid=ps.programid 
-where p.uid in {}) 
+ and trackedentityinstanceid 
+ in ( select ps.trackedentityinstanceid 
+ from programinstance ps 
+ inner join program p on p.programid=ps.programid 
+ where p.uid in {}) 
 """.format(sql_trackers)
 
     if sql_data_elements != "":
         for uid in data_elements:
             write(f, """
-UPDATE programstageinstance SET    eventdatavalues = jsonb_set(eventdatavalues, 
-'{{uid},value}', concat('',concat(concat('"',(select concat('random',
-round(random()*dataelementid+programstageinstanceid))
-FROM   dataelement WHERE  uid = 'sPadHOO4SQY'),'"'),''))::jsonb)
-WHERE  programstageinstanceid in (select programstageinstanceid from programstageinstance
-where  eventdatavalues ? (SELECT de.uid FROM   dataelement as de
-where  ( de.valuetype = 'TEXT' OR de.valuetype = 'LONG_TEXT' )
+ UPDATE programstageinstance SET    eventdatavalues = jsonb_set(eventdatavalues, 
+ '{{uid},value}', concat('',concat(concat('"',(select concat('random',
+ round(random()*dataelementid+programstageinstanceid))
+ FROM   dataelement WHERE  uid = 'sPadHOO4SQY'),'"'),''))::jsonb)
+ WHERE  programstageinstanceid in (select programstageinstanceid from programstageinstance
+ where  eventdatavalues ? (SELECT de.uid FROM   dataelement as de
+ where  ( de.valuetype = 'TEXT' OR de.valuetype = 'LONG_TEXT' )
  AND de.dataelementid IN (SELECT psde.dataelementid
-  FROM program p INNER JOIN programstage ps ON p.programid = ps.programid INNER JOIN
-programstagedataelement psde ON psde.programstageid = ps.programstageid WHERE  p.uid IN {sql_trackers}) 
-and de.uid = '{uid}'));
+ FROM program p INNER JOIN programstage ps ON p.programid = ps.programid INNER JOIN
+ programstagedataelement psde ON psde.programstageid = ps.programstageid WHERE  p.uid IN {sql_trackers}) 
+ and de.uid = '{uid}'));
 """).format(uid=uid, sql_trackers=sql_trackers)
 
     if sql_tracker_entity_attributes != "":
         write(f,"""
-UPDATE trackedentityattributevalue set 
-value=('Redacted ' || round(random()*trackedentityinstanceid+trackedentityattributeid)::text) 
-where trackedentityattributeid in (select trackedentityattributeid 
-from trackedentityattribute where valuetype='TEXT' or valuetype='LONG_TEXT')
+ UPDATE trackedentityattributevalue set 
+ value=('Redacted ' || round(random()*trackedentityinstanceid+trackedentityattributeid)::text) 
+ where trackedentityattributeid in (select trackedentityattributeid 
+ from trackedentityattribute where valuetype='TEXT' or valuetype='LONG_TEXT')
  and trackedentityattributeid in (select trackedentityattributeid 
  from trackedentityattribute where uid in {} );
 """.format(sql_tracker_entity_attributes))
@@ -520,96 +522,96 @@ from trackedentityattribute where valuetype='TEXT' or valuetype='LONG_TEXT')
  """.format(sql_organisationunits)
     if anonimize_coordinate:
         write(f, """
-update programinstance as rand set geometry=null where programinstanceid 
-in ( select psi.programinstanceid  from programstageinstance psi 
-inner join programstage ps on ps.programstageid=psi.programstageid 
-inner join program p on p.programid=ps.programid where p.uid in {});
+ update programinstance as rand set geometry=null where programinstanceid 
+ in ( select psi.programinstanceid  from programstageinstance psi 
+ inner join programstage ps on ps.programstageid=psi.programstageid 
+ inner join program p on p.programid=ps.programid where p.uid in {});
 """.format(sql_trackers))
         write(f,"""
-update programstageinstance as rand set geometry=null where programstageinstanceid 
-in ( select psi.programstageinstanceid  from programstageinstance psi 
-inner join programstage ps on ps.programstageid=psi.programstageid 
-inner join program p on p.programid=ps.programid 
-where p.uid in {});
+ update programstageinstance as rand set geometry=null where programstageinstanceid 
+ in ( select psi.programstageinstanceid  from programstageinstance psi 
+ inner join programstage ps on ps.programstageid=psi.programstageid 
+ inner join program p on p.programid=ps.programid 
+ where p.uid in {});
 """.format(sql_trackers))
         write(f,"""
-update trackedentityinstance as rand set coordinates=null where trackedentityinstanceid 
-in ( select ps.trackedentityinstanceid  from programinstance ps 
-inner join program p on p.programid=ps.programid 
-where p.uid in {});
+ update trackedentityinstance as rand set coordinates=null where trackedentityinstanceid 
+ in ( select ps.trackedentityinstanceid  from programinstance ps 
+ inner join program p on p.programid=ps.programid 
+ where p.uid in {});
 """.format(sql_trackers))
         write(f,"""
-UPDATE programstageinstance SET 
-eventdatavalues = eventdatavalues - array(SELECT uid FROM   dataelement WHERE 
+ UPDATE programstageinstance SET 
+ eventdatavalues = eventdatavalues - array(SELECT uid FROM   dataelement WHERE 
  valuetype = 'COORDINATES' AND dataelementid IN
  (SELECT psde.dataelementid FROM   program p INNER JOIN programstage ps 
  ON p.programid = ps.programid INNER JOIN programstagedataelement psde 
  ON psde.programstageid = ps.programstageid WHERE 
-  p.uid IN {})) 
-  WHERE eventdatavalues ?| array(SELECT uid FROM   dataelement 
-  WHERE   valuetype = 'COORDINATES' AND dataelementid 
-  IN (SELECT psde.dataelementid
-   FROM program p INNER JOIN programstage ps ON p.programid = ps.programid INNER JOIN 
-   programstagedataelement psde ON psde.programstageid = ps.programstageid WHERE  p.uid IN {})); 
-   """.format(sql_trackers, sql_trackers))
+ p.uid IN {})) 
+ WHERE eventdatavalues ?| array(SELECT uid FROM   dataelement 
+ WHERE   valuetype = 'COORDINATES' AND dataelementid 
+ IN (SELECT psde.dataelementid
+ FROM program p INNER JOIN programstage ps ON p.programid = ps.programid INNER JOIN 
+ programstagedataelement psde ON psde.programstageid = ps.programstageid WHERE  p.uid IN {})); 
+""".format(sql_trackers, sql_trackers))
 
         write(f, """
-delete from trackedentityattributevalue where 
-trackedentityinstanceid in (select trackedentityattributeid from trackedentityattribute 
-where valuetype like 'COORDINATE') {};
+ delete from trackedentityattributevalue where 
+ trackedentityinstanceid in (select trackedentityattributeid from trackedentityattribute 
+ where valuetype like 'COORDINATE') {};
  """.format(where))
 
     if anonimize_org_units:
         write(f, """
-update programinstance as rand set organisationunitid=(select organisationunitid 
-from organisationunit where length(path)=(select length(path) from organisationunit where 
-rand.organisationunitid= organisationunitid) ORDER BY RANDOM() limit 1) where programinstanceid 
-in ( select psi.programinstanceid  from programstageinstance psi 
-inner join programstage ps on ps.programstageid=psi.programstageid 
-inner join program p on p.programid=ps.programid where p.uid in {});
+ update programinstance as rand set organisationunitid=(select organisationunitid 
+ from organisationunit where length(path)=(select length(path) from organisationunit where 
+ rand.organisationunitid= organisationunitid) ORDER BY RANDOM() limit 1) where programinstanceid 
+ in ( select psi.programinstanceid  from programstageinstance psi 
+ inner join programstage ps on ps.programstageid=psi.programstageid 
+ inner join program p on p.programid=ps.programid where p.uid in {});
 """.format(sql_trackers))
         write(f, """
-update programstageinstance as rand set organisationunitid=(select organisationunitid 
-from organisationunit where length(path)=(select length(path) from 
-organisationunit where rand.organisationunitid= organisationunitid) ORDER BY RANDOM()
-limit 1) where programstageinstanceid 
-in ( select psi.programstageinstanceid  from programstageinstance psi 
-inner join programstage ps on ps.programstageid=psi.programstageid 
-inner join program p on p.programid=ps.programid 
-where p.uid in {});
+ update programstageinstance as rand set organisationunitid=(select organisationunitid 
+ from organisationunit where length(path)=(select length(path) from 
+ organisationunit where rand.organisationunitid= organisationunitid) ORDER BY RANDOM()
+ limit 1) where programstageinstanceid 
+ in ( select psi.programstageinstanceid  from programstageinstance psi 
+ inner join programstage ps on ps.programstageid=psi.programstageid 
+ inner join program p on p.programid=ps.programid 
+ where p.uid in {});
 """.format(sql_trackers))
         write(f, """
-update trackedentityinstance as rand set organisationunitid=(select 
-organisationunitid from organisationunit where length(path)=(select length(path) from 
-organisationunit where rand.organisationunitid= organisationunitid) ORDER BY RANDOM() 
-limit 1) where trackedentityinstanceid 
-in ( select ps.trackedentityinstanceid  from programinstance ps 
-inner join program p on p.programid=ps.programid 
-where p.uid in {});
+ update trackedentityinstance as rand set organisationunitid=(select 
+ organisationunitid from organisationunit where length(path)=(select length(path) from 
+ organisationunit where rand.organisationunitid= organisationunitid) ORDER BY RANDOM() 
+ limit 1) where trackedentityinstanceid 
+ in ( select ps.trackedentityinstanceid  from programinstance ps 
+ inner join program p on p.programid=ps.programid 
+ where p.uid in {});
 """.format(sql_trackers))
         write(f, """
-update trackedentityprogramowner as rand set organisationunitid=(select organisationunitid from 
-organisationunit where length(path)=(select length(path) from organisationunit where 
-rand.organisationunitid= organisationunitid) ORDER BY RANDOM() limit 1) 
-where trackedentityinstanceid in (select trackedentityinstanceid from 
+ update trackedentityprogramowner as rand set organisationunitid=(select organisationunitid from 
+ organisationunit where length(path)=(select length(path) from organisationunit where 
+ rand.organisationunitid= organisationunitid) ORDER BY RANDOM() limit 1) 
+ where trackedentityinstanceid in (select trackedentityinstanceid from 
  program where uid in {});
  """.format(sql_trackers))
         write(f, """
-delete from trackedentityattributevalue where 
-trackedentityinstanceid in (select trackedentityattributeid from trackedentityattribute 
-where valuetype like 'ORGANISATION_UNIT') {}; 
+ delete from trackedentityattributevalue where 
+ trackedentityinstanceid in (select trackedentityattributeid from trackedentityattribute 
+ where valuetype like 'ORGANISATION_UNIT') {}; 
 """.format(where))
         write(f,"""
-UPDATE programstageinstance SET
-eventdatavalues = eventdatavalues - array(SELECT uid FROMdataelement WHERE 
+ UPDATE programstageinstance SET
+ eventdatavalues = eventdatavalues - array(SELECT uid FROM dataelement WHERE 
  valuetype = 'ORGANISATION_UNIT' 
  AND dataelementid IN
- (SELECT psde.dataelementid FROMprogram p INNER JOIN programstage ps 
+ (SELECT psde.dataelementid FROM program p INNER JOIN programstage ps 
  ON p.programid = ps.programid INNER JOIN programstagedataelement psde 
  ON psde.programstageid = ps.programstageid WHERE 
-p.uid IN {}))
-WHERE eventdatavalues ?| array(SELECT uid FROM   dataelement
-WHERE   valuetype = 'ORGANISATION_UNIT'
+ p.uid IN {}))
+ WHERE eventdatavalues ?| array(SELECT uid FROM   dataelement
+ WHERE   valuetype = 'ORGANISATION_UNIT'
  AND dataelementid IN (SELECT psde.dataelementid
  FROM program p INNER JOIN programstage ps ON p.programid = ps.programid INNER JOIN
  programstagedataelement psde ON psde.programstageid = ps.programstageid WHERE  p.uid IN {}));
@@ -617,47 +619,47 @@ WHERE   valuetype = 'ORGANISATION_UNIT'
 
     if anonimize_phone:
         write(f, """
-delete from trackedentityattributevalue where
-trackedentityinstanceid in (select trackedentityattributeid from trackedentityattribute
-where valuetype like 'PHONE_NUMBER') {};
+ delete from trackedentityattributevalue where
+ trackedentityinstanceid in (select trackedentityattributeid from trackedentityattribute
+ where valuetype like 'PHONE_NUMBER') {};
 """.format(where))
         write(f,"""
-UPDATE programstageinstance SET
-eventdatavalues = eventdatavalues - array(SELECT uid FROM   dataelement WHERE
-valuetype = 'PHONE_NUMBER'
-AND dataelementid IN
-(SELECT psde.dataelementid FROM   program p INNER JOIN programstage ps
-ON p.programid = ps.programid INNER JOIN programstagedataelement psde
-ON psde.programstageid = ps.programstageid WHERE
-p.uid IN {}))
-WHERE eventdatavalues ?| array(SELECT uid FROM   dataelement
-WHERE   valuetype = 'PHONE_NUMBER'
-AND dataelementid IN (SELECT psde.dataelementid
-FROM program p INNER JOIN programstage ps ON p.programid = ps.programid INNER JOIN
-programstagedataelement psde ON psde.programstageid = ps.programstageid WHERE  p.uid IN {}));
+ UPDATE programstageinstance SET
+ eventdatavalues = eventdatavalues - array(SELECT uid FROM   dataelement WHERE
+ valuetype = 'PHONE_NUMBER'
+ AND dataelementid IN
+ (SELECT psde.dataelementid FROM   program p INNER JOIN programstage ps
+ ON p.programid = ps.programid INNER JOIN programstagedataelement psde
+ ON psde.programstageid = ps.programstageid WHERE
+ p.uid IN {}))
+ WHERE eventdatavalues ?| array(SELECT uid FROM   dataelement
+ WHERE   valuetype = 'PHONE_NUMBER'
+ AND dataelementid IN (SELECT psde.dataelementid
+ FROM program p INNER JOIN programstage ps ON p.programid = ps.programid INNER JOIN
+ programstagedataelement psde ON psde.programstageid = ps.programstageid WHERE  p.uid IN {}));
 """.format(sql_trackers, sql_trackers))
 
     if anonimize_mail:
         write(f, """---email
-delete from trackedentityattributevalue where
-trackedentityinstanceid in (select trackedentityattributeid from trackedentityattribute
-where valuetype like 'EMAIL') {};
+ delete from trackedentityattributevalue where
+ trackedentityinstanceid in (select trackedentityattributeid from trackedentityattribute
+ where valuetype like 'EMAIL') {};
 """.format(where))
 
         write(f,"""
-UPDATE programstageinstance SET
-eventdatavalues = eventdatavalues - array(SELECT uid FROM   dataelement WHERE
-valuetype = 'EMAIL'
-AND dataelementid IN
-(SELECT psde.dataelementid FROM   program p INNER JOIN programstage ps
-ON p.programid = ps.programid INNER JOIN programstagedataelement psde
-ON psde.programstageid = ps.programstageid WHERE
-p.uid IN {}))
-WHERE eventdatavalues ?| array(SELECT uid FROM   dataelement
-WHERE   valuetype = 'EMAIL'
-AND dataelementid IN (SELECT psde.dataelementid
-FROM program p INNER JOIN programstage ps ON p.programid = ps.programid INNER JOIN
-programstagedataelement psde ON psde.programstageid = ps.programstageid WHERE  p.uid IN {}));
+ UPDATE programstageinstance SET
+ eventdatavalues = eventdatavalues - array(SELECT uid FROM   dataelement WHERE
+ valuetype = 'EMAIL'
+ AND dataelementid IN
+ (SELECT psde.dataelementid FROM   program p INNER JOIN programstage ps
+ ON p.programid = ps.programid INNER JOIN programstagedataelement psde
+ ON psde.programstageid = ps.programstageid WHERE
+ p.uid IN {}))
+ WHERE eventdatavalues ?| array(SELECT uid FROM   dataelement
+ WHERE   valuetype = 'EMAIL'
+ AND dataelementid IN (SELECT psde.dataelementid
+ FROM program p INNER JOIN programstage ps ON p.programid = ps.programid INNER JOIN
+ programstagedataelement psde ON psde.programstageid = ps.programstageid WHERE  p.uid IN {}));
 """.format(sql_trackers, sql_trackers))
 
 
