@@ -7,6 +7,7 @@
   "local_docker_deploy_path": "d2",
   "backups_dir": "/home/user/backups",
   "pre_sql_dir": "/tmp/presql",
+  "preprocess_api": "36",
   "backup_name": "TRAINING",
   "server_dir_local": "/home/user/server",
   "server_dir_remote": "/home/user/server",

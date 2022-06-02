@@ -51,13 +51,15 @@ def main():
         log("No preprocessing done, as requested.")
     elif "preprocess" in cfg:
         if cfg["pre_sql_dir"]:
-            preprocess.preprocess(cfg["preprocess"], cfg["departments"], cfg["pre_sql_dir"])
+            preprocess_api_version = None
+            if "preprocess_api" in cfg.keys():
+                preprocess_api_version = cfg["preprocess_api"]
+            preprocess.preprocess(cfg["preprocess"], cfg["departments"], cfg["pre_sql_dir"], preprocess_api_version)
             add_preprocess_sql_file(args, cfg)
         else:
             log("pre_sql_dir not exist in config file")
     else:
         log("No detected preprocessing rules, skipping.")
-
 
     if args.post_sql:
         run_sql(cfg, args)
