@@ -56,7 +56,7 @@ meld==3.18.0
 more-itertools==6.0.0
 nbformat==4.4.0
 netifaces==0.10.4
-numpy==1.17.2
+numpy==1.22.0
 oauth==1.0.1
 oauthlib==3.1.0
 olefile==0.45.1
