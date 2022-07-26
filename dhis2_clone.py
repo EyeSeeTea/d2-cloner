@@ -25,6 +25,10 @@ def main():
     global COLOR
 
     args = get_args()
+
+    if args.api != "2.34" and args.api != "2.36":
+        print ("ERROR: Invalid api option")
+        sys.exit()
     if args.no_color or not os.isatty(sys.stdout.fileno()):
         COLOR = False
 
@@ -71,7 +75,7 @@ def main():
         if args.no_postprocess:
             log("No postprocessing done, as requested.")
         elif "api_local_url" in cfg and "postprocess" in cfg:
-            postprocess.postprocess(cfg["api_local_url"], args.api_local_username, args.api_local_password, cfg["postprocess"], import_dir)
+            postprocess.postprocess(cfg["api_local_url"], args.api_local_username, args.api_local_password, cfg["postprocess"], import_dir, args.api)
         else:
             log("No postprocessing done.")
 
@@ -109,6 +113,7 @@ def get_args():
     add("--no-preprocess", action="store_true", help="don't do preprocessing")
     add("--manual-restart", action="store_true", help="don't stop/start tomcat")
     add("--post-sql", nargs="+", default=[], help="sql files to run post-clone")
+    add("--api", default="2.36", help="Api compatible versions: 2.34 / 2.36 (default: 2.36)")
     add(
         "--post-clone-scripts",
         action="store_true",

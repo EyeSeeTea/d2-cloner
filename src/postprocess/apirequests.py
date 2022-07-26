@@ -112,22 +112,33 @@ def get_users_by_usernames(api, usernames):
     return response["users"]
 
 
-def get_users_by_group_names(api, user_group_names):
+def get_users_by_group_names(api, user_group_names, api_version):
     "Return list of users belonging to any of the given user groups"
     debug("Get users from groups: names=%s" % user_group_names)
 
     if not user_group_names:
         return []
 
-    response = api.get(
-        "/users",
-        {
-            "paging": False,
-            "filter": "userGroups.name:in:[%s]" % ",".join(user_group_names),
-            "fields": ("id,name," "*,[*,userCredentials[*,userRoles[id,name]]]"),
-        },
-    )
-    return response["users"]
+    if api_version == "2.36":
+        response = api.get(
+            "/users",
+            {
+                "paging": False,
+                "filter": "userGroups.name:in:[%s]" % ",".join(user_group_names),
+                "fields": ("id,name," "*,[*,userCredentials[*,userRoles[id,name]]]"),
+            },
+        )
+        return response["users"]
+    elif api_version == "2.34":
+        response = api.get(
+            "/userGroups",
+            {
+                "paging": False,
+                "filter": "name:in:[%s]" % ",".join(user_group_names),
+                "fields": ("id,name," "users[:all,userCredentials[:all,userRoles[id,name]]]"),
+            },
+        )
+        return sum((x["users"] for x in response["userGroups"]), [])
 
 
 def get_user_roles_by_name(api, user_role_names):
