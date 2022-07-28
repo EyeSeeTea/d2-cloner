@@ -3,7 +3,6 @@ import os
 from src.preprocess.query_generator import generate_delete_datasets_rules, generate_delete_tracker_rules, \
     generate_delete_event_rules, delete_all_event_programs, delete_all_data_sets, delete_all_tracker_programs, \
     remove_all_unnecessary_dependencies
-import shutil
 
 remove_rule = "removeData"
 program_type = "eventPrograms"
@@ -16,7 +15,7 @@ def get_file():
     return file_name
 
 def move_file(file, new_folder):
-    shutil.move(file, new_folder)
+    os.rename(file, new_folder)
 
 
 def create_dir_if_not_exists(directory):
