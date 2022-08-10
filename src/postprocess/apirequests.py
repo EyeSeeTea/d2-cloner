@@ -1,17 +1,21 @@
+import datetime
 import json
+from datetime import time
+
 import requests
 
 from d2apy import dhis2api
 
-from src.postprocess.list_modifier import unique, pick
+from src.postprocess.list_modifier import *
 from src.common.debug import debug
+from faker import Faker
 
 
 def init_api(url, username, password):
     return dhis2api.Dhis2Api(url, username, password)
 
 
-def wait_for_server(api, timeout=1800):
+def wait_for_server(api, timeout=48800):
     "Sleep until server is ready to accept requests"
     debug("Check active API: %s" % api.api_url)
     import time as time_
@@ -36,6 +40,23 @@ def activate(api, users):
     for user in users:
         user["userCredentials"]["disabled"] = False
         api.put("/users/" + user["id"], user)
+
+
+def fakerize_users(api, users, excludeUsers):
+    debug("Fakerize %d users..." % (len(users)))
+    fake = Faker()
+    for user in users:
+        if user["userCredentials"]["username"] not in excludeUsers:
+            name, surname = fake.name()
+            user["surname"] = surname
+            user["firstName"] = name
+            user["name"] = name
+            user["userCredentials"]["name"] = name
+            user["phoneNumber"] = fake.phone_number()
+            user["jobTitle"] = fake.job()
+            user["nationality"] = fake.country()
+
+            api.put("/users/" + user["id"], user)
 
 
 def delete_others(api, users):
@@ -99,14 +120,23 @@ def get_users_by_usernames(api, usernames):
     if not usernames:
         return []
 
-    response = api.get(
-        "/users",
-        {
-            "paging": False,
-            "filter": "userCredentials.username:in:[%s]" % ",".join(usernames),
-            "fields": ":all,userCredentials[:all,userRoles[id,name]]",
-        },
-    )
+    if "*" in usernames:
+        response = api.get(
+            "/users",
+            {
+                "paging": False,
+                "fields": ":all,userCredentials[:all,userRoles[id,name]]",
+            },
+        )
+    else:
+        response = api.get(
+            "/users",
+            {
+                "paging": False,
+                "filter": "userCredentials.username:in:[%s]" % ",".join(usernames),
+                "fields": ":all,userCredentials[:all,userRoles[id,name]]",
+            },
+        )
     return response["users"]
 
 
@@ -117,14 +147,24 @@ def get_users_by_group_names(api, user_group_names):
     if not user_group_names:
         return []
 
-    response = api.get(
-        "/userGroups",
-        {
-            "paging": False,
-            "filter": "name:in:[%s]" % ",".join(user_group_names),
-            "fields": ("id,name," "users[:all,userCredentials[:all,userRoles[id,name]]]"),
-        },
-    )
+    contains = lambda x: x in user_group_names
+    if contains("*"):
+        response = api.get(
+            "/userGroups",
+            {
+                "paging": False,
+                "fields": ("id,name," "users[:all,userCredentials[:all,userRoles[id,name]]]"),
+            },
+        )
+    else:
+        response = api.get(
+            "/userGroups",
+            {
+                "paging": False,
+                "filter": "name:in:[%s]" % ",".join(user_group_names),
+                "fields": ("id,name," "users[:all,userCredentials[:all,userRoles[id,name]]]"),
+            },
+        )
     return sum((x["users"] for x in response["userGroups"]), [])
 
 
