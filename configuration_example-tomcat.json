@@ -1,6 +1,7 @@
 {
     "local_type": "tomcat",
     "pre_sql_dir": "/tmp/presql",
+    "preprocess_api": "36",
     "backups_dir": "/home/user/backups",
     "backup_name": "TRAINING",
     "server_dir_local": "/home/user/server",

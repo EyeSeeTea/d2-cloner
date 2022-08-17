@@ -91,6 +91,8 @@ def execute(api, entry, import_dir):
     action = get("action")
     if action == "activate":
         apirequests.activate(api, users)
+    elif action == "fakerizeAllUserFields":
+        apirequests.fakerize_users(api, users, get("excludeUsernames"))
     elif action == "deleteOthers":
         apirequests.delete_others(api, users)
     elif action == "addRoles":

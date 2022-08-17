@@ -51,13 +51,15 @@ def main():
         log("No preprocessing done, as requested.")
     elif "preprocess" in cfg:
         if cfg["pre_sql_dir"]:
-            preprocess.preprocess(cfg["preprocess"], cfg["departments"], cfg["pre_sql_dir"])
+            preprocess_api_version = None
+            if "preprocess_api" in cfg.keys():
+                preprocess_api_version = cfg["preprocess_api"]
+            preprocess.preprocess(cfg["preprocess"], cfg["departments"], cfg["pre_sql_dir"], preprocess_api_version)
             add_preprocess_sql_file(args, cfg)
         else:
             log("pre_sql_dir not exist in config file")
     else:
         log("No detected preprocessing rules, skipping.")
-
 
     if args.post_sql:
         log("Running postsql...")
@@ -269,6 +271,7 @@ def start_tomcat(cfg, args):
         post_sql = args.post_sql[0] if args.post_sql else None
         deploy_path = cfg.get("local_docker_deploy_path", None)
         server_xml_path = cfg.get("local_docker_server_xml", None)
+        dhis_conf_path = cfg.get("local_docker_dhis_conf", None)
         if post_sql and (len(args.post_sql) != 1 or not os.path.isdir(post_sql)):
             log("--post-sql for d2-docker requires a single directory")
             return
@@ -281,6 +284,7 @@ def start_tomcat(cfg, args):
                 cfg["local_docker_port"],
                 (("--deploy-path '%s'" % deploy_path) if deploy_path else ""),
                 (("--tomcat-server-xml '%s'" % server_xml_path) if server_xml_path else ""),
+                (("--dhis-conf '%s'" % dhis_conf_path) if dhis_conf_path else ""),
                 (("--run-sql '%s'" % post_sql) if post_sql else ""),
                 (("--run-scripts '%s'" % post_scripts_dir) if post_scripts_dir else ""),
                 (("--auth '%s'" % (args.api_local_username + ":" + args.api_local_password)) if api_url else "")
