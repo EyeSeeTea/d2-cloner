@@ -49,10 +49,12 @@ def generate_delete_event_rules(event_program, data_elements, org_units, org_uni
                     "where eventdatavalues ? {} and ".format(sql_data_elements, sql_data_elements)
         if sql_event_program != "":
             sql_query = sql_query + " programstageid in (select programstageid from programstage " \
-                                    "where programid in (select programid from program where uid in {})) and".format(event_program)
+                                    "where programid in (select programid from program where uid in {})) and".format(
+                event_program)
         else:
             sql_query = sql_query + " programstageid in (select programstageid from programstage " \
-                                    "where programid in (select programid from program where uid in {})) and".format(sql_all)
+                                    "where programid in (select programid from program where uid in {})) and".format(
+                sql_all)
     if sql_org_units != "":
         has_rule = True
         sql_query = sql_query + " organisationunitid in (select organisationunitid from organisationunit " \
@@ -107,7 +109,8 @@ def generate_delete_tracker_rules(trackers, data_elements, org_units, org_unit_d
     if sql_org_unit_descendants != "":
         has_rule = True
         sql_query = sql_query + " and organisationunitid in (select organisationunitid from organisationunit where " \
-                                "path like (select concat(path,'/%') from organisationunit where uid in {})) and".format(sql_org_unit_descendants)
+                                "path like (select concat(path,'/%') from organisationunit where uid in {})) and".format(
+            sql_org_unit_descendants)
 
     if not has_rule:
         delete_all_tracker_programs(all_uid, f)
@@ -118,29 +121,38 @@ def generate_delete_tracker_rules(trackers, data_elements, org_units, org_unit_d
 
 
 def delete_org_unit_data_in_view(f):
-        f.write("""
+    f.write("""
         
         --remove organisationUnits -- data
-        DELETE FROM programstageinstancecomments where programstageinstanceid in 
-        (select programstageinstanceid from  programstageinstance where 
-        organisationunitid in (select * from orgUnitsToDelete));
-        DELETE FROM programstageinstance where organisationunitid in (select * from orgUnitsToDelete);
-        delete from programinstance where organisationunitid in (select organisationunitid from orgUnitsToDelete);
+        DELETE FROM programstageinstancecomments     WHERE programstageinstanceid  IN (SELECT * FROM rm_programstageinstance);
+        DELETE FROM programinstanceaudit             WHERE programinstanceid       IN (SELECT * FROM rm_programinstance);
+        DELETE FROM trackedentitydatavalueaudit      WHERE programstageinstanceid  IN (SELECT * FROM rm_programstageinstance);
+        DELETE FROM programstageinstance             WHERE programstageinstanceid  IN (SELECT * FROM rm_programstageinstance);
+        
+        DELETE FROM programinstancecomments          WHERE programinstanceid       IN (SELECT * FROM rm_programinstance);
+        DELETE FROM programinstance                  WHERE programinstanceid       IN (SELECT * FROM rm_programinstance);
         delete from datavalue where sourceid in (select organisationunitid from orgUnitsToDelete);
         delete from datavalueaudit where organisationunitid in (select organisationunitid  from orgUnitsToDelete);
         
+        DELETE FROM trackedentityattributevalue      WHERE trackedentityinstanceid IN (SELECT * FROM rm_trackedentityinstance);
+        DELETE FROM trackedentityattributevalueaudit WHERE trackedentityinstanceid IN (SELECT * FROM rm_trackedentityinstance);
+        DELETE FROM trackedentityprogramowner        WHERE organisationunitid      IN (SELECT * FROM orgs);
+        DELETE FROM trackedentityinstance            WHERE trackedentityinstanceid IN (SELECT * FROM rm_trackedentityinstance);
+        
+        DELETE FROM interpretationuseraccesses       WHERE interpretationid        IN (SELECT * FROM rm_interpretation);
+        DELETE FROM interpretation_comments          WHERE interpretationid        IN (SELECT * FROM rm_interpretation);
+        DELETE FROM intepretation_likedby            WHERE interpretationid        IN (SELECT * FROM rm_interpretation);
+        DELETE FROM interpretation                   WHERE interpretationid        IN (SELECT * FROM rm_interpretation);
         """)
 
 
 def delete_org_units_in_view(f):
     f.write("""
     
-    DELETE FROM trackedentitydatavalueaudit where programstageinstanceid in (select programstageinstanceid from  programstageinstance where organisationunitid in (select * from orgUnitsToDelete));
-    DELETE FROM trackedentityattributevalue where trackedentityinstanceid in (select trackedentityinstanceid from  trackedentityinstance where organisationunitid in (select * from orgUnitsToDelete));
-    DELETE FROM trackedentityattributevalueaudit where trackedentityinstanceid in (select trackedentityinstanceid from  trackedentityinstance where organisationunitid in (select * from orgUnitsToDelete));
     DELETE FROM datasetsource where sourceid in (select * from orgUnitsToDelete);
     DELETE FROM orgunitgroupmembers where organisationunitid in (select * from orgUnitsToDelete);
     DELETE FROM program_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
+DELETE FROM programownershiphistory              WHERE organisationunitid      IN (SELECT * FROM orgUnitsToDelete);
     DELETE FROM  _orgunitstructure where organisationunitid in (select * from orgUnitsToDelete);
     DELETE FROM  _datasetorganisationunitcategory where organisationunitid in (select * from orgUnitsToDelete);
     DELETE FROM  _organisationunitgroupsetstructure where organisationunitid in (select * from orgUnitsToDelete);
@@ -156,16 +168,15 @@ def delete_org_units_in_view(f):
     DELETE FROM  intepretation_likedby where interpretationid in (select interpretationid from interpretation where organisationunitid in (select * from orgUnitsToDelete));
     DELETE FROM  interpretationuseraccesses where interpretationid in (select interpretationid from interpretation where organisationunitid in (select * from orgUnitsToDelete));
     DELETE FROM  interpretation where organisationunitid in (select * from orgUnitsToDelete);
+    DELETE FROM eventvisualization_organisationunits WHERE organisationunitid      IN (SELECT * FROM orgUnitsToDelete);
     DELETE FROM  lockexception where organisationunitid in (select * from orgUnitsToDelete);
     DELETE FROM  mapview_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
     DELETE FROM  organisationunitattributevalues where organisationunitid in (select * from orgUnitsToDelete);
     DELETE FROM  program_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
-    DELETE FROM  programinstanceaudit where programinstanceid in (select programinstanceid from programinstance where organisationunitid in (select * from orgUnitsToDelete));
-    DELETE FROM  programinstance where organisationunitid in (select * from orgUnitsToDelete);
-    DELETE FROM  programmessage where organisationunitid in (select * from orgUnitsToDelete);
+    DELETE FROM programmessage_emailaddresses    WHERE programmessageemailaddressid     IN (SELECT * FROM rm_programmessage);
+    DELETE FROM programmessage_deliverychannels  WHERE programmessagedeliverychannelsid IN (SELECT * FROM rm_programmessage);
+    DELETE FROM programmessage                   WHERE id                               IN (SELECT * FROM rm_programmessage);
     DELETE FROM  reporttable_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
-    DELETE FROM trackedentityprogramowner WHERE organisationunitid in (select * from orgUnitsToDelete);
-    DELETE FROM  trackedentityinstance where organisationunitid in (select * from orgUnitsToDelete);
     DELETE FROM  userdatavieworgunits where organisationunitid in (select * from orgUnitsToDelete);
     DELETE FROM  usermembership where organisationunitid in (select * from orgUnitsToDelete);
     DELETE FROM  userteisearchorgunits where organisationunitid in (select * from orgUnitsToDelete);
@@ -175,31 +186,93 @@ def delete_org_units_in_view(f):
     DELETE FROM minmaxdataelement WHERE sourceid in (select * from orgUnitsToDelete);
     DELETE FROM visualization_organisationunits WHERE organisationunitid in (select * from orgUnitsToDelete);
     DELETE FROM organisationunit WHERE organisationunitid in (select * from orgUnitsToDelete);
-    DROP MATERIALIZED VIEW if exists orgUnitsToDelete;
+    DROP MATERIALIZED VIEW if exists orgUnitsToDelete  CASCADE;
     
     """)
 
 
 def generate_delete_org_unit_level_rules(level, f):
-    f.write("CREATE VIEW orgUnitsToDelete AS select organisationunitid from organisationunit where hierarchylevel > {} ; \n".format(level))
+    f.write("""
+    --remove organisationUnits -- org unit
+    DROP MATERIALIZED VIEW if exists orgUnitsToDelete CASCADE;
+    """)
+    f.write(
+        " CASCADE;"
+        "CREATE MATERIALIZED VIEW orgUnitsToDelete AS select organisationunitid from organisationunit where hierarchylevel > {} ; \n".format(
+            level))
+    create_orgunittoberemoved_indixes(f)
     delete_org_unit_data_in_view(f)
     delete_org_units_in_view(f)
+
+
+def create_orgunittoberemoved_indixes(f):
+    f.write("""
+        CREATE UNIQUE INDEX idx_orgs ON orgUnitsToDelete (organisationunitid); 
+
+        CREATE MATERIALIZED VIEW rm_trackedentityinstance 
+            AS SELECT trackedentityinstanceid FROM trackedentityinstance WHERE 
+                organisationunitid IN (SELECT * FROM orgUnitsToDelete); 
+        CREATE UNIQUE INDEX idx_trackedentityinstance ON rm_trackedentityinstance (trackedentityinstanceid); 
+
+        CREATE MATERIALIZED VIEW rm_programinstance 
+            AS SELECT programinstanceid FROM programinstance WHERE 
+                organisationunitid IN (SELECT * FROM orgUnitsToDelete); 
+        CREATE UNIQUE INDEX idx_programinstance ON rm_programinstance (programinstanceid); 
+
+        CREATE MATERIALIZED VIEW rm_programstageinstance_orgs 
+            AS SELECT programstageinstanceid FROM programstageinstance WHERE 
+                organisationunitid IN (SELECT * FROM orgUnitsToDelete); 
+        CREATE MATERIALIZED VIEW rm_programstageinstance_programinstance 
+            AS SELECT programstageinstanceid FROM programstageinstance WHERE 
+                programinstanceid IN (SELECT * FROM rm_programinstance); 
+        CREATE MATERIALIZED VIEW rm_programstageinstance 
+            AS SELECT * FROM rm_programstageinstance_orgs 
+            UNION ALL SELECT * FROM rm_programstageinstance_programinstance; 
+        CREATE UNIQUE INDEX idx_programstageinstance ON rm_programstageinstance (programstageinstanceid); 
+
+        CREATE MATERIALIZED VIEW rm_interpretation 
+            AS SELECT interpretationid FROM interpretation WHERE organisationunitid IN (SELECT * FROM orgUnitsToDelete); 
+        CREATE UNIQUE INDEX idx_interpretation ON rm_interpretation (interpretationid); 
+        
+        CREATE MATERIALIZED VIEW rm_programmessage 
+            AS SELECT id FROM programmessage WHERE 
+                organisationunitid      IN (SELECT * FROM orgUnitsToDelete) OR 
+                trackedentityinstanceid IN (SELECT * FROM rm_trackedentityinstance) OR 
+                programstageinstanceid  IN (SELECT * FROM rm_programstageinstance) OR 
+                programinstanceid       IN (SELECT * FROM rm_programinstance); 
+        CREATE UNIQUE INDEX idx_programmessage ON rm_programmessage (id); 
+        CREATE INDEX IF NOT EXISTS idx_datavalue_organisationunitid                 ON datavalue                 (sourceid); 
+        CREATE INDEX IF NOT EXISTS idx_datavalueaudit_organisationunitid            ON datavalueaudit            (organisationunitid); 
+        CREATE INDEX IF NOT EXISTS idx_program_organisationunits_organisationunitid ON program_organisationunits (organisationunitid); 
+        CREATE INDEX IF NOT EXISTS idx_orgunitgroup_organisationunitid              ON orgunitgroupmembers       (organisationunitid); 
+        CREATE INDEX IF NOT EXISTS idx_programinstance_organisationunitid           ON programinstance           (organisationunitid); 
+        CREATE INDEX IF NOT EXISTS idx_dataset_organisationunit                     ON datasetsource             (sourceid); 
+        CREATE INDEX IF NOT EXISTS idx_parentid                                     ON organisationunit          (parentid); 
+        CREATE INDEX IF NOT EXISTS idx_programstageinstance_organisationunitid      ON programstageinstance      (organisationunitid); 
+        CREATE INDEX IF NOT EXISTS idx_trackedentityinstance_organisationunitid     ON trackedentityinstance     (organisationunitid); 
+        CREATE INDEX IF NOT EXISTS idx_entityinstancedatavalueaudit_programstageinstanceid ON trackedentitydatavalueaudit              (programstageinstanceid); 
+        CREATE INDEX IF NOT EXISTS idx_programmessage_programstageinstanceid               ON programmessage                           (programstageinstanceid); 
+        CREATE INDEX IF NOT EXISTS idx_programstageinstancecomments_programstageinstanceid ON programstageinstancecomments             (programstageinstanceid); 
+        CREATE INDEX IF NOT EXISTS idx_programstagenotification_psi                        ON programnotificationinstance              (programstageinstanceid); 
+        CREATE INDEX IF NOT EXISTS idx_relationshipitem_programstageinstanceid             ON relationshipitem                         (programstageinstanceid); 
+        CREATE INDEX IF NOT EXISTS idx_s9i10v8xg7d22hlhmesia51l                            ON programstageinstance_messageconversation (programstageinstanceid); """)
 
 
 def generate_delete_org_unit_tree_rules(orgunits, f):
     f.write("""
     --remove organisationUnits -- org unit
-    DROP MATERIALIZED VIEW if exists orgUnitsToDelete;
-    """)  
+    DROP MATERIALIZED VIEW if exists orgUnitsToDelete CASCADE;
+    """)
     path_query = ""
     for org_unit in orgunits:
         path_query = " (path like '%{}%' and uid <> '{}') or ".format(org_unit, org_unit)
     path_query = path_query[:-3]
-    f.write("CREATE MATERIALIZED VIEW orgUnitsToDelete AS select distinct organisationunitid from organisationunit where {} ;\n".format(path_query))
+    f.write(
+        "CREATE MATERIALIZED VIEW orgUnitsToDelete AS select distinct organisationunitid from organisationunit where {} ;\n".format(
+            path_query))
+    create_orgunittoberemoved_indixes(f)
     delete_org_unit_data_in_view(f)
     delete_org_units_in_view(f)
-
-
 
 
 def generate_delete_datasets_rules(datasets, data_elements, org_units, org_unit_descendants, all_uid, f):
@@ -313,7 +386,8 @@ def delete_all_tracker_programs(trackers, f):
         "create view tei_to_remove as select trackedentityinstanceid \"teiid\" "
         "from programinstance where programid in (select programid from program where uid in {});\n".format(trackers))
     f.write(
-        "delete from programinstance where programid in (select programid from program where uid in {});\n".format(trackers))
+        "delete from programinstance where programid in (select programid from program where uid in {});\n".format(
+            trackers))
     f.write("""
     
     delete from programinstance where trackedentityinstanceid in ( select * from tei_to_remove);
