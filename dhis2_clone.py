@@ -26,11 +26,20 @@ def main():
 
     args = get_args()
 
-    if args.api != "2.34" and args.api != "2.36":
-        print ("ERROR: Invalid api option")
-        sys.exit()
     if args.no_color or not os.isatty(sys.stdout.fileno()):
         COLOR = False
+
+    if args.pre_api != "2.34" and args.pre_api != "2.36":
+        print("ERROR: Invalid api option")
+        sys.exit()
+    else:
+        print("Loaded " + args.pre_api + "api version for pre api calls")
+
+    if args.post_api != "2.34" and args.post_api != "2.36":
+        print("ERROR: Invalid post api option")
+        sys.exit()
+    else:
+        print("Loaded " + args.post_api + "api version for post api calls")
 
     cfg = get_config(args.config, args.update_config)
 
@@ -55,10 +64,7 @@ def main():
         log("No preprocessing done, as requested.")
     elif "preprocess" in cfg:
         if cfg["pre_sql_dir"]:
-            preprocess_api_version = None
-            if "preprocess_api" in cfg.keys():
-                preprocess_api_version = cfg["preprocess_api"]
-            preprocess.preprocess(cfg["preprocess"], cfg["departments"], cfg["pre_sql_dir"], preprocess_api_version)
+            preprocess.preprocess(cfg["preprocess"], cfg["departments"], cfg["pre_sql_dir"], args.pre_api)
             add_preprocess_sql_file(args, cfg)
         else:
             log("pre_sql_dir not exist in config file")
@@ -77,7 +83,7 @@ def main():
         if args.no_postprocess:
             log("No postprocessing done, as requested.")
         elif "api_local_url" in cfg and "postprocess" in cfg:
-            postprocess.postprocess(cfg["api_local_url"], args.api_local_username, args.api_local_password, cfg["postprocess"], import_dir, args.api)
+            postprocess.postprocess(cfg["api_local_url"], args.api_local_username, args.api_local_password, cfg["postprocess"], import_dir, args.post_api)
         else:
             log("No postprocessing done.")
 
@@ -115,7 +121,8 @@ def get_args():
     add("--no-preprocess", action="store_true", help="don't do preprocessing")
     add("--manual-restart", action="store_true", help="don't stop/start tomcat")
     add("--post-sql", nargs="+", default=[], help="sql files to run post-clone")
-    add("--api", default="2.36", help="Api compatible versions: 2.34 / 2.36 (default: 2.36)")
+    add("--pre-api", default="2.36", help="Pre Api calls compatible versions: 2.34 / 2.36 (default: 2.36)")
+    add("--post-api", default="2.36", help="Post Api calls compatible versions: 2.34 / 2.36 (default: 2.36)")
     add(
         "--post-clone-scripts",
         action="store_true",
