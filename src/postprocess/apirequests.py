@@ -8,16 +8,18 @@ from d2apy import dhis2api
 
 from src.postprocess.list_modifier import *
 from src.common.debug import debug
+from faker import Faker
 
 
 def init_api(url, username, password):
     return dhis2api.Dhis2Api(url, username, password)
 
 
-def wait_for_server(api, timeout=1800):
+def wait_for_server(api, timeout=48800):
     "Sleep until server is ready to accept requests"
     debug("Check active API: %s" % api.api_url)
     import time as time_
+
     start_time = time_.time()
     while True:
         try:
@@ -26,11 +28,11 @@ def wait_for_server(api, timeout=1800):
         except requests.exceptions.HTTPError:
             if time_.time() - start_time > timeout:
                 raise RuntimeError("Timeout: could not connect to the API")
-            time_.sleep(120)
+            time_.sleep(60)
         except requests.exceptions.ConnectionError:
             if time_.time() - start_time > timeout:
                 raise RuntimeError("Timeout: could not connect to the API")
-            time_.sleep(120)
+            time_.sleep(60)
 
 
 def activate(api, users):
@@ -38,6 +40,23 @@ def activate(api, users):
     for user in users:
         user["userCredentials"]["disabled"] = False
         api.put("/users/" + user["id"], user)
+
+
+def fakerize_users(api, users, excludeUsers):
+    debug("Fakerize %d users..." % (len(users)))
+    fake = Faker()
+    for user in users:
+        if user["userCredentials"]["username"] not in excludeUsers:
+            name, surname = fake.name()
+            user["surname"] = surname
+            user["firstName"] = name
+            user["name"] = name
+            user["userCredentials"]["name"] = name
+            user["phoneNumber"] = fake.phone_number()
+            user["jobTitle"] = fake.job()
+            user["nationality"] = fake.country()
+
+            api.put("/users/" + user["id"], user)
 
 
 def delete_others(api, users):
@@ -101,14 +120,23 @@ def get_users_by_usernames(api, usernames):
     if not usernames:
         return []
 
-    response = api.get(
-        "/users",
-        {
-            "paging": False,
-            "filter": "userCredentials.username:in:[%s]" % ",".join(usernames),
-            "fields": "*,userCredentials[*,userRoles[id,name]]",
-        },
-    )
+    if "*" in usernames:
+        response = api.get(
+            "/users",
+            {
+                "paging": False,
+                "fields": ":all,userCredentials[:all,userRoles[id,name]]",
+            },
+        )
+    else:
+        response = api.get(
+            "/users",
+            {
+                "paging": False,
+                "filter": "userCredentials.username:in:[%s]" % ",".join(usernames),
+                "fields": ":all,userCredentials[:all,userRoles[id,name]]",
+            },
+        )
     return response["users"]
 
 
@@ -138,7 +166,7 @@ def get_users_by_group_names(api, user_group_names, api_version):
                 "fields": ("id,name," "users[:all,userCredentials[:all,userRoles[id,name]]]"),
             },
         )
-        return sum((x["users"] for x in response["userGroups"]), [])
+    return sum((x["users"] for x in response["userGroups"]), [])
 
 
 def get_user_roles_by_name(api, user_role_names):
@@ -195,9 +223,9 @@ def change_server_name(api, new_name):
 
 def get_username(user):
     if "userCredentials" in user.keys():
-          return user["userCredentials"]["username"]
+        return user["userCredentials"]["username"]
     else:
-          return user["username"]
+        return user["username"]
 
 
 def get_roles(user):
