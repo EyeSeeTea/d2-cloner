@@ -29,19 +29,10 @@ def main():
     if args.no_color or not os.isatty(sys.stdout.fileno()):
         COLOR = False
 
-    if args.pre_api != "2.34" and args.pre_api != "2.36":
-        print("ERROR: Invalid api option")
-        sys.exit()
-    else:
-        print("Loaded " + args.pre_api + "api version for pre api calls")
-
-    if args.post_api != "2.34" and args.post_api != "2.36":
-        print("ERROR: Invalid post api option")
-        sys.exit()
-    else:
-        print("Loaded " + args.post_api + "api version for post api calls")
 
     cfg = get_config(args.config, args.update_config)
+
+    pre_api_version, post_api_version = get_api_version(args, cfg)
 
     if args.update_config:
         update_config(args.config)
@@ -64,7 +55,7 @@ def main():
         log("No preprocessing done, as requested.")
     elif "preprocess" in cfg:
         if cfg["pre_sql_dir"]:
-            preprocess.preprocess(cfg["preprocess"], cfg["departments"], cfg["pre_sql_dir"], args.pre_api)
+            preprocess.preprocess(cfg["preprocess"], cfg["departments"], cfg["pre_sql_dir"], pre_api_version)
             add_preprocess_sql_file(args, cfg)
         else:
             log("pre_sql_dir not exist in config file")
@@ -83,7 +74,7 @@ def main():
         if args.no_postprocess:
             log("No postprocessing done, as requested.")
         elif "api_local_url" in cfg and "postprocess" in cfg:
-            postprocess.postprocess(cfg["api_local_url"], args.api_local_username, args.api_local_password, cfg["postprocess"], import_dir, args.post_api)
+            postprocess.postprocess(cfg["api_local_url"], args.api_local_username, args.api_local_password, cfg["postprocess"], import_dir, post_api_version)
         else:
             log("No postprocessing done.")
 
@@ -93,6 +84,43 @@ def main():
     else:
         log("Server not started automatically, as requested.")
         log("No postprocessing done.")
+
+
+def get_api_version(args, cfg):
+    supported_versions = ["2.34", "2.36"]
+    pre_api_version = None
+    post_api_version = None
+
+    if args.pre_api is not None and args.pre_api not in supported_versions:
+        print("ERROR: Invalid pre api version given as param")
+        sys.exit()
+    if args.post_api is not None and args.post_api not in supported_versions:
+        print("ERROR: Invalid post api version given as param")
+        sys.exit()
+
+    if cfg["pre_api"] not in supported_versions:
+        print("ERROR: Invalid pre api version in config file")
+        sys.exit()
+
+    if cfg["post_api"] not in supported_versions:
+        print("ERROR: Invalid post api version in config file")
+        sys.exit()
+
+    if args.pre_api in supported_versions:
+        pre_api_version = args.pre_api
+        print("Loaded " + args.pre_api + "api version for pre api calls")
+    if args.post_api in supported_versions:
+        post_api_version = args.post_api
+        print("Loaded " + args.post_api + "api version for post api calls")
+
+    #param version have priority to config version.
+    if pre_api_version is None:
+        pre_api_version = cfg["pre_api"]
+    if post_api_version is None:
+        post_api_version = cfg["post_api"]
+
+    return pre_api_version, post_api_version
+
 
 
 def add_preprocess_sql_file(args, cfg):
@@ -121,8 +149,8 @@ def get_args():
     add("--no-preprocess", action="store_true", help="don't do preprocessing")
     add("--manual-restart", action="store_true", help="don't stop/start tomcat")
     add("--post-sql", nargs="+", default=[], help="sql files to run post-clone")
-    add("--pre-api", default="2.36", help="Pre Api calls compatible versions: 2.34 / 2.36 (default: 2.36)")
-    add("--post-api", default="2.36", help="Post Api calls compatible versions: 2.34 / 2.36 (default: 2.36)")
+    add("--pre-api", help="Pre Api calls compatible versions: 2.34 / 2.36 (default: 2.36)")
+    add("--post-api", help="Post Api calls compatible versions: 2.34 / 2.36 (default: 2.36)")
     add(
         "--post-clone-scripts",
         action="store_true",
