@@ -1,38 +1,41 @@
 import json
+
 anonymize_email = "'@example.com'"
 
 
 def remove_all_unnecessary_dependencies(f, preprocess_api_version):
     if preprocess_api_version == "34":
-        write(f, """delete from programstageinstance_messageconversation;
-    delete from programinstancecomments;
-    delete from programinstanceaudit;
-    delete from datavalueaudit;
-    delete from trackedentitydatavalueaudit;
-    delete from trackedentityattributevalueaudit;
-    delete from programstageinstance_messageconversation;
-    delete from dataapprovalaudit;
-    delete from interpretation_comments;
-    delete from interpretationcomment;
-    delete from messageconversation_messages;
-    delete from messageconversation_usermessages;
-    delete from messageconversation;
+        write(f, """
+DELETE FROM programstageinstance_messageconversation;
+DELETE FROM programinstancecomments;
+DELETE FROM programinstanceaudit;
+DELETE FROM datavalueaudit;
+DELETE FROM trackedentitydatavalueaudit;
+DELETE FROM trackedentityattributevalueaudit;
+DELETE FROM programstageinstance_messageconversation;
+DELETE FROM dataapprovalaudit;
+DELETE FROM interpretation_comments;
+DELETE FROM interpretationcomment;
+DELETE FROM messageconversation_messages;
+DELETE FROM messageconversation_usermessages;
+DELETE FROM messageconversation;
     """)
     elif preprocess_api_version == "36":
-        write(f, """delete from programstageinstance_messageconversation;
-    delete from programinstancecomments;
-    delete from datavalueaudit;
-    delete from trackedentitydatavalueaudit;
-    delete from trackedentityattributevalueaudit;
-    delete from programstageinstance_messageconversation;
-    delete from dataapprovalaudit;
-    delete from interpretation_comments;
-    delete from interpretationcomment;
-    delete from interpretationusergroupaccesses;
-    delete from intepretation_likedby;
-    delete from messageconversation_messages;
-    delete from messageconversation_usermessages;
-    delete from messageconversation;
+        write(f, """
+DELETE FROM programstageinstance_messageconversation;
+DELETE FROM programinstancecomments;
+DELETE FROM datavalueaudit;
+DELETE FROM trackedentitydatavalueaudit;
+DELETE FROM trackedentityattributevalueaudit;
+DELETE FROM programstageinstance_messageconversation;
+DELETE FROM dataapprovalaudit;
+DELETE FROM interpretation_comments;
+DELETE FROM interpretationcomment;
+DELETE FROM interpretationusergroupaccesses;
+DELETE FROM intepretation_likedby;
+DELETE FROM messageconversation_messages;
+DELETE FROM messageconversation_usermessages;
+DELETE FROM messageconversation;
     """)
 
 
@@ -47,11 +50,11 @@ def generate_delete_event_rules(event_program, data_elements, org_units,
     has_rule = False
     if sql_event_program != "":
         has_rule = True
-        sql_query = " delete from programstageinstance where programstageid in " \
+        sql_query = " DELETE FROM programstageinstance where programstageid in " \
                     " (select programstageid from programstage where programid in " \
                     " (select programid from program where uid in {})) and".format(event_program)
     else:
-        sql_query = " delete from programstageinstance where programstageid in " \
+        sql_query = " DELETE FROM programstageinstance where programstageid in " \
                     " (select programstageid from programstage where programid in " \
                     " (select programid from program where uid in {})) and".format(sql_all)
     if sql_data_elements != "":
@@ -95,7 +98,7 @@ def generate_delete_tracker_rules(trackers, data_elements, org_units, org_unit_d
     sql_org_unit_descendants = convert_to_sql_format(org_unit_descendants)
 
     has_rule = False
-    sql_query = "delete from programstageinstance where programstageid in " \
+    sql_query = "DELETE FROM programstageinstance where programstageid in " \
                 " (select programstageid from programstage where programid in " \
                 " (select programid from program where uid in {})) ".format(sql_all)
     if sql_data_elements != "":
@@ -122,7 +125,8 @@ def generate_delete_tracker_rules(trackers, data_elements, org_units, org_unit_d
     if sql_org_unit_descendants != "":
         has_rule = True
         sql_query = sql_query + " and organisationunitid in (select organisationunitid from organisationunit where " \
-                                " path like (select concat(path,'/%') from organisationunit where uid in {})) and".format(sql_org_unit_descendants)
+                                " path like (select concat(path,'/%') from organisationunit where uid in {})) and".format(
+            sql_org_unit_descendants)
 
     if not has_rule:
         delete_all_tracker_programs(all_uid, f)
@@ -132,19 +136,22 @@ def generate_delete_tracker_rules(trackers, data_elements, org_units, org_unit_d
         write(f, sql_query + "\n")
 
 
-def generate_anonymize_user_queries(new_admin,old_admin, exclude_users, f, preprocess_api_version):
+def generate_anonymize_user_queries(new_admin, old_admin, exclude_users, f, preprocess_api_version):
     write(f, "--anonimize users" + "\n")
     exclude_users_query = ""
     if len(exclude_users) > 0:
         exclude_users_query = " username not in {} and ".format(convert_to_sql_format(exclude_users))
 
-    write(f, " DELETE FROM userrolemembers where userid=(select userid from users where username = '{}'); \n".format(new_admin))
+    write(f, " DELETE FROM userrolemembers where userid=(select userid from users where username = '{}'); \n".format(
+        new_admin))
     write(f, " update userrolemembers set userid=(select userid from users where username = '{new}' ) "
-             " where userid=(select userid from users where username = '{old}'); \n".format(new=new_admin, old=old_admin))
+             " where userid=(select userid from users where username = '{old}'); \n".format(new=new_admin,
+                                                                                            old=old_admin))
     if preprocess_api_version == "36":
         write(f, " update users set password ='-', restoretoken='-', "
-                 " disabled='t',secret='-', ldapid=null, openid=null where {exclude} username not like '{new}'; \n".format(exclude=exclude_users_query,
-                                                                                                                           new=new_admin))
+                 " disabled='t',secret='-', ldapid=null, openid=null where {exclude} username not like '{new}'; \n".format(
+            exclude=exclude_users_query,
+            new=new_admin))
         write(f, """
      update userinfo  set surname='-',firstname='-',email='',phonenumber='',
      jobtitle='',introduction='',gender='',birthday=null,nationality='',employer='',
@@ -152,8 +159,8 @@ def generate_anonymize_user_queries(new_admin,old_admin, exclude_users, f, prepr
      skype='',facebookmessenger='',telegram='',twitter='',avatar=null, attributevalues='{empty}' 
      where userinfoid in 
      (select userid from users where ({exclude} username not like '{new}')); 
-     """.format(empty="{}",exclude=exclude_users_query, new=new_admin))
-    #userid | uid | code | created | lastupdated | creatoruserid | username |
+     """.format(empty="{}", exclude=exclude_users_query, new=new_admin))
+    # userid | uid | code | created | lastupdated | creatoruserid | username |
     # password | externalauth | openid | ldapid | passwordlastupdated | lastlogin
     # | restoretoken | restoreexpiry | selfregistered | invitation | disabled
     # | lastupdatedby | secret | twofa | uuid | idtoken | accountexpiry
@@ -168,148 +175,136 @@ def generate_anonymize_user_queries(new_admin,old_admin, exclude_users, f, prepr
      skype='',facebookmessenger='',telegram='',twitter='',avatar=null, attributevalues='{empty}' 
      where userinfoid in 
      (select userid from users where ({exclude} username not like '{new}')); 
-     """.format(empty="{}",exclude=exclude_users_query, new=new_admin))
+     """.format(empty="{}", exclude=exclude_users_query, new=new_admin))
 
-def delete_org_unit_data_in_view(f):
+
+def delete_org_unit_data_and_views(f):
     write(f, """
-        
-        --remove organisationUnits -- data
-        DELETE FROM programstageinstancecomments     WHERE programstageinstanceid  IN (SELECT * FROM rm_programstageinstance);
-        DELETE FROM programinstanceaudit             WHERE programinstanceid       IN (SELECT * FROM rm_programinstance);
-        DELETE FROM trackedentitydatavalueaudit      WHERE programstageinstanceid  IN (SELECT * FROM rm_programstageinstance);
-        DELETE FROM programstageinstance             WHERE programstageinstanceid  IN (SELECT * FROM rm_programstageinstance);
-        
-        DELETE FROM programinstancecomments          WHERE programinstanceid       IN (SELECT * FROM rm_programinstance);
-        DELETE FROM programinstance                  WHERE programinstanceid       IN (SELECT * FROM rm_programinstance);
-        delete from datavalue where sourceid in (select organisationunitid from orgUnitsToDelete);
-        delete from datavalueaudit where organisationunitid in (select organisationunitid  from orgUnitsToDelete);
-        
-        DELETE FROM trackedentityattributevalue      WHERE trackedentityinstanceid IN (SELECT * FROM rm_trackedentityinstance);
-        DELETE FROM trackedentityattributevalueaudit WHERE trackedentityinstanceid IN (SELECT * FROM rm_trackedentityinstance);
-        DELETE FROM trackedentityprogramowner        WHERE organisationunitid      IN (SELECT * FROM orgs);
-        DELETE FROM trackedentityinstance            WHERE trackedentityinstanceid IN (SELECT * FROM rm_trackedentityinstance);
-        
-        DELETE FROM interpretationuseraccesses       WHERE interpretationid        IN (SELECT * FROM rm_interpretation);
-        DELETE FROM interpretation_comments          WHERE interpretationid        IN (SELECT * FROM rm_interpretation);
-        DELETE FROM intepretation_likedby            WHERE interpretationid        IN (SELECT * FROM rm_interpretation);
-        DELETE FROM interpretation                   WHERE interpretationid        IN (SELECT * FROM rm_interpretation);
-        """)
+--remove organisationUnits -- data
+DELETE FROM programstageinstancecomments     WHERE programstageinstanceid  IN (SELECT * FROM rm_programstageinstance);
+DELETE FROM programinstanceaudit             WHERE programinstanceid       IN (SELECT * FROM rm_programinstance);
+DELETE FROM trackedentitydatavalueaudit      WHERE programstageinstanceid  IN (SELECT * FROM rm_programstageinstance);
+DELETE FROM programstageinstance             WHERE programstageinstanceid  IN (SELECT * FROM rm_programstageinstance);
 
+DELETE FROM programinstancecomments          WHERE programinstanceid       IN (SELECT * FROM rm_programinstance);
+DELETE FROM programinstance                  WHERE programinstanceid       IN (SELECT * FROM rm_programinstance);
+DELETE FROM datavalue where sourceid in (select organisationunitid from orgUnitsToDelete);
+DELETE FROM datavalueaudit where organisationunitid in (select organisationunitid  from orgUnitsToDelete);
 
-def delete_org_units_in_view(f):
-    write(f,"""
-    
-    DELETE FROM datasetsource where sourceid in (select * from orgUnitsToDelete);
-    DELETE FROM orgunitgroupmembers where organisationunitid in (select * from orgUnitsToDelete);
-    DELETE FROM program_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
-    DELETE FROM programownershiphistory              WHERE organisationunitid      IN (SELECT * FROM orgUnitsToDelete);
-    DELETE FROM  _orgunitstructure where organisationunitid in (select * from orgUnitsToDelete);
-    DELETE FROM  _datasetorganisationunitcategory where organisationunitid in (select * from orgUnitsToDelete);
-    DELETE FROM  _organisationunitgroupsetstructure where organisationunitid in (select * from orgUnitsToDelete);
-    DELETE FROM  datavalueaudit where organisationunitid in (select * from orgUnitsToDelete);
-    DELETE FROM  categoryoption_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
-    DELETE FROM  chart_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
-    DELETE FROM  dataapproval where organisationunitid in (select * from orgUnitsToDelete);
-    DELETE FROM  dataapprovalaudit where organisationunitid in (select * from orgUnitsToDelete);
-    DELETE FROM  eventchart_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
-    DELETE FROM  eventreport_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
-    DELETE FROM  interpretationuseraccesses where interpretationid in (select interpretationid from interpretation where organisationunitid in (select * from orgUnitsToDelete));
-    DELETE FROM  interpretation_comments where interpretationid in (select interpretationid from interpretation where organisationunitid in (select * from orgUnitsToDelete));
-    DELETE FROM  intepretation_likedby where interpretationid in (select interpretationid from interpretation where organisationunitid in (select * from orgUnitsToDelete));
-    DELETE FROM  interpretationuseraccesses where interpretationid in (select interpretationid from interpretation where organisationunitid in (select * from orgUnitsToDelete));
-    DELETE FROM  interpretation where organisationunitid in (select * from orgUnitsToDelete);
-    DELETE FROM eventvisualization_organisationunits WHERE organisationunitid      IN (SELECT * FROM orgUnitsToDelete);
-    DELETE FROM  lockexception where organisationunitid in (select * from orgUnitsToDelete);
-    DELETE FROM  mapview_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
-    DELETE FROM  organisationunitattributevalues where organisationunitid in (select * from orgUnitsToDelete);
-    DELETE FROM  program_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
-    DELETE FROM programmessage_emailaddresses    WHERE programmessageemailaddressid     IN (SELECT * FROM rm_programmessage);
-    DELETE FROM programmessage_deliverychannels  WHERE programmessagedeliverychannelsid IN (SELECT * FROM rm_programmessage);
-    DELETE FROM programmessage                   WHERE id                               IN (SELECT * FROM rm_programmessage);
-    DELETE FROM  reporttable_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
-    DELETE FROM  userdatavieworgunits where organisationunitid in (select * from orgUnitsToDelete);
-    DELETE FROM  usermembership where organisationunitid in (select * from orgUnitsToDelete);
-    DELETE FROM  userteisearchorgunits where organisationunitid in (select * from orgUnitsToDelete);
-    DELETE FROM  validationresult where organisationunitid in (select * from orgUnitsToDelete);
-    DELETE FROM completedatasetregistration where sourceid in (select * from orgUnitsToDelete);
-    DELETE FROM configuration WHERE selfregistrationorgunit in (select * from orgUnitsToDelete);
-    DELETE FROM minmaxdataelement WHERE sourceid in (select * from orgUnitsToDelete);
-    DELETE FROM visualization_organisationunits WHERE organisationunitid in (select * from orgUnitsToDelete);
-    DELETE FROM organisationunit WHERE organisationunitid in (select * from orgUnitsToDelete);
-    DROP MATERIALIZED VIEW if exists orgUnitsToDelete  CASCADE;
+DELETE FROM trackedentityattributevalue      WHERE trackedentityinstanceid IN (SELECT * FROM rm_trackedentityinstance);
+DELETE FROM trackedentityattributevalueaudit WHERE trackedentityinstanceid IN (SELECT * FROM rm_trackedentityinstance);
+DELETE FROM trackedentityprogramowner        WHERE organisationunitid      IN (SELECT * FROM orgs);
+DELETE FROM trackedentityinstance            WHERE trackedentityinstanceid IN (SELECT * FROM rm_trackedentityinstance);
+
+DELETE FROM interpretationuseraccesses       WHERE interpretationid        IN (SELECT * FROM rm_interpretation);
+DELETE FROM interpretation_comments          WHERE interpretationid        IN (SELECT * FROM rm_interpretation);
+DELETE FROM intepretation_likedby            WHERE interpretationid        IN (SELECT * FROM rm_interpretation);
+DELETE FROM interpretation                   WHERE interpretationid        IN (SELECT * FROM rm_interpretation);
+
+-- delete org unit, views and other dependencies
+
+DELETE FROM datasetsource where sourceid in (select * from orgUnitsToDelete);
+DELETE FROM orgunitgroupmembers where organisationunitid in (select * from orgUnitsToDelete);
+DELETE FROM program_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
+DELETE FROM programownershiphistory              WHERE organisationunitid      IN (SELECT * FROM orgUnitsToDelete);
+DELETE FROM _orgunitstructure where organisationunitid in (select * from orgUnitsToDelete);
+DELETE FROM _datasetorganisationunitcategory where organisationunitid in (select * from orgUnitsToDelete);
+DELETE FROM _organisationunitgroupsetstructure where organisationunitid in (select * from orgUnitsToDelete);
+DELETE FROM datavalueaudit where organisationunitid in (select * from orgUnitsToDelete);
+DELETE FROM categoryoption_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
+DELETE FROM chart_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
+DELETE FROM dataapproval where organisationunitid in (select * from orgUnitsToDelete);
+DELETE FROM dataapprovalaudit where organisationunitid in (select * from orgUnitsToDelete);
+DELETE FROM eventchart_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
+DELETE FROM eventreport_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
+DELETE FROM eventvisualization_organisationunits WHERE organisationunitid      IN (SELECT * FROM orgUnitsToDelete);
+DELETE FROM lockexception where organisationunitid in (select * from orgUnitsToDelete);
+DELETE FROM mapview_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
+DELETE FROM organisationunitattributevalues where organisationunitid in (select * from orgUnitsToDelete);
+DELETE FROM program_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
+DELETE FROM programmessage_emailaddresses   WHERE programmessageemailaddressid   IN (SELECT * FROM rm_programmessage);
+DELETE FROM programmessage_deliverychannels  WHERE programmessagedeliverychannelsid IN (SELECT * FROM rm_programmessage);
+DELETE FROM programmessage                   WHERE id                               IN (SELECT * FROM rm_programmessage);
+DELETE FROM reporttable_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
+DELETE FROM userdatavieworgunits where organisationunitid in (select * from orgUnitsToDelete);
+DELETE FROM usermembership where organisationunitid in (select * from orgUnitsToDelete);
+DELETE FROM userteisearchorgunits where organisationunitid in (select * from orgUnitsToDelete);
+DELETE FROM validationresult where organisationunitid in (select * from orgUnitsToDelete);
+DELETE FROM completedatasetregistration where sourceid in (select * from orgUnitsToDelete);
+DELETE FROM configuration WHERE selfregistrationorgunit in (select * from orgUnitsToDelete);
+DELETE FROM minmaxdataelement WHERE sourceid in (select * from orgUnitsToDelete);
+DELETE FROM visualization_organisationunits WHERE organisationunitid in (select * from orgUnitsToDelete);
+DELETE FROM organisationunit WHERE organisationunitid in (select * from orgUnitsToDelete);
+DROP MATERIALIZED VIEW if exists orgUnitsToDelete CASCADE;
     
     """)
 
 
 def generate_delete_org_unit_level_rules(level, f):
-    write(f,"""
-    --remove organisationUnits -- org unit
-    DROP MATERIALIZED VIEW if exists orgUnitsToDelete CASCADE;
-    """)
-    write(f,
-        " CASCADE;"
-        "CREATE MATERIALIZED VIEW orgUnitsToDelete AS select organisationunitid from organisationunit where hierarchylevel > {} ; \n".format(
-            level))
-    create_orgunittoberemoved_indixes(f)
-    delete_org_unit_data_in_view(f)
-    delete_org_units_in_view(f)
+    write(f, """
+--remove organisationUnits -- org unit
+DROP MATERIALIZED VIEW if exists orgUnitsToDelete CASCADE;
+CREATE MATERIALIZED VIEW orgUnitsToDelete AS select organisationunitid from organisationunit where hierarchylevel > {level} ;\n
+    """.format(level=level))
+    create_org_units_to_remove_views_and_indexes(f)
+    delete_org_unit_data_and_views(f)
 
 
-def create_orgunittoberemoved_indixes(f):
-    write(f,"""
-        CREATE UNIQUE INDEX idx_orgs ON orgUnitsToDelete (organisationunitid); 
+def create_org_units_to_remove_views_and_indexes(f):
+    write(f, """
+CREATE UNIQUE INDEX idx_orgs ON orgUnitsToDelete (organisationunitid); 
 
-        CREATE MATERIALIZED VIEW rm_trackedentityinstance 
-            AS SELECT trackedentityinstanceid FROM trackedentityinstance WHERE 
-                organisationunitid IN (SELECT * FROM orgUnitsToDelete); 
-        CREATE UNIQUE INDEX idx_trackedentityinstance ON rm_trackedentityinstance (trackedentityinstanceid); 
+CREATE MATERIALIZED VIEW rm_trackedentityinstance 
+    AS SELECT trackedentityinstanceid FROM trackedentityinstance WHERE 
+        organisationunitid IN (SELECT * FROM orgUnitsToDelete); 
+CREATE UNIQUE INDEX idx_trackedentityinstance ON rm_trackedentityinstance (trackedentityinstanceid); 
 
-        CREATE MATERIALIZED VIEW rm_programinstance 
-            AS SELECT programinstanceid FROM programinstance WHERE 
-                organisationunitid IN (SELECT * FROM orgUnitsToDelete); 
-        CREATE UNIQUE INDEX idx_programinstance ON rm_programinstance (programinstanceid); 
+CREATE MATERIALIZED VIEW rm_programinstance 
+    AS SELECT programinstanceid FROM programinstance WHERE 
+        organisationunitid IN (SELECT * FROM orgUnitsToDelete); 
+CREATE UNIQUE INDEX idx_programinstance ON rm_programinstance (programinstanceid); 
 
-        CREATE MATERIALIZED VIEW rm_programstageinstance_orgs 
-            AS SELECT programstageinstanceid FROM programstageinstance WHERE 
-                organisationunitid IN (SELECT * FROM orgUnitsToDelete); 
-        CREATE MATERIALIZED VIEW rm_programstageinstance_programinstance 
-            AS SELECT programstageinstanceid FROM programstageinstance WHERE 
-                programinstanceid IN (SELECT * FROM rm_programinstance); 
-        CREATE MATERIALIZED VIEW rm_programstageinstance 
-            AS SELECT * FROM rm_programstageinstance_orgs 
-            UNION ALL SELECT * FROM rm_programstageinstance_programinstance; 
-        CREATE UNIQUE INDEX idx_programstageinstance ON rm_programstageinstance (programstageinstanceid); 
+CREATE MATERIALIZED VIEW rm_programstageinstance_orgs 
+    AS SELECT programstageinstanceid FROM programstageinstance WHERE 
+        organisationunitid IN (SELECT * FROM orgUnitsToDelete); 
+CREATE MATERIALIZED VIEW rm_programstageinstance_programinstance 
+    AS SELECT programstageinstanceid FROM programstageinstance WHERE 
+        programinstanceid IN (SELECT * FROM rm_programinstance); 
+CREATE MATERIALIZED VIEW rm_programstageinstance 
+    AS SELECT * FROM rm_programstageinstance_orgs 
+    UNION ALL SELECT * FROM rm_programstageinstance_programinstance; 
+CREATE UNIQUE INDEX idx_programstageinstance ON rm_programstageinstance (programstageinstanceid); 
 
-        CREATE MATERIALIZED VIEW rm_interpretation 
-            AS SELECT interpretationid FROM interpretation WHERE organisationunitid IN (SELECT * FROM orgUnitsToDelete); 
-        CREATE UNIQUE INDEX idx_interpretation ON rm_interpretation (interpretationid); 
-        
-        CREATE MATERIALIZED VIEW rm_programmessage 
-            AS SELECT id FROM programmessage WHERE 
-                organisationunitid      IN (SELECT * FROM orgUnitsToDelete) OR 
-                trackedentityinstanceid IN (SELECT * FROM rm_trackedentityinstance) OR 
-                programstageinstanceid  IN (SELECT * FROM rm_programstageinstance) OR 
-                programinstanceid       IN (SELECT * FROM rm_programinstance); 
-        CREATE UNIQUE INDEX idx_programmessage ON rm_programmessage (id); 
-        CREATE INDEX IF NOT EXISTS idx_datavalue_organisationunitid                 ON datavalue                 (sourceid); 
-        CREATE INDEX IF NOT EXISTS idx_datavalueaudit_organisationunitid            ON datavalueaudit            (organisationunitid); 
-        CREATE INDEX IF NOT EXISTS idx_program_organisationunits_organisationunitid ON program_organisationunits (organisationunitid); 
-        CREATE INDEX IF NOT EXISTS idx_orgunitgroup_organisationunitid              ON orgunitgroupmembers       (organisationunitid); 
-        CREATE INDEX IF NOT EXISTS idx_programinstance_organisationunitid           ON programinstance           (organisationunitid); 
-        CREATE INDEX IF NOT EXISTS idx_dataset_organisationunit                     ON datasetsource             (sourceid); 
-        CREATE INDEX IF NOT EXISTS idx_parentid                                     ON organisationunit          (parentid); 
-        CREATE INDEX IF NOT EXISTS idx_programstageinstance_organisationunitid      ON programstageinstance      (organisationunitid); 
-        CREATE INDEX IF NOT EXISTS idx_trackedentityinstance_organisationunitid     ON trackedentityinstance     (organisationunitid); 
-        CREATE INDEX IF NOT EXISTS idx_entityinstancedatavalueaudit_programstageinstanceid ON trackedentitydatavalueaudit              (programstageinstanceid); 
-        CREATE INDEX IF NOT EXISTS idx_programmessage_programstageinstanceid               ON programmessage                           (programstageinstanceid); 
-        CREATE INDEX IF NOT EXISTS idx_programstageinstancecomments_programstageinstanceid ON programstageinstancecomments             (programstageinstanceid); 
-        CREATE INDEX IF NOT EXISTS idx_programstagenotification_psi                        ON programnotificationinstance              (programstageinstanceid); 
-        CREATE INDEX IF NOT EXISTS idx_relationshipitem_programstageinstanceid             ON relationshipitem                         (programstageinstanceid); 
-        CREATE INDEX IF NOT EXISTS idx_s9i10v8xg7d22hlhmesia51l                            ON programstageinstance_messageconversation (programstageinstanceid); """)
+CREATE MATERIALIZED VIEW rm_interpretation 
+    AS SELECT interpretationid FROM interpretation WHERE organisationunitid IN (SELECT * FROM orgUnitsToDelete); 
+CREATE UNIQUE INDEX idx_interpretation ON rm_interpretation (interpretationid); 
+
+CREATE MATERIALIZED VIEW rm_programmessage 
+    AS SELECT id FROM programmessage WHERE 
+        organisationunitid      IN (SELECT * FROM orgUnitsToDelete) OR 
+        trackedentityinstanceid IN (SELECT * FROM rm_trackedentityinstance) OR 
+        programstageinstanceid  IN (SELECT * FROM rm_programstageinstance) OR 
+        programinstanceid       IN (SELECT * FROM rm_programinstance); 
+CREATE UNIQUE INDEX idx_programmessage ON rm_programmessage (id); 
+CREATE INDEX IF NOT EXISTS idx_datavalue_organisationunitid                 ON datavalue                 (sourceid); 
+CREATE INDEX IF NOT EXISTS idx_datavalueaudit_organisationunitid            ON datavalueaudit            (organisationunitid); 
+CREATE INDEX IF NOT EXISTS idx_program_organisationunits_organisationunitid ON program_organisationunits (organisationunitid); 
+CREATE INDEX IF NOT EXISTS idx_orgunitgroup_organisationunitid              ON orgunitgroupmembers       (organisationunitid); 
+CREATE INDEX IF NOT EXISTS idx_programinstance_organisationunitid           ON programinstance           (organisationunitid); 
+CREATE INDEX IF NOT EXISTS idx_dataset_organisationunit                     ON datasetsource             (sourceid); 
+CREATE INDEX IF NOT EXISTS idx_parentid                                     ON organisationunit          (parentid); 
+CREATE INDEX IF NOT EXISTS idx_programstageinstance_organisationunitid      ON programstageinstance      (organisationunitid); 
+CREATE INDEX IF NOT EXISTS idx_trackedentityinstance_organisationunitid     ON trackedentityinstance     (organisationunitid); 
+CREATE INDEX IF NOT EXISTS idx_entityinstancedatavalueaudit_programstageinstanceid ON trackedentitydatavalueaudit              (programstageinstanceid); 
+CREATE INDEX IF NOT EXISTS idx_programmessage_programstageinstanceid               ON programmessage                           (programstageinstanceid); 
+CREATE INDEX IF NOT EXISTS idx_programstageinstancecomments_programstageinstanceid ON programstageinstancecomments             (programstageinstanceid); 
+CREATE INDEX IF NOT EXISTS idx_programstagenotification_psi                        ON programnotificationinstance              (programstageinstanceid); 
+CREATE INDEX IF NOT EXISTS idx_relationshipitem_programstageinstanceid             ON relationshipitem                         (programstageinstanceid); 
+CREATE INDEX IF NOT EXISTS idx_s9i10v8xg7d22hlhmesia51l                            ON programstageinstance_messageconversation (programstageinstanceid); """)
 
 
 def generate_delete_org_unit_tree_rules(orgunits, f):
-    write(f,"""
+    write(f, """
     --remove organisationUnits -- org unit
     DROP MATERIALIZED VIEW if exists orgUnitsToDelete CASCADE;
     """)
@@ -318,11 +313,10 @@ def generate_delete_org_unit_tree_rules(orgunits, f):
         path_query = " (path like '%{}%' and uid <> '{}') or ".format(org_unit, org_unit)
     path_query = path_query[:-3]
     write(f,
-        "CREATE MATERIALIZED VIEW orgUnitsToDelete AS select distinct organisationunitid from organisationunit where {} ;\n".format(
-            path_query))
-    create_orgunittoberemoved_indixes(f)
-    delete_org_unit_data_in_view(f)
-    delete_org_units_in_view(f)
+          "CREATE MATERIALIZED VIEW orgUnitsToDelete AS select distinct organisationunitid from organisationunit where {} ;\n".format(
+              path_query))
+    create_org_units_to_remove_views_and_indexes(f)
+    delete_org_unit_data_and_views(f)
 
 
 def generate_delete_datasets_rules(datasets, data_elements, org_units,
@@ -334,7 +328,7 @@ def generate_delete_datasets_rules(datasets, data_elements, org_units,
     sql_org_units = convert_to_sql_format(org_units)
     sql_org_unit_descendants = convert_to_sql_format(org_unit_descendants)
     sql_query = """
- delete from datavalue where dataelementid in (select dataelementid from datasetelement 
+ DELETE FROM datavalue where dataelementid in (select dataelementid from datasetelement 
  where datasetid in ( select datasetid from dataset where uid in {all})) and""".format(all=sql_all)
     has_rule = False
     if sql_data_elements != "":
@@ -381,20 +375,20 @@ def delete_all_event_programs(programs, f, preprocess_api_version):
     programs = convert_to_sql_format(programs)
     write(f, """
 --remove all events
-delete from trackedentitydatavalueaudit where programstageinstanceid 
+DELETE FROM trackedentitydatavalueaudit where programstageinstanceid 
 in ( select psi.programstageinstanceid  from programstageinstance psi 
 inner join programstage ps on ps.programstageid=psi.programstageid 
 inner join program p on p.programid=ps.programid where p.uid in {programs});
 """.format(programs=programs))
     write(f,
-  """
-delete from programstageinstancecomments where programstageinstanceid 
-in ( select psi.programstageinstanceid  from programstageinstance psi 
-inner join programstage ps on ps.programstageid=psi.programstageid 
-inner join program p on p.programid=ps.programid where p.uid in {programs});
-""".format(programs=programs))
+          """
+        DELETE FROM programstageinstancecomments where programstageinstanceid 
+        in ( select psi.programstageinstanceid  from programstageinstance psi 
+        inner join programstage ps on ps.programstageid=psi.programstageid 
+        inner join program p on p.programid=ps.programid where p.uid in {programs});
+        """.format(programs=programs))
     write(f, """
-delete from programstageinstance where programstageinstanceid 
+DELETE FROM programstageinstance where programstageinstanceid 
 in ( select psi.programstageinstanceid  from programstageinstance psi 
 inner join programstage ps on ps.programstageid=psi.programstageid 
 inner join program p on p.programid=ps.programid 
@@ -406,12 +400,12 @@ def delete_all_data_sets(datasets, f, preprocess_api_version):
     datasets = convert_to_sql_format(datasets)
     write(f, """
 --remove all datasets
-delete from datavalueaudit where dataelementid in 
+DELETE FROM datavalueaudit where dataelementid in 
 (select dataelementid from datasetelement 
 where datasetid in (select datasetid from dataset where uid in {datasets}));
 """.format(datasets=datasets))
     write(f, """
-delete from datavalue where dataelementid in (select dataelementid from datasetelement 
+DELETE FROM datavalue where dataelementid in (select dataelementid from datasetelement 
 where datasetid in (select datasetid from dataset where uid in {datasets}));
 """.format(datasets=datasets))
     pass
@@ -421,52 +415,53 @@ def delete_all_tracker_programs(trackers, f, preprocess_api_version):
     trackers = convert_to_sql_format(trackers)
     write(f, """
 --remove all tracker
-delete from trackedentitydatavalueaudit where programstageinstanceid 
+DELETE FROM trackedentitydatavalueaudit where programstageinstanceid 
 in ( select psi.programstageinstanceid  from programstageinstance psi 
 inner join programstage ps on ps.programstageid=psi.programstageid 
 inner join program p on p.programid=ps.programid 
 where p.uid in {trackers});
 """.format(trackers=trackers))
-    write(f,"""
-delete from programstageinstancecomments where programstageinstanceid 
+    write(f, """
+DELETE FROM programstageinstancecomments where programstageinstanceid 
 in ( select programstageinstanceid from programstageinstance where programstageid in 
 (select programstageid from programstage where programid in 
 (select programid from program where uid in {trackers})));
 """.format(trackers=trackers))
 
     write(f, """
-delete from trackedentityattributevalue where trackedentityinstanceid 
+DELETE FROM trackedentityattributevalue where trackedentityinstanceid 
 in ( select trackedentityinstanceid from programinstance where programid in(select 
 programid from program where uid in {trackers}));
 """.format(trackers=trackers))
     write(f, """
-delete from trackedentityattributevalueaudit where trackedentityinstanceid 
+DELETE FROM trackedentityattributevalueaudit where trackedentityinstanceid 
 in ( select trackedentityinstanceid from programinstance where programid 
 in(select programid from program where uid in {trackers}));
 """.format(trackers=trackers))
 
     write(f,
-"""delete from programstageinstance where programstageid in (
-select programstageid from programstage where programid in 
-(select programid from program where uid in {trackers}));
-""".format(trackers=trackers))
+          """DELETE FROM programstageinstance where programstageid in (
+          select programstageid from programstage where programid in 
+          (select programid from program where uid in {trackers}));
+          """.format(trackers=trackers))
 
     write(f, """
-delete from programstageinstance where programstageinstanceid 
+DELETE FROM programstageinstance where programstageinstanceid 
 in ( select psi.programstageinstanceid  from programstageinstance psi 
 inner join programstage ps on ps.programstageid=psi.programstageid 
 inner join program p on p.programid=ps.programid 
 where p.uid in {trackers});""".format(trackers=trackers))
 
-    write(f,"""
+    write(f, """
 create view tei_to_remove as select trackedentityinstanceid "teiid"
 from programinstance where programid in (select programid from program where uid in {trackers});
 """.format(trackers=trackers))
     write(f,
-"delete from programinstance where programid in (select programid from program where uid in {trackers});\n".format(trackers=trackers))
-    write(f, """delete from programinstance where trackedentityinstanceid in ( select * from tei_to_remove);
-delete from trackedentityinstance where trackedentityinstanceid in ( select * from tei_to_remove);
-delete from trackedentityprogramowner where trackedentityinstanceid in ( select * from tei_to_remove);
+          "DELETE FROM programinstance where programid in (select programid from program where uid in {trackers});\n".format(
+              trackers=trackers))
+    write(f, """DELETE FROM programinstance where trackedentityinstanceid in ( select * from tei_to_remove);
+DELETE FROM trackedentityinstance where trackedentityinstanceid in ( select * from tei_to_remove);
+DELETE FROM trackedentityprogramowner where trackedentityinstanceid in ( select * from tei_to_remove);
 drop view tei_to_remove ;
 --remove tracker finish
 """)
@@ -478,8 +473,8 @@ def write(f, text):
 
 
 def generate_anonymize_datasets_rules(dataset_uids, org_units, data_elements,
-                                anonimize_org_units, anonimize_phone, anonimize_mail,
-                                anonimize_coordinate,  all_uid, f, preprocess_api_version):
+                                      anonimize_org_units, anonimize_phone, anonimize_mail,
+                                      anonimize_coordinate, all_uid, f, preprocess_api_version):
     write(f, "--anonymize datasets\n")
     sql_all = convert_to_sql_format(all_uid)
     sql_datasets_uids = convert_to_sql_format(dataset_uids)
@@ -501,14 +496,15 @@ SELECT datasetid FROM dataset WHERE uid IN {datasets}
         where_dataelements = " and uid in {dataelements} ".format(
             dataelements=sql_data_elements)
 
-        write(f,"""
+        write(f, """
 Update datavalue set value=concat(\'Redacted:\',round(random()*dataelementid+categoryoptioncomboid+sourceid))
 where dataelementid in (select dataelementid from dataelement where valuetype='TEXT' or valuetype='LONG_TEXT')"
 and dataelementid in (select dataelementid from dataelement where uid in {dataelements}); 
 """.format(dataelements=sql_data_elements))
 
     if sql_org_units != "":
-        where_orgunits = " and sourceid in (select organisationunitid from organisationuint where uid in {orgunits})".format(orgunits=sql_org_units)
+        where_orgunits = " and sourceid in (select organisationunitid from organisationuint where uid in {orgunits})".format(
+            orgunits=sql_org_units)
     else:
         where_orgunits = ""
 
@@ -541,24 +537,24 @@ in (select datasetid from dataset where uid in {datasets}));
         write(f, sql_query + "\n")
 
     if anonimize_phone:
-        write(f,"""
+        write(f, """
 Update datavalue set value=concat('+',round(random()*dataelementid+categoryoptioncomboid+sourceid))
 where dataelementid in (select dataelementid from dataelement where valuetype='PHONE_NUMBER')
 and dataelementid in ({where})); 
 """.format(where=where_clausules))
     if anonimize_mail:
-        write(f,"""
+        write(f, """
 Update datavalue set value=concat('user',round(random()*dataelementid+categoryoptioncomboid+sourceid)) || '@example.com' 
 where dataelementid in (select dataelementid from dataelement where valuetype='EMAIL') 
 and dataelementid in ({where}));
 """.format(where=where_clausules))
     if anonimize_coordinate:
-        write(f,"""
+        write(f, """
 DELETE FROM datavalue where dataelementid in (select dataelementid from dataelement where valuetype='COORDINATE') 
 and dataelementid in ({where})); 
 """.format(where=where_clausules))
     if anonimize_org_units:
-        write(f,"""
+        write(f, """
 DELETE FROM datavalue where dataelementid in (select dataelementid from dataelement where valuetype='ORGANISATION_UNIT')
 and dataelementid in ({where})); 
 """.format(where=where_clausules))
@@ -575,7 +571,7 @@ def generate_anonymize_event_rules(event_program, organisationunits, data_elemen
     sql_data_elements = convert_to_sql_format(data_elements)
 
     if anonimize_mail:
-        write(f,"""
+        write(f, """
         ---test!!!
  UPDATE programstageinstance SET 
  eventdatavalues = eventdatavalues - array(SELECT uid FROM   dataelement WHERE 
@@ -593,21 +589,21 @@ def generate_anonymize_event_rules(event_program, organisationunits, data_elemen
 """.format(sql_event_program=sql_event_program))
     if anonimize_phone:
         write(f,
-"""
-  UPDATE programstageinstance SET 
-  eventdatavalues = eventdatavalues - array(SELECT uid FROM   dataelement WHERE 
-  valuetype = 'PHONE_NUMBER' 
-  AND dataelementid IN
-  (SELECT psde.dataelementid FROM   program p INNER JOIN programstage ps 
-  ON p.programid = ps.programid INNER JOIN programstagedataelement psde
-  ON psde.programstageid = ps.programstageid WHERE
-  p.uid IN {programs})) 
-  WHERE eventdatavalues ?| array(SELECT uid FROM   dataelement 
-  WHERE   valuetype = 'PHONE_NUMBER' 
-  AND dataelementid IN (SELECT psde.dataelementid
-  FROM program p INNER JOIN programstage ps ON p.programid = ps.programid INNER JOIN 
-  programstagedataelement psde ON psde.programstageid = ps.programstageid WHERE  p.uid IN {programs}));   
-""".format(program=sql_event_program))
+              """
+UPDATE programstageinstance SET 
+eventdatavalues = eventdatavalues - array(SELECT uid FROM   dataelement WHERE  
+valuetype = 'PHONE_NUMBER'  
+AND dataelementid IN 
+(SELECT psde.dataelementid FROM   program p INNER JOIN programstage ps  
+ON p.programid = ps.programid INNER JOIN programstagedataelement psde 
+ON psde.programstageid = ps.programstageid WHERE 
+p.uid IN {programs}))  
+WHERE eventdatavalues ?| array(SELECT uid FROM   dataelement  
+WHERE   valuetype = 'PHONE_NUMBER' 
+AND dataelementid IN (SELECT psde.dataelementid 
+FROM program p INNER JOIN programstage ps ON p.programid = ps.programid INNER JOIN 
+programstagedataelement psde ON psde.programstageid = ps.programstageid WHERE  p.uid IN {programs}));
+                 """.format(program=sql_event_program))
     if anonimize_coordinate:
         write(f, """
  update programinstance as rand set geometry=null where programinstanceid 
@@ -676,7 +672,7 @@ def generate_anonymize_tracker_rules(trackers, tracker_attribute_values, organis
  from programinstance ps 
  inner join program p on p.programid=ps.programid 
  where p.uid in {trackers}) 
-""".format(trackers = sql_trackers)
+""".format(trackers=sql_trackers)
 
     if sql_data_elements != "":
         for uid in data_elements:
@@ -695,7 +691,7 @@ def generate_anonymize_tracker_rules(trackers, tracker_attribute_values, organis
 """).format(uid=uid, sql_trackers=sql_trackers)
 
     if sql_tracker_entity_attributes != "":
-        write(f,"""
+        write(f, """
  UPDATE trackedentityattributevalue set 
  value=('Redacted ' || round(random()*trackedentityinstanceid+trackedentityattributeid)::text) 
  where trackedentityattributeid in (select trackedentityattributeid 
@@ -717,20 +713,20 @@ def generate_anonymize_tracker_rules(trackers, tracker_attribute_values, organis
  inner join programstage ps on ps.programstageid=psi.programstageid 
  inner join program p on p.programid=ps.programid where p.uid in {trackers});
 """.format(trackers=sql_trackers))
-        write(f,"""
+        write(f, """
  update programstageinstance as rand set geometry=null where programstageinstanceid 
  in ( select psi.programstageinstanceid  from programstageinstance psi 
  inner join programstage ps on ps.programstageid=psi.programstageid 
  inner join program p on p.programid=ps.programid 
  where p.uid in {trackers});
 """.format(trackers=sql_trackers))
-        write(f,"""
+        write(f, """
  update trackedentityinstance as rand set coordinates=null where trackedentityinstanceid 
  in ( select ps.trackedentityinstanceid  from programinstance ps 
  inner join program p on p.programid=ps.programid 
  where p.uid in {trackers});
 """.format(trackers=sql_trackers))
-        write(f,"""
+        write(f, """
  UPDATE programstageinstance SET 
  eventdatavalues = eventdatavalues - array(SELECT uid FROM   dataelement WHERE 
  valuetype = 'COORDINATES' AND dataelementid IN
@@ -746,7 +742,7 @@ def generate_anonymize_tracker_rules(trackers, tracker_attribute_values, organis
 """.format(trackers=sql_trackers))
 
         write(f, """
- delete from trackedentityattributevalue where 
+ DELETE FROM trackedentityattributevalue where 
  trackedentityinstanceid in (select trackedentityattributeid from trackedentityattribute 
  where valuetype like 'COORDINATE') {where};
  """.format(where=where))
@@ -787,11 +783,11 @@ def generate_anonymize_tracker_rules(trackers, tracker_attribute_values, organis
  program where uid in {trackers});
  """.format(trackers=sql_trackers))
         write(f, """
- delete from trackedentityattributevalue where 
+ DELETE FROM trackedentityattributevalue where 
  trackedentityinstanceid in (select trackedentityattributeid from trackedentityattribute 
  where valuetype like 'ORGANISATION_UNIT') {where}; 
 """.format(where=where))
-        write(f,"""
+        write(f, """
  UPDATE programstageinstance SET
  eventdatavalues = eventdatavalues - array(SELECT uid FROM dataelement WHERE 
  valuetype = 'ORGANISATION_UNIT' 
@@ -809,11 +805,11 @@ def generate_anonymize_tracker_rules(trackers, tracker_attribute_values, organis
 
     if anonimize_phone:
         write(f, """
- delete from trackedentityattributevalue where
+ DELETE FROM trackedentityattributevalue where
  trackedentityinstanceid in (select trackedentityattributeid from trackedentityattribute
  where valuetype like 'PHONE_NUMBER') {where};
 """.format(where=where))
-        write(f,"""
+        write(f, """
  UPDATE programstageinstance SET
  eventdatavalues = eventdatavalues - array(SELECT uid FROM   dataelement WHERE
  valuetype = 'PHONE_NUMBER'
@@ -831,12 +827,12 @@ def generate_anonymize_tracker_rules(trackers, tracker_attribute_values, organis
 
     if anonimize_mail:
         write(f, """---email
- delete from trackedentityattributevalue where
+ DELETE FROM trackedentityattributevalue where
  trackedentityinstanceid in (select trackedentityattributeid from trackedentityattribute
  where valuetype like 'EMAIL') {where};
 """.format(where=where))
 
-        write(f,"""
+        write(f, """
  UPDATE programstageinstance SET
  eventdatavalues = eventdatavalues - array(SELECT uid FROM   dataelement WHERE
  valuetype = 'EMAIL'
