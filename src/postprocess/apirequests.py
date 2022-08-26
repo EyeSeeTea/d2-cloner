@@ -101,7 +101,7 @@ def remove_groups(api, users, groups_to_remove_from):
         {
             "paging": False,
             "filter": "name:in:[%s]" % ",".join(groups_to_remove_from),
-            "fields": ("*"),
+            "fields": (":all"),
         },
     )
     for group in response["userGroups"]:
@@ -120,7 +120,7 @@ def get_users_by_usernames(api, usernames):
     if not usernames:
         return []
 
-    if "*" in usernames:
+    if "*" in usernames or ":all" in usernames:
         response = api.get(
             "/users",
             {
@@ -153,7 +153,7 @@ def get_users_by_group_names(api, user_group_names, api_version):
             {
                 "paging": False,
                 "filter": "userGroups.name:in:[%s]" % ",".join(user_group_names),
-                "fields": ("id,name," "*,[*,userCredentials[*,userRoles[id,name]]]"),
+                "fields": ("id,name," ":all,[:all,userCredentials[:all,userRoles[id,name]]]"),
             },
         )
         return response["users"]
@@ -174,7 +174,7 @@ def get_user_roles_by_name(api, user_role_names):
     debug("Get user roles: name=%s" % user_role_names)
     response = api.get(
         "/userRoles",
-        {"paging": False, "filter": "name:in:[%s]" % ",".join(user_role_names), "fields": "*"},
+        {"paging": False, "filter": "name:in:[%s]" % ",".join(user_role_names), "fields": ":all"},
     )
     return response["userRoles"]
 
