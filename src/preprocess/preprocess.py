@@ -4,6 +4,7 @@ from src.preprocess.query_generator import generate_delete_datasets_rules, gener
     generate_delete_event_rules, delete_all_event_programs, delete_all_data_sets, delete_all_tracker_programs, \
     remove_all_unnecessary_dependencies, generate_anonymize_tracker_rules, generate_anonymize_event_rules, \
     generate_anonymize_datasets_rules, generate_anonymize_user_queries
+
 import shutil
 
 anonymize_rule = "anonymizeData"
@@ -39,7 +40,7 @@ def get_file():
 
 
 def move_file(file, new_folder):
-    os.rename(file, new_folder)
+    shutil.move(file, new_folder)
 
 
 def create_dir_if_not_exists(directory):
