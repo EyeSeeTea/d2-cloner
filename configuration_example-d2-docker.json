@@ -11,6 +11,8 @@
   "server_dir_local": "/home/user/server",
   "server_dir_remote": "/home/user/server",
   "hostname_remote": "prod",
+  "pre_api": "2.36",
+  "post_api": "2.36",
   "db_remote": "postgresql://user:pass@server_remote:5432/db",
   "war_remote": "ROOT.war",
   "api_local_url": "http://localhost:8080/d2",
