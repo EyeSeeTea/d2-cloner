@@ -39,7 +39,7 @@ def activate(api, users):
     debug("Activating %d user(s)..." % len(users))
     for user in users:
         if "userCredentials" not in user.keys():
-            debug("error with user"+ user)
+            debug("error with user"+ json.dumps(user))
         else:
             user["userCredentials"]["disabled"] = False
             api.put("/users/" + user["id"], user)
