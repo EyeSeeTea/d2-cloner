@@ -62,7 +62,7 @@ def preprocess(entries, departments, directory, preprocess_api_version):
     f.close()
 
 
-def remove_all(list_uid, f):
+def remove_all(list_uid, f, preprocess_api_version):
     for key in list_uid.keys():
         if key == program_type:
             delete_all_event_programs(list_uid[key], f)
