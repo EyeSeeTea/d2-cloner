@@ -383,7 +383,7 @@ def get_db(cfg, args):
         documents_dir = os.path.join(dir_local, "files", "document")
         datavalues_dir = os.path.join(dir_local, "files", "dataValue")
         run(
-            "d2-docker create data {} --sql={} {} {}".format(
+            "d2-docker create data {} --sql={} {} {} {}".format(
                 get_local_docker_image(cfg, args, "stop"),
                 sql_path,
                 (("--apps-dir '%s'" % apps_dir) if os.path.isdir(apps_dir) else ""),
