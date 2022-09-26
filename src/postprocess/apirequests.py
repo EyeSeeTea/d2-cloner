@@ -38,8 +38,11 @@ def wait_for_server(api, timeout=48800):
 def activate(api, users):
     debug("Activating %d user(s)..." % len(users))
     for user in users:
-        user["userCredentials"]["disabled"] = False
-        api.put("/users/" + user["id"], user)
+        if "userCredentials" not in user.keys():
+            print("error with user"+ user)
+        else:
+            user["userCredentials"]["disabled"] = False
+            api.put("/users/" + user["id"], user)
 
 
 def fakerize_users(api, users, excludeUsers):
@@ -153,7 +156,8 @@ def get_users_by_group_names(api, user_group_names):
             "/userGroups",
             {
                 "paging": False,
-                "fields": ("id,name," "users[:all,userCredentials[:all,userRoles[id,name]]]"),
+                "fields": ("id,name,"
+                           "users[:all,userCredentials[:all,userRoles[id,name]]]"),
             },
         )
     else:
@@ -162,7 +166,8 @@ def get_users_by_group_names(api, user_group_names):
             {
                 "paging": False,
                 "filter": "name:in:[%s]" % ",".join(user_group_names),
-                "fields": ("id,name," "users[:all,userCredentials[:all,userRoles[id,name]]]"),
+                "fields": ("id,name,"
+                           "users[:all,userCredentials[:all,userRoles[id,name]]]"),
             },
         )
     return sum((x["users"] for x in response["userGroups"]), [])
