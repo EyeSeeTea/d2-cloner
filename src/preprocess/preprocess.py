@@ -62,7 +62,7 @@ def preprocess(entries, departments, directory, preprocess_api_version):
     f.close()
 
 
-def remove_all(list_uid, f, preprocess_api_version):
+def remove_all(list_uid, f):
     for key in list_uid.keys():
         if key == program_type:
             delete_all_event_programs(list_uid[key], f)
@@ -126,7 +126,7 @@ def generate_queries(departament, f, preprocess_api_version):
                                                     preprocess_api_version)
                     # if not have specific rules apply to all the departament
                     if not has_datasets and not has_event_program and not has_tracker_program:
-                        remove_all(departament[key], f, preprocess_api_version)
+                        remove_all(departament[key], f)
                 elif rule[action] == anonymize_rule:
                     if has_datasets:
                         generate_anonymize_datasets_rules(datasets, org_units, data_elements,
