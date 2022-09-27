@@ -98,11 +98,11 @@ def get_api_version(args, cfg):
         print("ERROR: Invalid post api version given as param")
         sys.exit()
 
-    if cfg["pre_api"] not in supported_versions:
+    if "pre_api" in cfg and cfg["pre_api"] not in supported_versions:
         print("ERROR: Invalid pre api version in config file")
         sys.exit()
 
-    if cfg["post_api"] not in supported_versions:
+    if "post_api" in cfg and cfg["post_api"] not in supported_versions:
         print("ERROR: Invalid post api version in config file")
         sys.exit()
 
@@ -120,7 +120,6 @@ def get_api_version(args, cfg):
         post_api_version = cfg["post_api"]
 
     return pre_api_version, post_api_version
-
 
 
 def add_preprocess_sql_file(args, cfg):
