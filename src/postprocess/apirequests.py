@@ -104,7 +104,7 @@ def remove_groups(api, users, groups_to_remove_from):
         {
             "paging": False,
             "filter": "name:in:[%s]" % ",".join(groups_to_remove_from),
-            "fields": ("*"),
+            "fields": (":all"),
         },
     )
     for group in response["userGroups"]:
@@ -123,7 +123,7 @@ def get_users_by_usernames(api, usernames):
     if not usernames:
         return []
 
-    if "*" in usernames:
+    if "*" in usernames or ":all" in usernames:
         response = api.get(
             "/users",
             {
@@ -143,31 +143,30 @@ def get_users_by_usernames(api, usernames):
     return response["users"]
 
 
-def get_users_by_group_names(api, user_group_names):
+def get_users_by_group_names(api, user_group_names, api_version):
     "Return list of users belonging to any of the given user groups"
     debug("Get users from groups: names=%s" % user_group_names)
 
     if not user_group_names:
         return []
 
-    contains = lambda x: x in user_group_names
-    if contains("*"):
+    if api_version == "2.36":
         response = api.get(
-            "/userGroups",
+            "/users",
             {
                 "paging": False,
-                "fields": ("id,name,"
-                           "users[:all,userCredentials[:all,userRoles[id,name]]]"),
+                "filter": "userGroups.name:in:[%s]" % ",".join(user_group_names),
+                "fields": ("id,name,:all,[:all,userCredentials[:all,userRoles[id,name]]]"),
             },
         )
-    else:
+        return response["users"]
+    elif api_version == "2.34":
         response = api.get(
             "/userGroups",
             {
                 "paging": False,
                 "filter": "name:in:[%s]" % ",".join(user_group_names),
-                "fields": ("id,name,"
-                           "users[:all,userCredentials[:all,userRoles[id,name]]]"),
+                "fields": ("id,name,users[:all,userCredentials[:all,userRoles[id,name]]]"),
             },
         )
     return sum((x["users"] for x in response["userGroups"]), [])
