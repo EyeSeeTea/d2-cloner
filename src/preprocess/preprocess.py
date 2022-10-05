@@ -7,6 +7,8 @@ from src.preprocess.query_generator import generate_delete_datasets_rules, gener
     generate_anonymize_datasets_rules, generate_anonymize_user_queries, generate_delete_org_unit_tree_rules, \
     generate_delete_org_unit_level_rules
 
+import shutil
+
 anonymize_rule = "anonymizeData"
 remove_orgunit_tree = "removeOrganisationUnitTree"
 remove_orgunit_level = "removeOrganisationUnitTreeByLevel"
@@ -134,7 +136,7 @@ def generate_queries(departament, f, preprocess_api_version):
                                                     preprocess_api_version)
                     # if not have specific rules apply to all the departament
                     if not has_datasets and not has_event_program and not has_tracker_program:
-                        remove_all(departament[key], f, preprocess_api_version)
+                        remove_all(departament[key], f)
                 elif rule[action] == anonymize_rule:
                     if has_datasets:
                         generate_anonymize_datasets_rules(datasets, org_units, data_elements,
