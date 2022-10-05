@@ -127,7 +127,7 @@ def generate_queries(departament, f, preprocess_api_version):
                                                     preprocess_api_version)
                     # if not have specific rules apply to all the departament
                     if not has_datasets and not has_event_program and not has_tracker_program:
-                        remove_all(departament[key], f, preprocess_api_version)
+                        remove_all(departament[key], f)
                 elif rule[action] == anonymize_rule:
                     if has_datasets:
                         generate_anonymize_datasets_rules(datasets, org_units, data_elements,
