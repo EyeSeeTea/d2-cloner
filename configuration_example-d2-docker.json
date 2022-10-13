@@ -16,7 +16,7 @@
   "db_remote": "postgresql://user:pass@server_remote:5432/db",
   "war_remote": "ROOT.war",
   "api_local_url": "http://localhost:8080/d2",
-  "timeout": "900",
+  "timeout": 900,
   "departments": {
     "DEP1": {
       "dataSets": [

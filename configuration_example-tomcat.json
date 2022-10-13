@@ -12,7 +12,7 @@
     "war_local": "dhis2.war",
     "war_remote": "ROOT.war",
     "api_local_url": "http://localhost:8080",
-    "timeout": "900",
+    "timeout": 900,
     "departments":
     {
       "DEP1": {
