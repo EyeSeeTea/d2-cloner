@@ -116,10 +116,91 @@ The sections in the configuration file are:
   ``https://.../dhis2-demo``).
 * ``war_remote``: name of the remote war file.
 * ``api_local``: if some post-processing steps are applied, this
-  section needs to define a ``url``, ``username`` and ``password`` to
+  section needs to define as params the username and password ``url``, ``username`` and ``password`` to
   connect to the running DHIS2 system after the cloning.
 * ``postprocess``: list of blocks, each containing users (specified by
   ``selectUsernames`` and/or ``selectFromGroups``) and an ``action``
+  to perform on them (``activate`` to activate them, ``deleteOthers``
+  to keep them in exclusive, ``addRoles`` to specify a list of extra
+  roles to give, or ``addRolesFromTemplate`` to give a reference
+  username whose roles we want to add). Instead of a block, you can
+  give a url, and the blocks contained in that url will be added to
+  the list of blocks.
+* ``preprocess``: list of blocks, each containing actions for each departament (specified in
+  ``departments``) All the rules will create a sql file to execute after launch tomcat.
+  In the case of edit a departament metadata, you should include the metadata type in ``selectMetadataType``
+  the departament ``selectDepartament``, and the ``action``, for example anonymizeData or deleteData
+  and the list of metadata: selectDatasets, selectTrackedEntityAttributes, selectDataElements,
+  Valid options: dataSets, programs, trackerPrograms. Format: ["dataSets"]
+  Examples:
+    {
+      "selectDepartament": "NTD",
+      "selectMetadataType": ["trackerPrograms","eventPrograms","dataSets"],
+      "selectDatasets": [
+          "tnek2LjfuIm",
+          "zna8KfLMXn4",
+          "XBgvNrxpcDC",
+          "WHPEpoVDFFv",
+          "SAV16xEdCZW",
+          "AAYgHGENgbF",
+          "NKWbkXyfO5F",
+          "oVxjBKA1Yzu",
+          "S1UMweeoPsi",
+          "s3iaozBY0dv",
+          "JP4bMwvJ6oU",
+          "U5ejGQdX4Ih"
+      ],
+      "action": "removeData"
+    }
+  selectEventProgram or selectTrackerProgram to filter the event programs or tracker programs.1
+  You could also filter by
+      "selectOrgUnitAndDescendants": ["example_uid"],
+      "selectDataElements": ["example_uid"],
+      "selectOrgUnits": ["example_uid"],
+  You can also remove organisationunits using the action: ``removeOrganisationUnitTree``
+  you must add the organisationunit uids: selectOrganisationUnit: ["uid","uid2"]
+  or ``removeOrganisationUnitTreeByLevel`` (needs a level attribute, like level:3).
+  Examples:
+    {
+      "selectDepartament": "All",
+      "selectMetadataType": ["organisationUnits"],
+      "selectOrganisationUnit": [ "hmZE3mVAZFf", "G3thRWUQAX9", "HfVjCurKxh2", "seHJdofSPcM" ],
+      "action": "removeOrganisationUnitTree"
+    },
+    {
+      "selectDepartament": "All",
+      "selectMetadataType": ["organisationUnits"],
+      "level": 3,
+      "action": "removeOrganisationUnitTreeByLevel"
+    }
+  To anonymizeData you should use the action "anonymizeData" and could add the following params
+    {
+      "selectDepartament": "NTD",
+      "selectMetadataType": ["trackerPrograms"],
+      "anonymizePhone": true,
+      "anonymizeMail": true,
+      "anonymizeOrgUnit": true,
+      "anonymizeCoordinates": true,
+      "selectTrackedEntityAttributes": ["oTvXfEywjT3", "n8E6WIyAwcC", "DwZNiXy5Daz", "FHw1NKy0PWY", "eQtZaLIO3XU",
+        "na3ZJRtjpGH", "HkBG3DVELBM", "sKBh0kazOCk", "AAkZm4ZxFw7", "ENRjVGxVL6l", "aBaYLJryaMr", "iy884aJfYTc"],
+      "action": "anonymizeData"
+    },
+    {
+      "selectDepartament": "HWF",
+      "selectMetadataType": ["dataSets"],
+      "action": "anonymizeData"
+    },
+  To anonimize users except some of them, you should fill the follow rule:
+     {
+      "selectDepartament": "ALL",
+      "selectAdminUser": "newadmin",
+      "excludeUsernames": [
+        "oldadmin", "oldadmin2"
+      ],
+      "selectOldAdminUser": "oldadmin",
+      "action": "anonymizeUsers"
+      }
+
   to perform on them (``activate`` to activate them, ``deleteOthers``
   to keep them in exclusive, ``addRoles`` to specify a list of extra
   roles to give, or ``addRolesFromTemplate`` to give a reference
@@ -204,8 +285,20 @@ permissions to:
 
 * Access the running dhis2 instance thru the ``url``, ``username`` and
   ``password`` present in the ``api_local`` section, and have
-  permissions to change the users.
+  permissions to change the users. Using --api-local-username,
+  --api-local-password params
 
 In any case, it does not assume permissions to:
 
 * Delete and create databases.
+
+Api versions
+~~~~~~~~~~~~~~~~
+
+You can filter vi api version in the preprocess or proprocess, for example
+adding in the config file:
+
+  "pre_api": "2.36",
+  "post_api": "2.34",
+
+or adding as param pre-api/post-api apiversion
