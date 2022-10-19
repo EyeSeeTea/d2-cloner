@@ -40,7 +40,7 @@ DELETE FROM messageconversation;
 
 
 def generate_delete_event_rules(event_program, data_elements, org_units,
-                                org_unit_descendants, all_uid, f, preprocess_api_version):
+                                org_unit_descendants, all_uid, f):
     write(f, "--remove events\n")
     sql_all = convert_to_sql_format(all_uid)
     sql_event_program = convert_to_sql_format(event_program)
@@ -89,7 +89,7 @@ def generate_delete_event_rules(event_program, data_elements, org_units,
 
 
 def generate_delete_tracker_rules(trackers, data_elements, org_units, org_unit_descendants,
-                                  all_uid, f, preprocess_api_version):
+                                  all_uid, f):
     write(f, "--remove trackers \n")
     sql_all = convert_to_sql_format(all_uid)
     sql_trackers = convert_to_sql_format(trackers)
@@ -320,7 +320,7 @@ def generate_delete_org_unit_tree_rules(orgunits, f):
 
 
 def generate_delete_datasets_rules(datasets, data_elements, org_units,
-                                   org_unit_descendants, all_uid, f, preprocess_api_version):
+                                   org_unit_descendants, all_uid, f):
     write(f, "--remove datasets" + "\n")
     sql_all = convert_to_sql_format(all_uid)
     sql_datasets = convert_to_sql_format(datasets)
@@ -371,7 +371,7 @@ def generate_delete_datasets_rules(datasets, data_elements, org_units,
         write(f, sql_query + "\n")
 
 
-def delete_all_event_programs(programs, f, preprocess_api_version):
+def delete_all_event_programs(programs, f):
     programs = convert_to_sql_format(programs)
     write(f, """
 --remove all events
@@ -396,7 +396,7 @@ where p.uid in {programs});
 """.format(programs=programs))
 
 
-def delete_all_data_sets(datasets, f, preprocess_api_version):
+def delete_all_data_sets(datasets, f):
     datasets = convert_to_sql_format(datasets)
     write(f, """
 --remove all datasets
@@ -411,7 +411,7 @@ where datasetid in (select datasetid from dataset where uid in {datasets}));
     pass
 
 
-def delete_all_tracker_programs(trackers, f, preprocess_api_version):
+def delete_all_tracker_programs(trackers, f):
     trackers = convert_to_sql_format(trackers)
     write(f, """
 --remove all tracker
@@ -474,7 +474,7 @@ def write(f, text):
 
 def generate_anonymize_datasets_rules(dataset_uids, org_units, data_elements,
                                       anonimize_org_units, anonimize_phone, anonimize_mail,
-                                      anonimize_coordinate, all_uid, f, preprocess_api_version):
+                                      anonimize_coordinate, all_uid, f):
     write(f, "--anonymize datasets\n")
     sql_all = convert_to_sql_format(all_uid)
     sql_datasets_uids = convert_to_sql_format(dataset_uids)
@@ -562,7 +562,7 @@ and dataelementid in ({where}));
 
 def generate_anonymize_event_rules(event_program, organisationunits, data_elements,
                                    anonimize_org_units, anonimize_phone, anonimize_mail,
-                                   anonimize_coordinate, all_uid, f, preprocess_api_version):
+                                   anonimize_coordinate, all_uid, f):
     write(f, "--anonymize events\n")
     if event_program != "":
         sql_event_program = convert_to_sql_format(event_program)
@@ -656,7 +656,7 @@ programstagedataelement psde ON psde.programstageid = ps.programstageid WHERE  p
 
 def generate_anonymize_tracker_rules(trackers, tracker_attribute_values, organisationunits, data_elements,
                                      anonimize_org_units, anonimize_phone, anonimize_mail,
-                                     anonimize_coordinate, all_uid, f, preprocess_api_version):
+                                     anonimize_coordinate, all_uid, f):
     write(f, "--anonymize trackers \n")
     if trackers != "":
         sql_trackers = convert_to_sql_format(trackers)
