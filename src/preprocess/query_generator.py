@@ -468,7 +468,7 @@ drop view tei_to_remove ;
 
 
 def write(f, text):
-    print(text)
+    #print(text)
     f.write(text)
 
 
