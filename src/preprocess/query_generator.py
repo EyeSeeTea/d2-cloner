@@ -193,7 +193,7 @@ DELETE FROM datavalueaudit where organisationunitid in (select organisationuniti
 
 DELETE FROM trackedentityattributevalue      WHERE trackedentityinstanceid IN (SELECT * FROM rm_trackedentityinstance);
 DELETE FROM trackedentityattributevalueaudit WHERE trackedentityinstanceid IN (SELECT * FROM rm_trackedentityinstance);
-DELETE FROM trackedentityprogramowner        WHERE organisationunitid      IN (SELECT * FROM orgs);
+DELETE FROM trackedentityprogramowner        WHERE organisationunitid      IN (SELECT * FROM orgUnitsToDelete);
 DELETE FROM trackedentityinstance            WHERE trackedentityinstanceid IN (SELECT * FROM rm_trackedentityinstance);
 
 DELETE FROM interpretationuseraccesses       WHERE interpretationid        IN (SELECT * FROM rm_interpretation);
@@ -240,15 +240,49 @@ DROP MATERIALIZED VIEW if exists orgUnitsToDelete CASCADE;
     """)
 
 
-def generate_delete_org_unit_level_rules(level, f):
-    write(f, """
---remove organisationUnits -- org unit
-DROP MATERIALIZED VIEW if exists orgUnitsToDelete CASCADE;
-CREATE MATERIALIZED VIEW orgUnitsToDelete AS select organisationunitid from organisationunit where hierarchylevel > {level} ;\n
-    """.format(level=level))
+def delete_org_units(f):
     create_org_units_to_remove_views_and_indexes(f)
     delete_org_unit_data_and_views(f)
 
+def start_ou_materialized_view(f):
+    write(f, """
+    --remove organisationUnits -- org unit
+    DROP MATERIALIZED VIEW if exists orgUnitsToDelete CASCADE;
+    """)
+
+    write(f, """
+    --remove organisationUnits -- org unit
+    CREATE MATERIALIZED VIEW orgUnitsToDelete AS (select distinct organisationunitid from organisationunit where \n
+    """)
+
+
+def write_or(f):
+    write(f,
+          " or \n")
+
+
+def write_end_of_sentence(f):
+    write(f," );\n")
+
+
+def generate_delete_org_unit_tree_rules(orgunits, f):
+    path_query = ""
+    for org_unit in orgunits:
+        path_query = " (path like '%{}%' and uid <> '{}') or ".format(org_unit, org_unit)
+    path_query = path_query[:-3]
+
+    write(f,
+          " ( organisationunitid in (select distinct organisationunitid from organisationunit {} ) )\n".format(
+              path_query))
+
+
+def generate_delete_org_unit_level_by_parent_rules(level, parent_org_unit, f):
+    write(f, """ ( hierarchylevel > {level} {parent} ) \n
+            """.format(level=level, parent=convert_to_possible_paths_in_sql_format(parent_org_unit)))
+
+
+def generate_delete_org_unit_level_rules(level, f):
+    write(f, """ ( hierarchylevel > {level} ) \n """.format(level=level))
 
 def create_org_units_to_remove_views_and_indexes(f):
     write(f, """
@@ -301,22 +335,6 @@ CREATE INDEX IF NOT EXISTS idx_programstageinstancecomments_programstageinstance
 CREATE INDEX IF NOT EXISTS idx_programstagenotification_psi                        ON programnotificationinstance              (programstageinstanceid); 
 CREATE INDEX IF NOT EXISTS idx_relationshipitem_programstageinstanceid             ON relationshipitem                         (programstageinstanceid); 
 CREATE INDEX IF NOT EXISTS idx_s9i10v8xg7d22hlhmesia51l                            ON programstageinstance_messageconversation (programstageinstanceid); """)
-
-
-def generate_delete_org_unit_tree_rules(orgunits, f):
-    write(f, """
-    --remove organisationUnits -- org unit
-    DROP MATERIALIZED VIEW if exists orgUnitsToDelete CASCADE;
-    """)
-    path_query = ""
-    for org_unit in orgunits:
-        path_query = " (path like '%{}%' and uid <> '{}') or ".format(org_unit, org_unit)
-    path_query = path_query[:-3]
-    write(f,
-          "CREATE MATERIALIZED VIEW orgUnitsToDelete AS select distinct organisationunitid from organisationunit where {} ;\n".format(
-              path_query))
-    create_org_units_to_remove_views_and_indexes(f)
-    delete_org_unit_data_and_views(f)
 
 
 def generate_delete_datasets_rules(datasets, data_elements, org_units,
@@ -853,3 +871,11 @@ def convert_to_sql_format(list_uid):
     if len(list_uid) == 0:
         return ""
     return "(" + ", ".join(["'{}'".format(uid) for uid in list_uid]) + ")"
+
+
+def convert_to_possible_paths_in_sql_format(list_uid):
+    if len(list_uid) == 0:
+        return ""
+    return "and ( path like " + " or path like  " \
+                                "".join(["'%{}%'".format(uid) for uid in list_uid]) + \
+           ")".replace("(or"," ")
