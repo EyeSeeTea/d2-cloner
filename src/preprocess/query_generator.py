@@ -272,7 +272,7 @@ def generate_delete_org_unit_tree_rules(orgunits, f):
     path_query = path_query[:-3]
 
     write(f,
-          " ( organisationunitid in (select distinct organisationunitid from organisationunit {} ) )\n".format(
+          " (  {}  )\n".format(
               path_query))
 
 
