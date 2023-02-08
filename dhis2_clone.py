@@ -63,6 +63,7 @@ def main():
         log("No detected preprocessing rules, skipping.")
 
     if args.post_sql:
+        log("Running postsql...")
         run_sql(cfg, args)
 
     if args.post_clone_scripts:
@@ -74,7 +75,8 @@ def main():
         if args.no_postprocess:
             log("No postprocessing done, as requested.")
         elif "api_local_url" in cfg and "postprocess" in cfg:
-            postprocess.postprocess(cfg["api_local_url"], args.api_local_username, args.api_local_password, cfg["postprocess"], import_dir, post_api_version)
+            timeout = cfg["timeout"] if "timeout" in cfg else 900
+            postprocess.postprocess(cfg["api_local_url"], args.api_local_username, args.api_local_password, cfg["postprocess"], import_dir, timeout, post_api_version)
         else:
             log("No postprocessing done.")
 
@@ -495,6 +497,7 @@ def empty_db(db_local):
 def run_sql(cfg, args):
     if is_local_tomcat(cfg):
         for fname in args.post_sql:
+            log("Running postsql...  "+fname)
             run("psql -d '%s' < '%s'" % (args.db_local, fname))
 
 

@@ -16,6 +16,7 @@
   "db_remote": "postgresql://user:pass@server_remote:5432/db",
   "war_remote": "ROOT.war",
   "api_local_url": "http://localhost:8080/d2",
+  "timeout": 900,
   "departments": {
     "DEP1": {
       "dataSets": [
@@ -41,7 +42,12 @@
       "trackerPrograms": [
         "q49tR53YqUX"
       ]
-    }
+    },
+      "ALL": {
+        "dataSets": ["%"],
+        "eventPrograms": ["%"],
+        "trackerPrograms": ["%"]
+      }
   },
   "preprocess": [
     {
@@ -101,6 +107,12 @@
         "Xr8zZSxYAXC"
       ],
       "action": "removeData"
+    },
+    {
+      "selectDepartament": "All",
+      "selectMetadataType": ["organisationUnits"],
+      "selectOrganisationUnit": [ "hmZE3mVAZFf", "G3thRWUQAX9", "HfVjCurKxh2", "seHJdofSPcM" ],
+      "action": "removeOrganisationUnitTree"
     }
   ],
   "postprocess": [

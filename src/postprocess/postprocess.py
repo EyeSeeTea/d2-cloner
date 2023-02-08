@@ -20,7 +20,7 @@ from src.common.debug import debug
 from src.postprocess import apirequests
 
 
-def postprocess(url, username, password, entries, import_dir, api_version):
+def postprocess(url, username, password, entries, import_dir, timeout, api_version):
     """Execute actions on the appropriate users as specified in entries.
 
     The entries structure looks like:
@@ -47,7 +47,7 @@ def postprocess(url, username, password, entries, import_dir, api_version):
 
     api = apirequests.init_api(url, username, password)
 
-    apirequests.wait_for_server(api)
+    apirequests.wait_for_server(api, timeout)
 
     for entry in [expand_url(x) for x in entries]:
         execute(api, entry, import_dir, api_version)
