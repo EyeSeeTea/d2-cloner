@@ -46,7 +46,7 @@ Setup
 -----
 
   $ sudo apt install pip3
-  $ pip3 install psycopg2-binary jsonobject
+  $ pip install -r requirements.txt
 
 Usage
 -----
