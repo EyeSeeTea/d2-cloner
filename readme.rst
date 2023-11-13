@@ -18,7 +18,7 @@ The steps are:
 * Start the tomcat/d2-docker again.
 
 Any step can be individually switched off (``--no-backups``,
-``--no-webapps``, ``--no-db``, ``--manual-restart``).
+``--no-webapps``, ``--no-db``, ``--manual-restart``, ``--use-backup``).
 
 Also, it can run some sql scripts on the database before starting the
 server again (``--post-sql``). This is useful in several
@@ -76,6 +76,7 @@ optional arguments:
                         or local_docker_post_clone_scripts_dir for local docker.
   --update-config       update the config file
   --no-color            don't use colored output
+  --use-backup          Path to remote backup file to use insted of making a remote pg_dump
 
 
 Configuration
@@ -257,6 +258,7 @@ have a local installation of:
 * ``pg_dump`` (used to make a backup of the local database, and a dump
   of the remote one -- so this one needs to exist on ``hostname_remote``
   too).
+* ``zcat`` (used to read remote backup).
 
 User permissions
 ~~~~~~~~~~~~~~~~
@@ -278,6 +280,8 @@ The program assumes that it runs with permissions to:
   ``ssh``.
 * Have read and write access to the local database thru the ``db_local``
   conninfo string, and read access to the remote one thru ``db_remote``.
+
+* Have read access to the remote backup file if ``--use-backup`` is used.
 
 If it runs any kind of postprocessing (by having an ``api_local`` and
 ``postprocess`` section in the configuration file), it will also need
