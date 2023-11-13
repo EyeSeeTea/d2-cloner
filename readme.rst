@@ -76,7 +76,7 @@ optional arguments:
                         or local_docker_post_clone_scripts_dir for local docker.
   --update-config       update the config file
   --no-color            don't use colored output
-  --use-backup          Path to remote backup file to use insted of making a remote pg_dump
+  --use-backup          Path to remote backup file to use instead of making a remote pg_dump
 
 
 Configuration
@@ -127,10 +127,10 @@ The sections in the configuration file are:
   username whose roles we want to add). Instead of a block, you can
   give a url, and the blocks contained in that url will be added to
   the list of blocks.
-* ``preprocess``: list of blocks, each containing actions for each departament (specified in
+* ``preprocess``: list of blocks, each containing actions for each department (specified in
   ``departments``) All the rules will create a sql file to execute after launch tomcat.
-  In the case of edit a departament metadata, you should include the metadata type in ``selectMetadataType``
-  the departament ``selectDepartament``, and the ``action``, for example anonymizeData or deleteData
+  In the case of edit a department metadata, you should include the metadata type in ``selectMetadataType``
+  the department ``selectDepartament``, and the ``action``, for example anonymizeData or deleteData
   and the list of metadata: selectDatasets, selectTrackedEntityAttributes, selectDataElements,
   Valid options: dataSets, programs, trackerPrograms. Format: ["dataSets"]
   Examples:
