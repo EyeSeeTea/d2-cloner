@@ -174,10 +174,11 @@ def get_args():
 
 
 def check_use_backup(remote, path):
-    ret = os.system('ssh %s [ -f "%s" ]' % (remote, path))
-    if ret != 0:
+    status = os.system('ssh %s [ -f "%s" ]' % (remote, path))
+    exit_code = os.waitstatus_to_exitcode(status)
+    if exit_code != 0:
         print("ERROR: remote backup file %s does not exists." % (path))
-        sys.exit(ret)
+        sys.exit(exit_code)
 
 
 def get_config(fname, update):
