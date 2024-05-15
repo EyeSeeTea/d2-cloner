@@ -469,11 +469,13 @@ in ( select psi.programstageinstanceid  from programstageinstance psi
 inner join programstage ps on ps.programstageid=psi.programstageid 
 inner join program p on p.programid=ps.programid 
 where p.uid in {trackers});""".format(trackers=trackers))
-
     write(f, """
 create view tei_to_remove as select trackedentityinstanceid "teiid"
 from programinstance where programid in (select programid from program where uid in {trackers});
 """.format(trackers=trackers))
+    write(f,
+          "DELETE FROM programinstancecomments where programid in (select programid from program where uid in {trackers});\n".format(
+              trackers=trackers))
     write(f,
           "DELETE FROM programinstance where programid in (select programid from program where uid in {trackers});\n".format(
               trackers=trackers))
