@@ -444,6 +444,10 @@ where datasetid in (select datasetid from dataset where uid in {datasets}));
 def delete_all_tracker_programs(trackers, f):
     trackers = convert_to_sql_format(trackers)
     write(f, """
+create MATERIALIZED view tei_to_remove as select trackedentityinstanceid "teiid"
+from programinstance where programid in (select programid from program where uid in {trackers});
+""".format(trackers=trackers))
+    write(f, """
 --remove all tracker
 DELETE FROM trackedentitydatavalueaudit where programstageinstanceid 
 in ( select psi.programstageinstanceid  from programstageinstance psi 
@@ -481,10 +485,6 @@ in ( select psi.programstageinstanceid  from programstageinstance psi
 inner join programstage ps on ps.programstageid=psi.programstageid 
 inner join program p on p.programid=ps.programid 
 where p.uid in {trackers});""".format(trackers=trackers))
-    write(f, """
-create view tei_to_remove as select trackedentityinstanceid "teiid"
-from programinstance where programid in (select programid from program where uid in {trackers});
-""".format(trackers=trackers))
     write(f,
           "DELETE FROM programinstancecomments where programinstanceid in (select programinstanceid from programinstance where programid in (select programid from program where uid in {trackers}));\n".format(
               trackers=trackers))
