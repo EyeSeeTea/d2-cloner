@@ -52,24 +52,27 @@ def generate_delete_event_rules(event_program, data_elements, org_units,
         has_rule = True
         sql_query = " DELETE FROM programstageinstance where programstageid in " \
                     " (select programstageid from programstage where programid in " \
-                    " (select programid from program where uid in {})) and".format(event_program)
+                    " (select programid from program where uid in {})) and".format(
+                        event_program)
     else:
         sql_query = " DELETE FROM programstageinstance where programstageid in " \
                     " (select programstageid from programstage where programid in " \
-                    " (select programid from program where uid in {})) and".format(sql_all)
+                    " (select programid from program where uid in {})) and".format(
+                        sql_all)
     if sql_data_elements != "":
         has_rule = True
         sql_data_elements = sql_data_elements.replace("(", "").replace(")", "")
         sql_query = " update programstageinstance set eventdatavalues = eventdatavalues - {} " \
-                    " where eventdatavalues ? {} and ".format(sql_data_elements, sql_data_elements)
+                    " where eventdatavalues ? {} and ".format(
+                        sql_data_elements, sql_data_elements)
         if sql_event_program != "":
             sql_query = sql_query + " programstageid in (select programstageid from programstage " \
                                     " where programid in (select programid from program where uid in {})) and".format(
-                event_program)
+                                        event_program)
         else:
             sql_query = sql_query + " programstageid in (select programstageid from programstage " \
                                     " where programid in (select programid from program where uid in {})) and".format(
-                sql_all)
+                                        sql_all)
     if sql_org_units != "":
         has_rule = True
         sql_query = sql_query + " organisationunitid in (select organisationunitid from organisationunit " \
@@ -78,7 +81,8 @@ def generate_delete_event_rules(event_program, data_elements, org_units,
         has_rule = True
         sql_query = sql_query + " organisationunitid in (select organisationunitid from organisationunit " \
                                 " where path like (select concat(path,'/%') from organisationunit " \
-                                " where uid in {})) and".format(sql_org_unit_descendants)
+                                " where uid in {})) and".format(
+                                    sql_org_unit_descendants)
 
     if not has_rule:
         delete_all_event_programs(all_uid, f)
@@ -100,7 +104,8 @@ def generate_delete_tracker_rules(trackers, data_elements, org_units, org_unit_d
     has_rule = False
     sql_query = "DELETE FROM programstageinstance where programstageid in " \
                 " (select programstageid from programstage where programid in " \
-                " (select programid from program where uid in {})) ".format(sql_all)
+                " (select programid from program where uid in {})) ".format(
+                    sql_all)
     if sql_data_elements != "":
         has_rule = True
         sql_data_elements = sql_data_elements.replace("(", "").replace(")", "")
@@ -109,15 +114,18 @@ def generate_delete_tracker_rules(trackers, data_elements, org_units, org_unit_d
 
         if sql_trackers != "":
             sql_query = sql_query + " programstageid in (select programstageid from programstage where programid in " \
-                                    " (select programid from program where uid in {})) and".format(sql_trackers)
+                                    " (select programid from program where uid in {})) and".format(
+                                        sql_trackers)
         else:
             sql_query = sql_query + " programstageid in (select programstageid from programstage where programid in " \
-                                    " (select programid from program where uid in {})) and".format(sql_all)
+                                    " (select programid from program where uid in {})) and".format(
+                                        sql_all)
 
     elif sql_trackers != "":
         has_rule = True
         sql_query = sql_query + " and dataelementid in (select dataelementid from datasetelement where datasetid in " \
-                                " ( select datasetid from dataset where uid in {})) ".format(sql_trackers)
+                                " ( select datasetid from dataset where uid in {})) ".format(
+                                    sql_trackers)
     if sql_org_units != "":
         has_rule = True
         sql_query = sql_query + "  and organisationunitid in (select organisationunitid from organisationunit where " \
@@ -126,7 +134,7 @@ def generate_delete_tracker_rules(trackers, data_elements, org_units, org_unit_d
         has_rule = True
         sql_query = sql_query + " and organisationunitid in (select organisationunitid from organisationunit where " \
                                 " path like (select concat(path,'/%') from organisationunit where uid in {})) and".format(
-            sql_org_unit_descendants)
+                                    sql_org_unit_descendants)
 
     if not has_rule:
         delete_all_tracker_programs(all_uid, f)
@@ -140,7 +148,8 @@ def generate_anonymize_user_queries(new_admin, old_admin, exclude_users, f, prep
     write(f, "--anonimize users" + "\n")
     exclude_users_query = ""
     if len(exclude_users) > 0:
-        exclude_users_query = " username not in {} and ".format(convert_to_sql_format(exclude_users))
+        exclude_users_query = " username not in {} and ".format(
+            convert_to_sql_format(exclude_users))
 
     write(f, " DELETE FROM userrolemembers where userid=(select userid from users where username = '{}'); \n".format(
         new_admin))
@@ -150,8 +159,8 @@ def generate_anonymize_user_queries(new_admin, old_admin, exclude_users, f, prep
     if preprocess_api_version == "36":
         write(f, " update users set password ='-', restoretoken='-', "
                  " disabled='t',secret='-', ldapid=null, openid=null where {exclude} username not like '{new}'; \n".format(
-            exclude=exclude_users_query,
-            new=new_admin))
+                     exclude=exclude_users_query,
+                     new=new_admin))
         write(f, """
      update userinfo  set surname='-',firstname='-',email='',phonenumber='',
      jobtitle='',introduction='',gender='',birthday=null,nationality='',employer='',
@@ -244,6 +253,7 @@ def delete_org_units(f):
     create_org_units_to_remove_views_and_indexes(f)
     delete_org_unit_data_and_views(f)
 
+
 def start_ou_materialized_view(f):
     write(f, """
     --remove organisationUnits -- org unit
@@ -262,13 +272,14 @@ def write_or(f):
 
 
 def write_end_of_sentence(f):
-    write(f," );\n")
+    write(f, " );\n")
 
 
 def generate_delete_org_unit_tree_rules(orgunits, f):
     path_query = ""
     for org_unit in orgunits:
-        path_query = " (path like '%{}%' and uid <> '{}') or ".format(org_unit, org_unit)
+        path_query = " (path like '%{}%' and uid <> '{}') or ".format(
+            org_unit, org_unit)
     path_query = path_query[:-3]
 
     write(f,
@@ -283,6 +294,7 @@ def generate_delete_org_unit_level_by_parent_rules(level, parent_org_unit, f):
 
 def generate_delete_org_unit_level_rules(level, f):
     write(f, """ ( hierarchylevel > {level} ) \n """.format(level=level))
+
 
 def create_org_units_to_remove_views_and_indexes(f):
     write(f, """
@@ -432,6 +444,10 @@ where datasetid in (select datasetid from dataset where uid in {datasets}));
 def delete_all_tracker_programs(trackers, f):
     trackers = convert_to_sql_format(trackers)
     write(f, """
+create MATERIALIZED view tei_to_remove as select trackedentityinstanceid "teiid"
+from programinstance where programid in (select programid from program where uid in {trackers});
+""".format(trackers=trackers))
+    write(f, """
 --remove all tracker
 DELETE FROM trackedentitydatavalueaudit where programstageinstanceid 
 in ( select psi.programstageinstanceid  from programstageinstance psi 
@@ -469,11 +485,9 @@ in ( select psi.programstageinstanceid  from programstageinstance psi
 inner join programstage ps on ps.programstageid=psi.programstageid 
 inner join program p on p.programid=ps.programid 
 where p.uid in {trackers});""".format(trackers=trackers))
-
-    write(f, """
-create view tei_to_remove as select trackedentityinstanceid "teiid"
-from programinstance where programid in (select programid from program where uid in {trackers});
-""".format(trackers=trackers))
+    write(f,
+          "DELETE FROM programinstancecomments where programinstanceid in (select programinstanceid from programinstance where programid in (select programid from program where uid in {trackers}));\n".format(
+              trackers=trackers))
     write(f,
           "DELETE FROM programinstance where programid in (select programid from program where uid in {trackers});\n".format(
               trackers=trackers))
@@ -486,7 +500,7 @@ drop view tei_to_remove ;
 
 
 def write(f, text):
-    #print(text)
+    # print(text)
     f.write(text)
 
 
@@ -681,7 +695,8 @@ def generate_anonymize_tracker_rules(trackers, tracker_attribute_values, organis
     else:
         sql_trackers = convert_to_sql_format(all_uid)
     sql_organisationunits = convert_to_sql_format(organisationunits)
-    sql_tracker_entity_attributes = convert_to_sql_format(tracker_attribute_values)
+    sql_tracker_entity_attributes = convert_to_sql_format(
+        tracker_attribute_values)
     sql_data_elements = convert_to_sql_format(data_elements)
 
     where = """ 
@@ -878,4 +893,4 @@ def convert_to_possible_paths_in_sql_format(list_uid):
         return ""
     return "and ( path like " + " or path like  " \
                                 "".join(["'%{}%'".format(uid) for uid in list_uid]) + \
-           ")".replace("(or"," ")
+           ")".replace("(or", " ")
