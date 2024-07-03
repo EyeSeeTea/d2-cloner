@@ -31,6 +31,9 @@ def main():
 
 
     cfg = get_config(args.config, args.update_config)
+    
+    if args.use_backup:
+        check_use_backup(cfg["hostname_remote"], args.use_backup)
 
     pre_api_version, post_api_version = get_api_version(args, cfg)
 
@@ -166,7 +169,16 @@ def get_args():
     add("--no-color", action="store_true", help="don't use colored output")
     add("--start-transformed", action="store_true", help="Override d2-docker image for start")
     add("--stop-transformed", action="store_true", help="Override d2-docker image for stop")
+    add("--use-backup", type=str, help="Path to remote backup file to use insted of making a remote pg_dump")
     return parser.parse_args()
+
+
+def check_use_backup(remote, path):
+    status = os.system('ssh %s [ -f "%s" ]' % (remote, path))
+    exit_code = os.waitstatus_to_exitcode(status)
+    if exit_code != 0:
+        print("ERROR: remote backup file %s does not exists." % (path))
+        sys.exit(exit_code)
 
 
 def get_config(fname, update):
@@ -409,10 +421,16 @@ def get_db(cfg, args):
 
     if is_local_tomcat(cfg):
         db_remote = args.db_remote
-        dump = "pg_dump -U dhis -d '%s' --no-owner %s" % (db_remote, exclude)
+        
+        if args.use_backup:          
+            dump = "zcat '%s'" % (args.use_backup)
+        else:  
+            dump = "pg_dump -U dhis -d '%s' --no-owner %s" % (db_remote, exclude)
+            
         db_local = args.db_local
         empty_db(db_local)
         cmd = "ssh %s %s | psql -d '%s'" % (cfg["hostname_remote"], dump, db_local)
+    
         run(cmd + " 2>&1 | paste - - - | uniq -c")  # run with more compact output
     elif is_local_d2docker(cfg):
         db_remote = args.db_remote
