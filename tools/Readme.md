@@ -16,22 +16,24 @@ This Python script simplifies the management of department-related data in DHIS2
 
 To download data and create a `.csv` file, use the following command:
 
-```
+```bash
 python departament_list_editor.py --user user --password $'password' --url $'http://localhost:8080' --departments-file config.json
 ```
 
 This command downloads all programs and datasets for departments, creating a .csv file for easy management, adding the department to the already identified metadata in the config file. If --departments-file is not specified, it creates a list for all departments without know department.
 
-Convert CSV to JSON
+### Convert CSV to JSON
+
 To convert a .csv file to .json format, use the following command with a csv file:
 
-```
+```bash
 python departament_list_editor.py --convert departments_20240319.csv
 ```
 
-Convert JSON to CSV
+### Convert JSON to CSV
+
 To convert a .json file back to .csv format, use the following command with a valid json file:
 
-```
+```bash
 python departament_list_editor.py --convert config.json
 ```
