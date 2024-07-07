@@ -1,13 +1,9 @@
-from datetime import datetime
-import requests
 import csv
-import base64
-
-from requests.auth import HTTPBasicAuth
-
-import argparse
 import json
-import csv
+import base64
+import requests
+import argparse
+from datetime import datetime
 
 
 def convertCSV2JSON(csv_path, json_path):
@@ -178,10 +174,10 @@ def main():
             convertJSON2CSV(args.convert, output_filename+".csv")
     else:
         validate_download_args(args)   
-        creedentials = f"{args.user}:{args.password}"
-        creedentials = base64.b64encode(creedentials.encode()).decode()
+        credentials = f"{args.user}:{args.password}"
+        credentials = base64.b64encode(credentials.encode()).decode()
         headers = {
-            'Authorization': f'Basic {creedentials}'
+            'Authorization': f'Basic {credentials}'
         }
         server_url = args.url
         metadata = pull_metadata(server_url, headers), 
