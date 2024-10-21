@@ -322,7 +322,7 @@ def start_tomcat(cfg, args):
         deploy_path = cfg.get("local_docker_deploy_path", None)
         server_xml_path = cfg.get("local_docker_server_xml", None)
         dhis_conf_path = cfg.get("local_docker_dhis_conf", None)
-        temporal_folder = cfg.get("docker_temporal_folder", "")
+        temporal_folder = cfg.get("docker_temporal_folder", None)
         if post_sql and (len(args.post_sql) != 1 or not os.path.isdir(post_sql)):
             log("--post-sql for d2-docker requires a single directory")
             return
