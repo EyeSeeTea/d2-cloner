@@ -116,6 +116,7 @@ The sections in the configuration file are:
   example, if it is ``dhis2-demo.war``, the webserver will respond at
   ``https://.../dhis2-demo``).
 * ``war_remote``: name of the remote war file.
+* ``docker_temporal_folder``: add a custom temporal folder for docker creation
 * ``api_local``: if some post-processing steps are applied, this
   section needs to define as params the username and password ``url``, ``username`` and ``password`` to
   connect to the running DHIS2 system after the cloning.

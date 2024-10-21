@@ -304,7 +304,6 @@ def is_local_d2docker(cfg):
     server_type = cfg.get("local_type", "tomcat")
     return server_type == "d2-docker"
 
-
 def get_local_docker_image(cfg, args, action):
     if action == "start" and args.start_transformed:
         return cfg["local_docker_image_start_transformed"]
@@ -323,6 +322,7 @@ def start_tomcat(cfg, args):
         deploy_path = cfg.get("local_docker_deploy_path", None)
         server_xml_path = cfg.get("local_docker_server_xml", None)
         dhis_conf_path = cfg.get("local_docker_dhis_conf", None)
+        temporal_folder = cfg.get("docker_temporal_folder", "")
         if post_sql and (len(args.post_sql) != 1 or not os.path.isdir(post_sql)):
             log("--post-sql for d2-docker requires a single directory")
             return
@@ -339,6 +339,7 @@ def start_tomcat(cfg, args):
                 (("--run-sql '%s'" % post_sql) if post_sql else ""),
                 (("--run-scripts '%s'" % post_scripts_dir) if post_scripts_dir else ""),
                 (("--auth '%s'" % (args.api_local_username + ":" + args.api_local_password)) if api_url else "")
+                (("--temp-directory '%s'" % temporal_folder) if temporal_folder else "")
             )
         )
 

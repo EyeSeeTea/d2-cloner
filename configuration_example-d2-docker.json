@@ -10,6 +10,7 @@
   "backup_name": "TRAINING",
   "server_dir_local": "/home/user/server",
   "server_dir_remote": "/home/user/server",
+  "docker_temporal_folder": "/temporal/path",
   "hostname_remote": "prod",
   "pre_api": "2.36",
   "post_api": "2.36",
