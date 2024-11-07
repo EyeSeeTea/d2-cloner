@@ -328,9 +328,9 @@ def start_tomcat(cfg, args):
             return
         post_scripts_dir = cfg.get("local_docker_post_clone_scripts_dir", None)
         api_url = cfg["api_local_url"]
-
-        run(
-            "d2-docker start {} --port={} --detach {} {} {} {} {}".format(
+        print(
+                "d2-docker {} --log-level DEBUG start {} --port={} --detach {} {} {} {} {} {}".format(
+                (("--temp-directory '%s'" % temporal_folder) if temporal_folder else ""),
                 get_local_docker_image(cfg, args, "start"),
                 cfg["local_docker_port"],
                 (("--deploy-path '%s'" % deploy_path) if deploy_path else ""),
@@ -339,7 +339,19 @@ def start_tomcat(cfg, args):
                 (("--run-sql '%s'" % post_sql) if post_sql else ""),
                 (("--run-scripts '%s'" % post_scripts_dir) if post_scripts_dir else ""),
                 (("--auth '%s'" % (args.api_local_username + ":" + args.api_local_password)) if api_url else "")
-                (("--temp-directory '%s'" % temporal_folder) if temporal_folder else "")
+                )
+        )
+        run(
+            "d2-docker {} --log-level DEBUG start {} --port={} --detach {} {} {} {} {} {}".format(
+                (("--temp-directory '%s'" % temporal_folder) if temporal_folder else ""),
+                get_local_docker_image(cfg, args, "start"),
+                cfg["local_docker_port"],
+                (("--deploy-path '%s'" % deploy_path) if deploy_path else ""),
+                (("--tomcat-server-xml '%s'" % server_xml_path) if server_xml_path else ""),
+                (("--dhis-conf '%s'" % dhis_conf_path) if dhis_conf_path else ""),
+                (("--run-sql '%s'" % post_sql) if post_sql else ""),
+                (("--run-scripts '%s'" % post_scripts_dir) if post_scripts_dir else ""),
+                (("--auth '%s'" % (args.api_local_username + ":" + args.api_local_password)) if api_url else "")
             )
         )
 
@@ -442,8 +454,21 @@ def get_db(cfg, args):
         apps_dir = os.path.join(dir_local, "files", "apps")
         documents_dir = os.path.join(dir_local, "files", "document")
         datavalues_dir = os.path.join(dir_local, "files", "dataValue")
+        temporal_folder = cfg.get("docker_temporal_folder", None)
+        print("temp folder:")
+        print(temporal_folder)
+        print("d2-docker {} create data {} --sql={} {} {} {}".format(
+                (("--temp-directory '%s'" % temporal_folder) if temporal_folder else ""),
+                get_local_docker_image(cfg, args, "stop"),
+                sql_path,
+                (("--apps-dir '%s'" % apps_dir) if os.path.isdir(apps_dir) else ""),
+                (("--documents-dir '%s'" % documents_dir) if os.path.isdir(documents_dir) else ""),
+                (("--datavalues-dir '%s'" % datavalues_dir) if os.path.isdir(datavalues_dir) else "")
+            )
+        )
         run(
-            "d2-docker create data {} --sql={} {} {} {}".format(
+            "d2-docker {} create data {} --sql={} {} {} {}".format(
+                (("--temp-directory '%s'" % temporal_folder) if temporal_folder else ""),
                 get_local_docker_image(cfg, args, "stop"),
                 sql_path,
                 (("--apps-dir '%s'" % apps_dir) if os.path.isdir(apps_dir) else ""),
