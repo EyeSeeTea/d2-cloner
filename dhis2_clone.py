@@ -29,9 +29,8 @@ def main():
     if args.no_color or not os.isatty(sys.stdout.fileno()):
         COLOR = False
 
-
     cfg = get_config(args.config, args.update_config)
-    
+
     if args.use_backup:
         check_use_backup(cfg["hostname_remote"], args.use_backup)
 
@@ -79,7 +78,8 @@ def main():
             log("No postprocessing done, as requested.")
         elif "api_local_url" in cfg and "postprocess" in cfg:
             timeout = cfg["timeout"] if "timeout" in cfg else 900
-            postprocess.postprocess(cfg["api_local_url"], args.api_local_username, args.api_local_password, cfg["postprocess"], import_dir, timeout, post_api_version)
+            postprocess.postprocess(cfg["api_local_url"], args.api_local_username,
+                                    args.api_local_password, cfg["postprocess"], import_dir, timeout, post_api_version)
         else:
             log("No postprocessing done.")
 
@@ -118,7 +118,7 @@ def get_api_version(args, cfg):
         post_api_version = args.post_api
         print("Loaded " + args.post_api + "api version for post api calls")
 
-    #param version have priority to config version.
+    # param version have priority to config version.
     if pre_api_version is None:
         pre_api_version = cfg["pre_api"]
     if post_api_version is None:
@@ -132,7 +132,8 @@ def add_preprocess_sql_file(args, cfg):
         args.post_sql.append(os.path.join(cfg["pre_sql_dir"], preprocess.get_file()))
     elif is_local_d2docker(cfg):
         if args.post_sql:
-            preprocess.move_file(os.path.join(cfg["pre_sql_dir"], preprocess.get_file()), os.path.join(args.post_sql[0], preprocess.get_file()))
+            preprocess.move_file(os.path.join(cfg["pre_sql_dir"], preprocess.get_file()),
+                                 os.path.join(args.post_sql[0], preprocess.get_file()))
         else:
             args.post_sql.append(cfg["pre_sql_dir"])
 
@@ -323,6 +324,7 @@ def start_tomcat(cfg, args):
         deploy_path = cfg.get("local_docker_deploy_path", None)
         server_xml_path = cfg.get("local_docker_server_xml", None)
         dhis_conf_path = cfg.get("local_docker_dhis_conf", None)
+        temporal_folder = cfg.get("docker_temporal_folder", None)
         if post_sql and (len(args.post_sql) != 1 or not os.path.isdir(post_sql)):
             log("--post-sql for d2-docker requires a single directory")
             return
@@ -330,7 +332,8 @@ def start_tomcat(cfg, args):
         api_url = cfg["api_local_url"]
 
         run(
-            "d2-docker start {} --port={} --detach {} {} {} {} {}".format(
+            "d2-docker {} start {} --port={} --detach {} {} {} {} {} {}".format(
+                (("--temp-directory '%s'" % temporal_folder) if temporal_folder else ""),
                 get_local_docker_image(cfg, args, "start"),
                 cfg["local_docker_port"],
                 (("--deploy-path '%s'" % deploy_path) if deploy_path else ""),
@@ -421,16 +424,16 @@ def get_db(cfg, args):
 
     if is_local_tomcat(cfg):
         db_remote = args.db_remote
-        
-        if args.use_backup:          
+
+        if args.use_backup:
             dump = "zcat '%s'" % (args.use_backup)
-        else:  
+        else:
             dump = "pg_dump -U dhis -d '%s' --no-owner %s" % (db_remote, exclude)
-            
+
         db_local = args.db_local
         empty_db(db_local)
         cmd = "ssh %s %s | psql -d '%s'" % (cfg["hostname_remote"], dump, db_local)
-    
+
         run(cmd + " 2>&1 | paste - - - | uniq -c")  # run with more compact output
     elif is_local_d2docker(cfg):
         db_remote = args.db_remote
@@ -441,8 +444,11 @@ def get_db(cfg, args):
         apps_dir = os.path.join(dir_local, "files", "apps")
         documents_dir = os.path.join(dir_local, "files", "document")
         datavalues_dir = os.path.join(dir_local, "files", "dataValue")
+        temporal_folder = cfg.get("docker_temporal_folder", None)
+
         run(
-            "d2-docker create data {} --sql={} {} {} {}".format(
+            "d2-docker {} create data {} --sql={} {} {} {}".format(
+                (("--temp-directory '%s'" % temporal_folder) if temporal_folder else ""),
                 get_local_docker_image(cfg, args, "stop"),
                 sql_path,
                 (("--apps-dir '%s'" % apps_dir) if os.path.isdir(apps_dir) else ""),
