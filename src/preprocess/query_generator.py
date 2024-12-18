@@ -401,96 +401,96 @@ def generate_delete_datasets_rules(datasets, data_elements, org_units,
         write(f, sql_query + "\n")
 
 
-def delete_all_event_programs(programs, f):
+def delete_all_event_programs(programs, f, operation="in"):
     programs = convert_to_sql_format(programs)
     write(f, """
 --remove all events
 DELETE FROM trackedentitydatavalueaudit where programstageinstanceid 
-in ( select psi.programstageinstanceid  from programstageinstance psi 
-inner join programstage ps on ps.programstageid=psi.programstageid 
+{operation} ( select psi.programstageinstanceid  from programstageinstance psi 
+inner join programstage ps on ps.programstageid=psi.programstageid s
 inner join program p on p.programid=ps.programid where p.uid in {programs});
-""".format(programs=programs))
+""".format(programs=programs, operation=operation))
     write(f,
           """
-        DELETE FROM programstageinstancecomments where programstageinstanceid 
-        in ( select psi.programstageinstanceid  from programstageinstance psi 
-        inner join programstage ps on ps.programstageid=psi.programstageid 
-        inner join program p on p.programid=ps.programid where p.uid in {programs});
-        """.format(programs=programs))
+DELETE FROM programstageinstancecomments where programstageinstanceid 
+{operation} ( select psi.programstageinstanceid  from programstageinstance psi 
+inner join programstage ps on ps.programstageid=psi.programstageid 
+inner join program p on p.programid=ps.programid where p.uid in {programs});
+""".format(programs=programs, operation=operation))
     write(f, """
 DELETE FROM programstageinstance where programstageinstanceid 
-in ( select psi.programstageinstanceid  from programstageinstance psi 
+{operation} ( select psi.programstageinstanceid  from programstageinstance psi 
 inner join programstage ps on ps.programstageid=psi.programstageid 
 inner join program p on p.programid=ps.programid 
 where p.uid in {programs});
-""".format(programs=programs))
+""".format(programs=programs, operation=operation))
 
 
-def delete_all_data_sets(datasets, f):
+def delete_all_data_sets(datasets, f, operation="in"):
     datasets = convert_to_sql_format(datasets)
     write(f, """
 --remove all datasets
-DELETE FROM datavalueaudit where dataelementid in 
+DELETE FROM datavalueaudit where dataelementid {operation} 
 (select dataelementid from datasetelement 
 where datasetid in (select datasetid from dataset where uid in {datasets}));
-""".format(datasets=datasets))
+""".format(datasets=datasets, operation=operation))
     write(f, """
-DELETE FROM datavalue where dataelementid in (select dataelementid from datasetelement 
+DELETE FROM datavalue where dataelementid {operation} (select dataelementid from datasetelement 
 where datasetid in (select datasetid from dataset where uid in {datasets}));
-""".format(datasets=datasets))
+""".format(datasets=datasets, operation=operation))
     pass
 
 
-def delete_all_tracker_programs(trackers, f):
+def delete_all_tracker_programs(trackers, f, operation="in"):
     trackers = convert_to_sql_format(trackers)
     write(f, """
 create MATERIALIZED view tei_to_remove as select trackedentityinstanceid "teiid"
-from programinstance where programid in (select programid from program where uid in {trackers});
-""".format(trackers=trackers))
+from programinstance where programid {operation} (select programid from program where uid in {trackers});
+""".format(trackers=trackers, operation=operation))
     write(f, """
 --remove all tracker
 DELETE FROM trackedentitydatavalueaudit where programstageinstanceid 
-in ( select psi.programstageinstanceid  from programstageinstance psi 
+{operation} ( select psi.programstageinstanceid  from programstageinstance psi 
 inner join programstage ps on ps.programstageid=psi.programstageid 
 inner join program p on p.programid=ps.programid 
 where p.uid in {trackers});
-""".format(trackers=trackers))
+""".format(trackers=trackers, operation=operation))
     write(f, """
 DELETE FROM programstageinstancecomments where programstageinstanceid 
-in ( select programstageinstanceid from programstageinstance where programstageid in 
+{operation} ( select programstageinstanceid from programstageinstance where programstageid in 
 (select programstageid from programstage where programid in 
 (select programid from program where uid in {trackers})));
-""".format(trackers=trackers))
+""".format(trackers=trackers, operation=operation))
 
     write(f, """
 DELETE FROM trackedentityattributevalue where trackedentityinstanceid 
-in ( select trackedentityinstanceid from programinstance where programid in(select 
+{operation} ( select trackedentityinstanceid from programinstance where programid in(select 
 programid from program where uid in {trackers}));
-""".format(trackers=trackers))
+""".format(trackers=trackers, operation=operation))
     write(f, """
 DELETE FROM trackedentityattributevalueaudit where trackedentityinstanceid 
-in ( select trackedentityinstanceid from programinstance where programid 
+{operation} ( select trackedentityinstanceid from programinstance where programid 
 in(select programid from program where uid in {trackers}));
-""".format(trackers=trackers))
+""".format(trackers=trackers, operation=operation))
 
     write(f,
-          """DELETE FROM programstageinstance where programstageid in (
+          """DELETE FROM programstageinstance where programstageid {operation} (
           select programstageid from programstage where programid in 
           (select programid from program where uid in {trackers}));
-          """.format(trackers=trackers))
+          """.format(trackers=trackers, operation=operation))
 
     write(f, """
 DELETE FROM programstageinstance where programstageinstanceid 
-in ( select psi.programstageinstanceid  from programstageinstance psi 
+{operation} ( select psi.programstageinstanceid  from programstageinstance psi 
 inner join programstage ps on ps.programstageid=psi.programstageid 
 inner join program p on p.programid=ps.programid 
-where p.uid in {trackers});""".format(trackers=trackers))
+where p.uid in {trackers});""".format(trackers=trackers, operation=operation))
     write(f,
-          "DELETE FROM programinstancecomments where programinstanceid in (select programinstanceid from programinstance where programid in (select programid from program where uid in {trackers}));\n".format(
-              trackers=trackers))
+          "DELETE FROM programinstancecomments where programinstanceid {operation} (select programinstanceid from programinstance where programid in (select programid from program where uid in {trackers}));\n".format(
+              trackers=trackers, operation=operation))
     write(f,
-          "DELETE FROM programinstance where programid in (select programid from program where uid in {trackers});\n".format(
-              trackers=trackers))
+          "DELETE FROM programinstance where programid {operation} (select programid from program where uid in {trackers});\n".format(
+              trackers=trackers, operation=operation))
     write(f, """DELETE FROM programinstance where trackedentityinstanceid in ( select * from tei_to_remove);
 DELETE FROM trackedentityinstance where trackedentityinstanceid in ( select * from tei_to_remove);
 DELETE FROM trackedentityprogramowner where trackedentityinstanceid in ( select * from tei_to_remove);

@@ -67,23 +67,32 @@ def preprocess(entries, departments, directory, preprocess_api_version):
     f.close()
 
 
-def remove_all(list_uid, f):
+def remove_all(list_uid, f, operator="in"):
     for key in list_uid.keys():
         if key == program_type:
-            delete_all_event_programs(list_uid[key], f)
+            delete_all_event_programs(list_uid[key], f, operator)
         if key == dataset_type:
-            delete_all_data_sets(list_uid[key], f)
+            delete_all_data_sets(list_uid[key], f, operator)
         if key == tracker_type:
-            delete_all_tracker_programs(list_uid[key], f)
+            delete_all_tracker_programs(list_uid[key], f, operator)
 
 
 def generate_queries(departament, f, preprocess_api_version):
     org_unit_deletion_grouped_rules = []
+    uids = {"dataSets": [], "eventPrograms": [], "trackerPrograms": []}
     for key in departament.keys():
         f.write("--Departament:" + key + "\n")
         print("--Departament:" + key + "\n")
         if actions not in departament[key]:
             continue
+
+        if dataset_type in departament[key]:
+            uids[dataset_type].extend(departament[key][dataset_type])
+        if program_type in departament[key]:
+            uids[program_type].extend(departament[key][program_type])
+        if tracker_type in departament[key]:
+            uids[tracker_type].extend(departament[key][tracker_type])
+
         for rule in departament[key][actions]:
             has_datasets = False
             has_event_program = False
@@ -123,28 +132,31 @@ def generate_queries(departament, f, preprocess_api_version):
                 if rule[action] == remove_rule:
                     if has_datasets:
                         generate_delete_datasets_rules(datasets, data_elements, org_units,
-                                                       org_unit_descendants, departament[key][dataset_type], f)
+                                                       org_unit_descendants, departament[key].get(dataset_type, []), f)
                     if has_tracker_program:
                         generate_delete_tracker_rules(tracker_program, data_elements, org_units,
-                                                      org_unit_descendants, departament[key][tracker_type], f)
+                                                      org_unit_descendants, departament[key].get(tracker_type, []), f)
                     if has_event_program:
                         generate_delete_event_rules(event_program, data_elements, org_units,
-                                                    org_unit_descendants, departament[key][program_type], f)
+                                                    org_unit_descendants, departament[key].get(program_type, []), f)
                     # if not have specific rules apply to all the departament
                     if not has_datasets and not has_event_program and not has_tracker_program:
                         remove_all(departament[key], f)
                 elif rule[action] == anonymize_rule:
                     if has_datasets:
+                        uids[dataset_type].extend(datasets)
                         generate_anonymize_datasets_rules(datasets, org_units, data_elements,
                                                           anonimize_org_units, anonimize_phone, anonimize_mail,
                                                           anonimize_coordinate, departament[key][dataset_type], f)
                     if has_tracker_program:
+                        uids[tracker_type].extend(has_tracker_program)
                         generate_anonymize_tracker_rules(tracker_program, tracker_entity_attributes, org_units,
                                                          data_elements,
                                                          anonimize_org_units, anonimize_phone, anonimize_mail,
                                                          anonimize_coordinate,
                                                          departament[key][tracker_type], f)
                     if has_event_program:
+                        uids[program_type].extend(event_program)
                         generate_anonymize_event_rules(event_program, org_units, data_elements,
                                                        anonimize_org_units, anonimize_phone, anonimize_mail,
                                                        anonimize_coordinate,
@@ -169,11 +181,13 @@ def generate_queries(departament, f, preprocess_api_version):
                                                                  anonimize_coordinate,
                                                                  departament[key][tracker_type], f)
     if len(org_unit_deletion_grouped_rules)>0:
+    remove_all(uids, f, "NOT IN")
+    if len(org_unit_deletion_grouped_rules) > 0:
         start_ou_materialized_view(f)
         position = 0
         for rule in org_unit_deletion_grouped_rules:
-            position = position +1
-            if position >1:
+            position = position + 1
+            if position > 1:
                 write_or(f)
 
             if rule["action"] == remove_orgunit_tree:
@@ -181,7 +195,7 @@ def generate_queries(departament, f, preprocess_api_version):
             elif rule["action"] == remove_orgunit_level:
                 if "selectOrganisationUnit" in rule.keys():
                     generate_delete_org_unit_level_by_parent_rules(rule["level"],
-                                                                                     rule["selectOrganisationUnit"],f)
+                                                                   rule["selectOrganisationUnit"], f)
                 else:
                     generate_delete_org_unit_level_rules(rule["level"], f)
 
