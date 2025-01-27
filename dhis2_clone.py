@@ -14,6 +14,8 @@ import argparse
 from subprocess import Popen
 
 import psycopg2
+
+from src.common.config import Config
 from src.preprocess import preprocess
 from src.postprocess import postprocess
 
@@ -35,6 +37,8 @@ def main():
         check_use_backup(cfg["hostname_remote"], args.use_backup)
 
     pre_api_version, post_api_version = get_api_version(args, cfg)
+
+    Config(pre_api_version, post_api_version)
 
     if args.update_config:
         update_config(args.config)
@@ -123,7 +127,6 @@ def get_api_version(args, cfg):
         pre_api_version = cfg["pre_api"]
     if post_api_version is None:
         post_api_version = cfg["post_api"]
-
     return pre_api_version, post_api_version
 
 
