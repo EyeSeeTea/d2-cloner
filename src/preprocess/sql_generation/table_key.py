@@ -2,6 +2,7 @@
 from enum import Enum
 
 class TableKey(Enum):
+    USER = "userinfo"
     EVENT = "event"
     ENROLLMENT = "enrollment"
     TRACKER = "tracker"

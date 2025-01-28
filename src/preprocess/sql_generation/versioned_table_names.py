@@ -5,16 +5,18 @@ TABLES_2_41 = {
     TableKey.EVENT: "event",
     TableKey.ENROLLMENT: "enrollment",
     TableKey.TRACKER: "trackerentity",
-    TableKey.EVENT_COMMENT: "programstageinstancecomments",
-    TableKey.ENROLLMENT_COMMENT: "programinstancecomments",
+    TableKey.EVENT_COMMENT: "event_notes",
+    TableKey.ENROLLMENT_COMMENT: "enrollment_note",
+    TableKey.USER: "userinfo"
 }
 
 TABLES_2_38 = {
     TableKey.EVENT: "programstageinstance",
     TableKey.ENROLLMENT: "programinstance",
     TableKey.TRACKER: "trackerentityinstance",
-    TableKey.EVENT_COMMENT: "event_notes",
-    TableKey.ENROLLMENT_COMMENT: "enrollment_note",
+    TableKey.EVENT_COMMENT: "programstageinstancecomments",
+    TableKey.ENROLLMENT_COMMENT: "programinstancecomments",
+    TableKey.USER: "user"
 }
 
 def _get_tables_for_version():
@@ -58,4 +60,8 @@ def get_event_comment_table() -> str:
 def get_enrollment_comment_table() -> str:
     return _get_table_name(TableKey.ENROLLMENT_COMMENT)
 
+def get_user_table_name() -> str:
+    return _get_table_name(TableKey.USER)
 
+def get_user_identifier_name() -> str:
+    return _get_identifier_name(TableKey.USER)
