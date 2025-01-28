@@ -100,6 +100,17 @@ def get_api_version(args, cfg):
     pre_api_version = None
     post_api_version = None
 
+    if args.pre_api is not None:
+        pre_api_version=args.pre_api
+    if args.post_api is not None:
+        post_api_version=args.post_api
+
+    # Read versions from the config if not provided as a parameter.
+    if pre_api_version is None:
+        pre_api_version = cfg["pre_api"]
+    if post_api_version is None:
+        post_api_version = cfg["post_api"]
+
     if args.pre_api is not None and args.pre_api not in supported_versions:
         print("ERROR: Invalid pre api version given as param")
         sys.exit()
@@ -122,11 +133,6 @@ def get_api_version(args, cfg):
         post_api_version = args.post_api
         print("Loaded " + args.post_api + "api version for post api calls")
 
-    # param version have priority to config version.
-    if pre_api_version is None:
-        pre_api_version = cfg["pre_api"]
-    if post_api_version is None:
-        post_api_version = cfg["post_api"]
     return pre_api_version, post_api_version
 
 
