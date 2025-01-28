@@ -1,4 +1,5 @@
 from src.preprocess.sql_generation.sql_common import write, convert_to_sql_format
+from src.preprocess.sql_generation.versioned_table_names import *
 
 
 def generate_delete_event_rules(event_program, data_elements, org_units,
@@ -12,39 +13,53 @@ def generate_delete_event_rules(event_program, data_elements, org_units,
     has_rule = False
     if sql_event_program != "":
         has_rule = True
-        sql_query = " DELETE FROM programstageinstance where programstageid in " \
-                    " (select programstageid from programstage where programid in " \
-                    " (select programid from program where uid in {})) and".format(
-            event_program)
+        sql_query = """ 
+            DELETE FROM {programstageinstance} where programstageid in 
+            (select programstageid from programstage where programid in 
+            (select programid from program where uid in {uids})) and 
+         """.format(programstageinstance=get_event_table_name(),
+                    uids=event_program)
     else:
-        sql_query = " DELETE FROM programstageinstance where programstageid in " \
-                    " (select programstageid from programstage where programid in " \
-                    " (select programid from program where uid in {})) and".format(
-            sql_all)
+        sql_query = """ 
+            DELETE FROM {programstageinstance} where programstageid in 
+            (select programstageid from programstage where programid in 
+            (select programid from program where uid in {uids})) and 
+        """.format(
+            programstageinstance=get_event_table_name(),
+            uids=sql_all)
     if sql_data_elements != "":
         has_rule = True
         sql_data_elements = sql_data_elements.replace("(", "").replace(")", "")
-        sql_query = " update programstageinstance set eventdatavalues = eventdatavalues - {} " \
-                    " where eventdatavalues ? {} and ".format(
-            sql_data_elements, sql_data_elements)
+        sql_query = """ 
+            update {programstageinstance} set eventdatavalues = eventdatavalues - {dataelements_to_remove} 
+            where eventdatavalues ? {dataelement_filtered} and 
+         """.format(
+            programstageinstance=get_event_table_name(),
+            dataelements_to_remove=sql_data_elements,
+            dataelement_filtered=sql_data_elements)
         if sql_event_program != "":
-            sql_query = sql_query + " programstageid in (select programstageid from programstage " \
-                                    " where programid in (select programid from program where uid in {})) and".format(
-                event_program)
+            sql_query = sql_query + """
+                 programstageid in (select programstageid from programstage
+                 where programid in (select programid from program where uid in {uids})) and 
+             """.format(uids=event_program)
         else:
-            sql_query = sql_query + " programstageid in (select programstageid from programstage " \
-                                    " where programid in (select programid from program where uid in {})) and".format(
-                sql_all)
+            sql_query = sql_query + """ 
+            programstageid in (select programstageid from programstage  
+            where programid in (select programid from program where uid in {uids})) and 
+            """.format(uids=sql_all)
+
     if sql_org_units != "":
         has_rule = True
-        sql_query = sql_query + " organisationunitid in (select organisationunitid from organisationunit " \
-                                " where uid in {}) and".format(sql_org_units)
+        sql_query = sql_query + """
+         organisationunitid in (select organisationunitid from organisationunit 
+         where uid in {uids}) and""".format(uids=sql_org_units)
     if sql_org_unit_descendants != "":
         has_rule = True
-        sql_query = sql_query + " organisationunitid in (select organisationunitid from organisationunit " \
-                                " where path like (select concat(path,'/%') from organisationunit " \
-                                " where uid in {})) and".format(
-            sql_org_unit_descendants)
+        sql_query = sql_query + """
+         organisationunitid in (select organisationunitid from organisationunit  
+         where path like (select concat(path,'/%') from organisationunit  
+         where uid in {uids})) and 
+          """.format(uids=sql_org_unit_descendants)
 
     if not has_rule:
         delete_all_event_programs(all_uid, f)
@@ -57,23 +72,29 @@ def generate_delete_event_rules(event_program, data_elements, org_units,
 def delete_all_event_programs(programs, f):
     programs = convert_to_sql_format(programs)
     write(f, """
---remove all events
-DELETE FROM trackedentitydatavalueaudit where programstageinstanceid 
-in ( select psi.programstageinstanceid  from programstageinstance psi 
-inner join programstage ps on ps.programstageid=psi.programstageid 
-inner join program p on p.programid=ps.programid where p.uid in {programs});
-""".format(programs=programs))
-    write(f,
-          """
-        DELETE FROM programstageinstancecomments where programstageinstanceid 
-        in ( select psi.programstageinstanceid  from programstageinstance psi 
+        --remove all events
+        DELETE FROM trackedentitydatavalueaudit where {programstageinstanceid} 
+        in ( select psi.{programstageinstanceid}  from {programstageinstance} psi 
         inner join programstage ps on ps.programstageid=psi.programstageid 
         inner join program p on p.programid=ps.programid where p.uid in {programs});
-        """.format(programs=programs))
+    """.format(programstageinstanceid=get_event_identifier_name(),
+               programstageinstance=get_event_table_name(),
+               programs=programs))
+    write(f,
+          """
+        DELETE FROM {programstageinstancecomments} where {programstageinstanceid} 
+        in ( select psi.{programstageinstanceid}  from {programstageinstance} psi 
+        inner join programstage ps on ps.programstageid=psi.programstageid 
+        inner join program p on p.programid=ps.programid where p.uid in {programs});
+        """.format(programstageinstancecomments=get_event_comment_table(),
+                   programstageinstanceid=get_event_identifier_name(),
+                   programstageinstance=get_event_table_name(),
+                   programs=programs))
     write(f, """
-DELETE FROM programstageinstance where programstageinstanceid 
-in ( select psi.programstageinstanceid  from programstageinstance psi 
-inner join programstage ps on ps.programstageid=psi.programstageid 
-inner join program p on p.programid=ps.programid 
-where p.uid in {programs});
-""".format(programs=programs))
+        DELETE FROM {programstageinstance} where {programstageinstanceid} 
+        in ( select psi.{programstageinstanceid}  from {programstageinstance} psi 
+        inner join programstage ps on ps.programstageid=psi.programstageid 
+        inner join program p on p.programid=ps.programid 
+        where p.uid in {programs});
+""".format(programstageinstanceid=get_event_identifier_name(),
+           programstageinstance=get_event_table_name(), programs=programs))
