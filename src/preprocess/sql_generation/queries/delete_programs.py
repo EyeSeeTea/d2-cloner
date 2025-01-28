@@ -44,21 +44,22 @@ def generate_delete_event_rules(event_program, data_elements, org_units,
              """.format(uids=event_program)
         else:
             sql_query = sql_query + """ 
-            programstageid in (select programstageid from programstage  
-            where programid in (select programid from program where uid in {uids})) and 
+                programstageid in (select programstageid from programstage  
+                where programid in (select programid from program where uid in {uids})) and 
             """.format(uids=sql_all)
 
     if sql_org_units != "":
         has_rule = True
         sql_query = sql_query + """
-         organisationunitid in (select organisationunitid from organisationunit 
-         where uid in {uids}) and""".format(uids=sql_org_units)
+             organisationunitid in (select organisationunitid from organisationunit 
+             where uid in {uids}) and 
+         """.format(uids=sql_org_units)
     if sql_org_unit_descendants != "":
         has_rule = True
         sql_query = sql_query + """
-         organisationunitid in (select organisationunitid from organisationunit  
-         where path like (select concat(path,'/%') from organisationunit  
-         where uid in {uids})) and 
+             organisationunitid in (select organisationunitid from organisationunit  
+             where path like (select concat(path,'/%') from organisationunit  
+             where uid in {uids})) and 
           """.format(uids=sql_org_unit_descendants)
 
     if not has_rule:
@@ -96,5 +97,5 @@ def delete_all_event_programs(programs, f):
         inner join programstage ps on ps.programstageid=psi.programstageid 
         inner join program p on p.programid=ps.programid 
         where p.uid in {programs});
-""".format(programstageinstanceid=get_event_identifier_name(),
+    """.format(programstageinstanceid=get_event_identifier_name(),
            programstageinstance=get_event_table_name(), programs=programs))
