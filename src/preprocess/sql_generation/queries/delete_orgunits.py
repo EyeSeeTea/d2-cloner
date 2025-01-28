@@ -7,6 +7,7 @@ def delete_org_unit_data_and_views(f):
         --remove organisationUnits -- data
         DELETE FROM {programstageinstancecomments}     WHERE {programstageinstanceid}  IN (SELECT * FROM rm_programstageinstance);
     """.format(programstageinstancecomments= get_event_comment_table(), programstageinstanceid=get_event_identifier_name()))
+
     if Config.get_post_api_version() <= 36:
         write(f, """
             DELETE FROM programinstanceaudit             WHERE {programinstanceid}       IN (SELECT * FROM rm_programinstance);
@@ -25,7 +26,7 @@ def delete_org_unit_data_and_views(f):
         DELETE FROM trackedentityattributevalueaudit WHERE {trackedentityinstanceid} IN (SELECT * FROM rm_trackedentityinstance);
         DELETE FROM trackedentityprogramowner        WHERE organisationunitid      IN (SELECT * FROM orgUnitsToDelete);
         DELETE FROM {trackedentityinstance}            WHERE {trackedentityinstanceid} IN (SELECT * FROM rm_trackedentityinstance);
-        """.format(programstageinstanceid = get_event_identifier_name(), programstageinstance = get_event_table_name(),
+    """.format(programstageinstanceid = get_event_identifier_name(), programstageinstance = get_event_table_name(),
                    programinstancecomments=get_event_comment_table(), programinstanceid= get_enrollment_identifier_name(),
                    programinstance=get_enrollment_table_name(), trackedentityinstanceid=get_tracker_identifier_name(),
                    trackedentityinstance=get_tracker_table_name()))
@@ -56,7 +57,7 @@ def delete_org_unit_data_and_views(f):
         DELETE FROM mapview_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
         DELETE FROM organisationunitattributevalues where organisationunitid in (select * from orgUnitsToDelete);
         DELETE FROM program_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
-        DELETE FROM programmessage_emailaddresses   WHERE programmessageemailaddressid   IN (SELECT * FROM rm_programmessage);
+        DELETE FROM programmessage_emailaddresses   WHERE programmessageemailaddressid      IN (SELECT * FROM rm_programmessage);
         DELETE FROM programmessage_deliverychannels  WHERE programmessagedeliverychannelsid IN (SELECT * FROM rm_programmessage);
         DELETE FROM programmessage                   WHERE id                               IN (SELECT * FROM rm_programmessage);
     """)
@@ -86,67 +87,69 @@ def delete_org_units(f):
 
 def start_ou_materialized_view(f):
     write(f, """
-    --remove organisationUnits -- org unit
-    DROP MATERIALIZED VIEW if exists orgUnitsToDelete CASCADE;
+        --remove organisationUnits -- org unit
+        DROP MATERIALIZED VIEW if exists orgUnitsToDelete CASCADE;
     """)
 
     write(f, """
-    --remove organisationUnits -- org unit
-    CREATE MATERIALIZED VIEW orgUnitsToDelete AS (select distinct organisationunitid from organisationunit where \n
+        --remove organisationUnits -- org unit
+        CREATE MATERIALIZED VIEW orgUnitsToDelete AS (select distinct organisationunitid from organisationunit where \n
     """)
 
 
 def create_org_units_to_remove_views_and_indexes(f):
     write(f, """
-CREATE UNIQUE INDEX idx_orgs ON orgUnitsToDelete (organisationunitid); 
-
-CREATE MATERIALIZED VIEW rm_trackedentityinstance 
-    AS SELECT trackedentityinstanceid FROM trackedentityinstance WHERE 
-        organisationunitid IN (SELECT * FROM orgUnitsToDelete); 
-CREATE UNIQUE INDEX idx_trackedentityinstance ON rm_trackedentityinstance (trackedentityinstanceid); 
-
-CREATE MATERIALIZED VIEW rm_programinstance 
-    AS SELECT programinstanceid FROM programinstance WHERE 
-        organisationunitid IN (SELECT * FROM orgUnitsToDelete); 
-CREATE UNIQUE INDEX idx_programinstance ON rm_programinstance (programinstanceid); 
-
-CREATE MATERIALIZED VIEW rm_programstageinstance_orgs 
-    AS SELECT programstageinstanceid FROM programstageinstance WHERE 
-        organisationunitid IN (SELECT * FROM orgUnitsToDelete); 
-CREATE MATERIALIZED VIEW rm_programstageinstance_programinstance 
-    AS SELECT programstageinstanceid FROM programstageinstance WHERE 
-        programinstanceid IN (SELECT * FROM rm_programinstance); 
-CREATE MATERIALIZED VIEW rm_programstageinstance 
-    AS SELECT * FROM rm_programstageinstance_orgs 
-    UNION ALL SELECT * FROM rm_programstageinstance_programinstance; 
-CREATE UNIQUE INDEX idx_programstageinstance ON rm_programstageinstance (programstageinstanceid); 
-
-CREATE MATERIALIZED VIEW rm_interpretation 
-    AS SELECT interpretationid FROM interpretation WHERE organisationunitid IN (SELECT * FROM orgUnitsToDelete); 
-CREATE UNIQUE INDEX idx_interpretation ON rm_interpretation (interpretationid); 
-
-CREATE MATERIALIZED VIEW rm_programmessage 
-    AS SELECT id FROM programmessage WHERE 
-        organisationunitid      IN (SELECT * FROM orgUnitsToDelete) OR 
-        trackedentityinstanceid IN (SELECT * FROM rm_trackedentityinstance) OR 
-        programstageinstanceid  IN (SELECT * FROM rm_programstageinstance) OR 
-        programinstanceid       IN (SELECT * FROM rm_programinstance); 
-CREATE UNIQUE INDEX idx_programmessage ON rm_programmessage (id); 
-CREATE INDEX IF NOT EXISTS idx_datavalue_organisationunitid                 ON datavalue                 (sourceid); 
-CREATE INDEX IF NOT EXISTS idx_datavalueaudit_organisationunitid            ON datavalueaudit            (organisationunitid); 
-CREATE INDEX IF NOT EXISTS idx_program_organisationunits_organisationunitid ON program_organisationunits (organisationunitid); 
-CREATE INDEX IF NOT EXISTS idx_orgunitgroup_organisationunitid              ON orgunitgroupmembers       (organisationunitid); 
-CREATE INDEX IF NOT EXISTS idx_programinstance_organisationunitid           ON programinstance           (organisationunitid); 
-CREATE INDEX IF NOT EXISTS idx_dataset_organisationunit                     ON datasetsource             (sourceid); 
-CREATE INDEX IF NOT EXISTS idx_parentid                                     ON organisationunit          (parentid); 
-CREATE INDEX IF NOT EXISTS idx_programstageinstance_organisationunitid      ON programstageinstance      (organisationunitid); 
-CREATE INDEX IF NOT EXISTS idx_trackedentityinstance_organisationunitid     ON trackedentityinstance     (organisationunitid); 
-CREATE INDEX IF NOT EXISTS idx_entityinstancedatavalueaudit_programstageinstanceid ON trackedentitydatavalueaudit              (programstageinstanceid); 
-CREATE INDEX IF NOT EXISTS idx_programmessage_programstageinstanceid               ON programmessage                           (programstageinstanceid); 
-CREATE INDEX IF NOT EXISTS idx_programstageinstancecomments_programstageinstanceid ON programstageinstancecomments             (programstageinstanceid); 
-CREATE INDEX IF NOT EXISTS idx_programstagenotification_psi                        ON programnotificationinstance              (programstageinstanceid); 
-CREATE INDEX IF NOT EXISTS idx_relationshipitem_programstageinstanceid             ON relationshipitem                         (programstageinstanceid); 
-CREATE INDEX IF NOT EXISTS idx_s9i10v8xg7d22hlhmesia51l                            ON programstageinstance_messageconversation (programstageinstanceid); """)
+        CREATE UNIQUE INDEX idx_orgs ON orgUnitsToDelete (organisationunitid); 
+        
+        CREATE MATERIALIZED VIEW rm_trackedentityinstance 
+            AS SELECT {trackedentityinstanceid} FROM {trackedentityinstance} WHERE 
+                organisationunitid IN (SELECT * FROM orgUnitsToDelete); 
+        CREATE UNIQUE INDEX idx_trackedentityinstance ON rm_trackedentityinstance ({trackedentityinstanceid}); 
+        
+        CREATE MATERIALIZED VIEW rm_programinstance 
+            AS SELECT {programinstanceid} FROM {programinstance} WHERE 
+                organisationunitid IN (SELECT * FROM orgUnitsToDelete); 
+        CREATE UNIQUE INDEX idx_programinstance ON rm_programinstance ({programinstanceid}); 
+        
+        CREATE MATERIALIZED VIEW rm_programstageinstance_orgs 
+            AS SELECT {programstageinstanceid} FROM {programstageinstance} WHERE 
+                organisationunitid IN (SELECT * FROM orgUnitsToDelete); 
+        CREATE MATERIALIZED VIEW rm_programstageinstance_programinstance 
+            AS SELECT {programstageinstanceid} FROM {programstageinstance} WHERE 
+                {programinstanceid} IN (SELECT * FROM rm_programinstance); 
+        CREATE MATERIALIZED VIEW rm_programstageinstance 
+            AS SELECT * FROM rm_programstageinstance_orgs 
+            UNION ALL SELECT * FROM rm_programstageinstance_programinstance; 
+        CREATE UNIQUE INDEX idx_programstageinstance ON rm_programstageinstance ({programstageinstanceid}); 
+        
+        CREATE MATERIALIZED VIEW rm_interpretation 
+            AS SELECT interpretationid FROM interpretation WHERE organisationunitid IN (SELECT * FROM orgUnitsToDelete); 
+        CREATE UNIQUE INDEX idx_interpretation ON rm_interpretation (interpretationid); 
+        
+        CREATE MATERIALIZED VIEW rm_programmessage 
+            AS SELECT id FROM programmessage WHERE 
+                organisationunitid      IN (SELECT * FROM orgUnitsToDelete) OR 
+                {trackedentityinstanceid} IN (SELECT * FROM rm_trackedentityinstance) OR 
+                {programstageinstanceid}  IN (SELECT * FROM rm_programstageinstance) OR 
+                {programinstanceid}       IN (SELECT * FROM rm_programinstance); 
+        CREATE UNIQUE INDEX idx_programmessage ON rm_programmessage ({id}); 
+        CREATE INDEX IF NOT EXISTS idx_datavalue_organisationunitid                 ON datavalue                 (sourceid); 
+        CREATE INDEX IF NOT EXISTS idx_datavalueaudit_organisationunitid            ON datavalueaudit            (organisationunitid); 
+        CREATE INDEX IF NOT EXISTS idx_program_organisationunits_organisationunitid ON program_organisationunits (organisationunitid); 
+        CREATE INDEX IF NOT EXISTS idx_orgunitgroup_organisationunitid              ON orgunitgroupmembers       (organisationunitid); 
+        CREATE INDEX IF NOT EXISTS idx_programinstance_organisationunitid           ON {programinstance}           (organisationunitid); 
+        CREATE INDEX IF NOT EXISTS idx_dataset_organisationunit                     ON datasetsource             (sourceid); 
+        CREATE INDEX IF NOT EXISTS idx_parentid                                     ON organisationunit          (parentid); 
+        CREATE INDEX IF NOT EXISTS idx_programstageinstance_organisationunitid      ON {programstageinstance}      (organisationunitid); 
+        CREATE INDEX IF NOT EXISTS idx_trackedentityinstance_organisationunitid     ON {trackedentityinstance}     (organisationunitid); 
+        CREATE INDEX IF NOT EXISTS idx_entityinstancedatavalueaudit_programstageinstanceid ON trackedentitydatavalueaudit              ({programstageinstanceid}); 
+        CREATE INDEX IF NOT EXISTS idx_programmessage_programstageinstanceid               ON programmessage                           ({programstageinstanceid}); 
+        CREATE INDEX IF NOT EXISTS idx_programstageinstancecomments_programstageinstanceid ON {programstageinstancecomments}             ({programstageinstanceid}); 
+        CREATE INDEX IF NOT EXISTS idx_programstagenotification_psi                        ON programnotificationinstance              ({programstageinstanceid}); 
+        CREATE INDEX IF NOT EXISTS idx_relationshipitem_programstageinstanceid             ON relationshipitem                         ({programstageinstanceid}); 
+        CREATE INDEX IF NOT EXISTS idx_s9i10v8xg7d22hlhmesia51l                            ON programstageinstance_messageconversation ({programstageinstanceid}); 
+    """).format(programstageinstanceid=get_event_identifier_name(), programstageinstance=get_event_table_name(),programinstanceid=get_enrollment_identifier_name(),programinstance=get_enrollment_table_name(),trackerentityinstanceid=get_tracker_identifier_name()
+            ,trackerentityinstance=get_tracker_table_name())
 
 
 def generate_delete_org_unit_tree_rules(orgunits, f):
