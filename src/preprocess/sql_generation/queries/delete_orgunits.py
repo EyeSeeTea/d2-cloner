@@ -1,65 +1,81 @@
 from src.preprocess.sql_generation.sql_common import write, convert_to_possible_paths_in_sql_format
+from src.preprocess.sql_generation.versioned_table_names import *
 
 
 def delete_org_unit_data_and_views(f):
     write(f, """
---remove organisationUnits -- data
-DELETE FROM programstageinstancecomments     WHERE programstageinstanceid  IN (SELECT * FROM rm_programstageinstance);
-DELETE FROM programinstanceaudit             WHERE programinstanceid       IN (SELECT * FROM rm_programinstance);
-DELETE FROM trackedentitydatavalueaudit      WHERE programstageinstanceid  IN (SELECT * FROM rm_programstageinstance);
-DELETE FROM programstageinstance             WHERE programstageinstanceid  IN (SELECT * FROM rm_programstageinstance);
+        --remove organisationUnits -- data
+        DELETE FROM {programstageinstancecomments}     WHERE {programstageinstanceid}  IN (SELECT * FROM rm_programstageinstance);
+    """.format(programstageinstancecomments= get_event_comment_table(), programstageinstanceid=get_event_identifier_name()))
+    if Config.get_post_api_version() <= 36:
+        write(f, """
+            DELETE FROM programinstanceaudit             WHERE {programinstanceid}       IN (SELECT * FROM rm_programinstance);
+        """.format(programinstanceid=get_enrollment_identifier_name()))
 
-DELETE FROM programinstancecomments          WHERE programinstanceid       IN (SELECT * FROM rm_programinstance);
-DELETE FROM programinstance                  WHERE programinstanceid       IN (SELECT * FROM rm_programinstance);
-DELETE FROM datavalue where sourceid in (select organisationunitid from orgUnitsToDelete);
-DELETE FROM datavalueaudit where organisationunitid in (select organisationunitid  from orgUnitsToDelete);
+    write(f, """
+        DELETE FROM trackedentitydatavalueaudit      WHERE {programstageinstanceid}  IN (SELECT * FROM rm_programstageinstance);
+        DELETE FROM {programstageinstance}             WHERE {programstageinstanceid}  IN (SELECT * FROM rm_programstageinstance);
+        
+        DELETE FROM {programinstancecomments}          WHERE {programinstanceid}       IN (SELECT * FROM rm_programinstance);
+        DELETE FROM {programinstance}                  WHERE {programinstanceid}       IN (SELECT * FROM rm_programinstance);
+        DELETE FROM datavalue where sourceid in (select organisationunitid from orgUnitsToDelete);
+        DELETE FROM datavalueaudit where organisationunitid in (select organisationunitid  from orgUnitsToDelete);
+        
+        DELETE FROM trackedentityattributevalue      WHERE {trackedentityinstanceid} IN (SELECT * FROM rm_trackedentityinstance);
+        DELETE FROM trackedentityattributevalueaudit WHERE {trackedentityinstanceid} IN (SELECT * FROM rm_trackedentityinstance);
+        DELETE FROM trackedentityprogramowner        WHERE organisationunitid      IN (SELECT * FROM orgUnitsToDelete);
+        DELETE FROM {trackedentityinstance}            WHERE {trackedentityinstanceid} IN (SELECT * FROM rm_trackedentityinstance);
+        """.format(programstageinstanceid = get_event_identifier_name(), programstageinstance = get_event_table_name(),
+                   programinstancecomments=get_event_comment_table(), programinstanceid= get_enrollment_identifier_name(),
+                   programinstance=get_enrollment_table_name(), trackedentityinstanceid=get_tracker_identifier_name(),
+                   trackedentityinstance=get_tracker_table_name()))
+    write(f, """
+        DELETE FROM interpretationuseraccesses       WHERE interpretationid        IN (SELECT * FROM rm_interpretation);
+        DELETE FROM interpretation_comments          WHERE interpretationid        IN (SELECT * FROM rm_interpretation);
+        DELETE FROM intepretation_likedby            WHERE interpretationid        IN (SELECT * FROM rm_interpretation);
+        DELETE FROM interpretation                   WHERE interpretationid        IN (SELECT * FROM rm_interpretation);
+        
+        -- delete org unit, views and other dependencies
+        
+        DELETE FROM datasetsource where sourceid in (select * from orgUnitsToDelete);
+        DELETE FROM orgunitgroupmembers where organisationunitid in (select * from orgUnitsToDelete);
+        DELETE FROM program_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
+        DELETE FROM programownershiphistory              WHERE organisationunitid      IN (SELECT * FROM orgUnitsToDelete);
+        DELETE FROM _orgunitstructure where organisationunitid in (select * from orgUnitsToDelete);
+        DELETE FROM _datasetorganisationunitcategory where organisationunitid in (select * from orgUnitsToDelete);
+        DELETE FROM _organisationunitgroupsetstructure where organisationunitid in (select * from orgUnitsToDelete);
+        DELETE FROM datavalueaudit where organisationunitid in (select * from orgUnitsToDelete);
+        DELETE FROM categoryoption_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
+        DELETE FROM chart_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
+        DELETE FROM dataapproval where organisationunitid in (select * from orgUnitsToDelete);
+        DELETE FROM dataapprovalaudit where organisationunitid in (select * from orgUnitsToDelete);
+        DELETE FROM eventchart_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
+        DELETE FROM eventreport_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
+        DELETE FROM eventvisualization_organisationunits WHERE organisationunitid      IN (SELECT * FROM orgUnitsToDelete);
+        DELETE FROM lockexception where organisationunitid in (select * from orgUnitsToDelete);
+        DELETE FROM mapview_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
+        DELETE FROM organisationunitattributevalues where organisationunitid in (select * from orgUnitsToDelete);
+        DELETE FROM program_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
+        DELETE FROM programmessage_emailaddresses   WHERE programmessageemailaddressid   IN (SELECT * FROM rm_programmessage);
+        DELETE FROM programmessage_deliverychannels  WHERE programmessagedeliverychannelsid IN (SELECT * FROM rm_programmessage);
+        DELETE FROM programmessage                   WHERE id                               IN (SELECT * FROM rm_programmessage);
+    """)
+    if Config.get_post_api_version() <= 38:
+        write(f, """
+            DELETE FROM reporttable_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
+        """)
 
-DELETE FROM trackedentityattributevalue      WHERE trackedentityinstanceid IN (SELECT * FROM rm_trackedentityinstance);
-DELETE FROM trackedentityattributevalueaudit WHERE trackedentityinstanceid IN (SELECT * FROM rm_trackedentityinstance);
-DELETE FROM trackedentityprogramowner        WHERE organisationunitid      IN (SELECT * FROM orgUnitsToDelete);
-DELETE FROM trackedentityinstance            WHERE trackedentityinstanceid IN (SELECT * FROM rm_trackedentityinstance);
-
-DELETE FROM interpretationuseraccesses       WHERE interpretationid        IN (SELECT * FROM rm_interpretation);
-DELETE FROM interpretation_comments          WHERE interpretationid        IN (SELECT * FROM rm_interpretation);
-DELETE FROM intepretation_likedby            WHERE interpretationid        IN (SELECT * FROM rm_interpretation);
-DELETE FROM interpretation                   WHERE interpretationid        IN (SELECT * FROM rm_interpretation);
-
--- delete org unit, views and other dependencies
-
-DELETE FROM datasetsource where sourceid in (select * from orgUnitsToDelete);
-DELETE FROM orgunitgroupmembers where organisationunitid in (select * from orgUnitsToDelete);
-DELETE FROM program_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
-DELETE FROM programownershiphistory              WHERE organisationunitid      IN (SELECT * FROM orgUnitsToDelete);
-DELETE FROM _orgunitstructure where organisationunitid in (select * from orgUnitsToDelete);
-DELETE FROM _datasetorganisationunitcategory where organisationunitid in (select * from orgUnitsToDelete);
-DELETE FROM _organisationunitgroupsetstructure where organisationunitid in (select * from orgUnitsToDelete);
-DELETE FROM datavalueaudit where organisationunitid in (select * from orgUnitsToDelete);
-DELETE FROM categoryoption_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
-DELETE FROM chart_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
-DELETE FROM dataapproval where organisationunitid in (select * from orgUnitsToDelete);
-DELETE FROM dataapprovalaudit where organisationunitid in (select * from orgUnitsToDelete);
-DELETE FROM eventchart_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
-DELETE FROM eventreport_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
-DELETE FROM eventvisualization_organisationunits WHERE organisationunitid      IN (SELECT * FROM orgUnitsToDelete);
-DELETE FROM lockexception where organisationunitid in (select * from orgUnitsToDelete);
-DELETE FROM mapview_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
-DELETE FROM organisationunitattributevalues where organisationunitid in (select * from orgUnitsToDelete);
-DELETE FROM program_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
-DELETE FROM programmessage_emailaddresses   WHERE programmessageemailaddressid   IN (SELECT * FROM rm_programmessage);
-DELETE FROM programmessage_deliverychannels  WHERE programmessagedeliverychannelsid IN (SELECT * FROM rm_programmessage);
-DELETE FROM programmessage                   WHERE id                               IN (SELECT * FROM rm_programmessage);
-DELETE FROM reporttable_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
-DELETE FROM userdatavieworgunits where organisationunitid in (select * from orgUnitsToDelete);
-DELETE FROM usermembership where organisationunitid in (select * from orgUnitsToDelete);
-DELETE FROM userteisearchorgunits where organisationunitid in (select * from orgUnitsToDelete);
-DELETE FROM validationresult where organisationunitid in (select * from orgUnitsToDelete);
-DELETE FROM completedatasetregistration where sourceid in (select * from orgUnitsToDelete);
-DELETE FROM configuration WHERE selfregistrationorgunit in (select * from orgUnitsToDelete);
-DELETE FROM minmaxdataelement WHERE sourceid in (select * from orgUnitsToDelete);
-DELETE FROM visualization_organisationunits WHERE organisationunitid in (select * from orgUnitsToDelete);
-DELETE FROM organisationunit WHERE organisationunitid in (select * from orgUnitsToDelete);
-DROP MATERIALIZED VIEW if exists orgUnitsToDelete CASCADE;
-
+    write(f, """
+        DELETE FROM userdatavieworgunits where organisationunitid in (select * from orgUnitsToDelete);
+        DELETE FROM usermembership where organisationunitid in (select * from orgUnitsToDelete);
+        DELETE FROM userteisearchorgunits where organisationunitid in (select * from orgUnitsToDelete);
+        DELETE FROM validationresult where organisationunitid in (select * from orgUnitsToDelete);
+        DELETE FROM completedatasetregistration where sourceid in (select * from orgUnitsToDelete);
+        DELETE FROM configuration WHERE selfregistrationorgunit in (select * from orgUnitsToDelete);
+        DELETE FROM minmaxdataelement WHERE sourceid in (select * from orgUnitsToDelete);
+        DELETE FROM visualization_organisationunits WHERE organisationunitid in (select * from orgUnitsToDelete);
+        DELETE FROM organisationunit WHERE organisationunitid in (select * from orgUnitsToDelete);
+        DROP MATERIALIZED VIEW if exists orgUnitsToDelete CASCADE;
     """)
 
 
