@@ -1,14 +1,14 @@
 import os
 import shutil
 
-from src.preprocess.sql_generation.delete_datasets import delete_all_data_sets, generate_delete_datasets_rules
-from src.preprocess.sql_generation.delete_orgunits import start_ou_materialized_view, \
+from src.preprocess.sql_generation.queries.delete_datasets import delete_all_data_sets, generate_delete_datasets_rules
+from src.preprocess.sql_generation.queries.delete_orgunits import start_ou_materialized_view, \
     generate_delete_org_unit_tree_rules, generate_delete_org_unit_level_by_parent_rules, \
     generate_delete_org_unit_level_rules, delete_org_units
-from src.preprocess.sql_generation.delete_programs import delete_all_event_programs, generate_delete_event_rules
-from src.preprocess.sql_generation.delete_trackers import delete_all_tracker_programs, generate_delete_tracker_rules
-from src.preprocess.sql_generation.remove_dependencies import remove_all_unnecessary_dependencies
-from src.preprocess.sql_generation.sql_anonymizer import generate_anonymize_user_queries, \
+from src.preprocess.sql_generation.queries.delete_programs import delete_all_event_programs, generate_delete_event_rules
+from src.preprocess.sql_generation.queries.delete_trackers import delete_all_tracker_programs, generate_delete_tracker_rules
+from src.preprocess.sql_generation.queries.remove_dependencies import remove_all_unnecessary_dependencies
+from src.preprocess.sql_generation.queries.sql_anonymizer import generate_anonymize_user_queries, \
     generate_anonymize_datasets_rules, generate_anonymize_tracker_rules, generate_anonymize_event_rules
 from src.preprocess.sql_generation.sql_common import write_or, write_end_of_sentence
 
