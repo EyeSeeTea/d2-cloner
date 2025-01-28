@@ -8,7 +8,7 @@ def delete_org_unit_data_and_views(f):
         DELETE FROM {programstageinstancecomments}     WHERE {programstageinstanceid}  IN (SELECT * FROM rm_programstageinstance);
     """.format(programstageinstancecomments= get_event_comment_table(), programstageinstanceid=get_event_identifier_name()))
 
-    if Config.get_post_api_version() <= 36:
+    if Config.get_pre_api_version() <= 36:
         write(f, """
             DELETE FROM programinstanceaudit             WHERE {programinstanceid}       IN (SELECT * FROM rm_programinstance);
         """.format(programinstanceid=get_enrollment_identifier_name()))
@@ -61,7 +61,7 @@ def delete_org_unit_data_and_views(f):
         DELETE FROM programmessage_deliverychannels  WHERE programmessagedeliverychannelsid IN (SELECT * FROM rm_programmessage);
         DELETE FROM programmessage                   WHERE id                               IN (SELECT * FROM rm_programmessage);
     """)
-    if Config.get_post_api_version() <= 38:
+    if Config.get_pre_api_version() <= 38:
         write(f, """
             DELETE FROM reporttable_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
         """)

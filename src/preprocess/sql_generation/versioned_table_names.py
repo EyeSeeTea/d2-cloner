@@ -20,7 +20,7 @@ TABLES_2_38 = {
 }
 
 def _get_tables_for_version():
-    version = Config.get_instance().post_api_version
+    version = Config.get_pre_api_version()
     if version >= 2.41:
         return TABLES_2_41
     else:
