@@ -1,4 +1,4 @@
-from src.preprocess.sql_generation.sql_common import write, convert_to_sql_format
+from src.preprocess.sql_generation.sql_common import write, convert_to_sql_format, fix_final_query
 from src.preprocess.sql_generation.versioned_table_names import *
 
 
@@ -65,9 +65,7 @@ def generate_delete_event_rules(event_program, data_elements, org_units,
     if not has_rule:
         delete_all_event_programs(all_uid, f)
     else:
-        sql_query = sql_query + ";"
-        sql_query = sql_query.replace("and;", ";")
-        write(f, sql_query + "\n")
+        write(f, fix_final_query(sql_query) + "\n")
 
 
 def delete_all_event_programs(programs, f):

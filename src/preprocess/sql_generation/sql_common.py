@@ -1,3 +1,6 @@
+import re
+
+
 def write(f, text):
     # print(text)
     f.write(text)
@@ -23,3 +26,13 @@ def convert_to_possible_paths_in_sql_format(list_uid):
     return "and ( path like " + " or path like  " \
                                 "".join(["'%{}%'".format(uid) for uid in list_uid]) + \
         ")".replace("(or", " ")
+
+def fix_final_query(sql_query):
+    """This method is required now to create the sql with the ; and remove possible unnecessary and;"""
+    sql_query = sql_query + ";"
+    sql_query = remove_spaces_before_semicolon(sql_query)
+    sql_query = sql_query.replace("and;", ";")
+    return sql_query
+
+def remove_spaces_before_semicolon(s):
+    return re.sub(r'(\S)\s+;', r'\1;', s)

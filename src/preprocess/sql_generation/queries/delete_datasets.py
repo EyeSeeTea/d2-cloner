@@ -1,4 +1,4 @@
-from src.preprocess.sql_generation.sql_common import convert_to_sql_format, write
+from src.preprocess.sql_generation.sql_common import convert_to_sql_format, write, fix_final_query
 
 
 def generate_delete_datasets_rules(datasets, data_elements, org_units,
@@ -49,9 +49,7 @@ def generate_delete_datasets_rules(datasets, data_elements, org_units,
     if not has_rule:
         delete_all_data_sets(all_uid, f)
     else:
-        sql_query = sql_query + ";"
-        sql_query = sql_query.replace("and;", ";")
-        write(f, sql_query + "\n")
+        write(f, fix_final_query(sql_query) + "\n")
 
 
 def delete_all_data_sets(datasets, f):

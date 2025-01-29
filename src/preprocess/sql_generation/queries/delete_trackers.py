@@ -1,4 +1,4 @@
-from src.preprocess.sql_generation.sql_common import write, convert_to_sql_format
+from src.preprocess.sql_generation.sql_common import write, convert_to_sql_format, fix_final_query
 from src.preprocess.sql_generation.versioned_table_names import *
 
 
@@ -41,12 +41,12 @@ def generate_delete_tracker_rules(trackers, data_elements, org_units, org_unit_d
         has_rule = True
         sql_query = sql_query + """ 
             and dataelementid IN (
-            SELECT DISTINCT de.dataelementid 
+            SELECT DISTINCT dataelementid 
             FROM programstagedataelement psde
             INNER JOIN programstage ps ON psde.programstageid = ps.programstageid
             INNER JOIN program p ON ps.programid = p.programid
-            WHERE p.uid IN {progam_uids}) 
-        """.format(progam_uids=sql_trackers)
+            WHERE p.uid IN {progam_uids})
+         """.format(progam_uids=sql_trackers)
 
     if sql_org_units != "":
         has_rule = True
@@ -65,9 +65,7 @@ def generate_delete_tracker_rules(trackers, data_elements, org_units, org_unit_d
     if not has_rule:
         delete_all_tracker_programs(all_uid, f)
     else:
-        sql_query = sql_query + ";"
-        sql_query = sql_query.replace("and;", ";")
-        write(f, sql_query + "\n")
+        write(f, fix_final_query(sql_query) + "\n")
 
 
 def delete_all_tracker_programs(trackers, f):
@@ -142,7 +140,7 @@ def delete_all_tracker_programs(trackers, f):
         DELETE FROM {programinstance} where {trackedentityinstanceid} in ( select * from tei_to_remove);
         DELETE FROM {trackedentityinstance} where {trackedentityinstanceid} in ( select * from tei_to_remove);
         DELETE FROM trackedentityprogramowner where {trackedentityinstanceid} in ( select * from tei_to_remove);
-        drop view tei_to_remove ;
+        drop MATERIALIZED tei_to_remove ;
         --remove tracker finish
     """.format(programinstance=get_enrollment_table_name(), trackedentityinstance=get_tracker_table_name(),
                trackedentityinstanceid=get_tracker_identifier_name()))

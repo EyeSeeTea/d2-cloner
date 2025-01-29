@@ -6,7 +6,7 @@ TABLES_2_41 = {
     TableKey.ENROLLMENT: "enrollment",
     TableKey.TRACKER: "trackedentity",
     TableKey.EVENT_COMMENT: "event_notes",
-    TableKey.ENROLLMENT_COMMENT: "enrollment_note",
+    TableKey.ENROLLMENT_COMMENT: "enrollment_notes",
     TableKey.USER: "userinfo"
 }
 
