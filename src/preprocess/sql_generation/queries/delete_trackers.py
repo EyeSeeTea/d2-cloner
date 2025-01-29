@@ -2,6 +2,8 @@ from src.preprocess.sql_generation.sql_common import write, convert_to_sql_forma
 from src.preprocess.sql_generation.versioned_table_names import *
 
 
+
+
 def generate_delete_tracker_rules(trackers, data_elements, org_units, org_unit_descendants,
                                   all_uid, f):
     write(f, "--remove trackers \n")
@@ -37,17 +39,6 @@ def generate_delete_tracker_rules(trackers, data_elements, org_units, org_unit_d
                  (select programid from program where uid in {tracker_program_uid})) and 
              """.format(tracker_program_uid=sql_all)
 
-    elif sql_trackers != "":
-        has_rule = True
-        sql_query = sql_query + """ 
-            and dataelementid IN (
-            SELECT DISTINCT dataelementid 
-            FROM programstagedataelement psde
-            INNER JOIN programstage ps ON psde.programstageid = ps.programstageid
-            INNER JOIN program p ON ps.programid = p.programid
-            WHERE p.uid IN {progam_uids})
-         """.format(progam_uids=sql_trackers)
-
     if sql_org_units != "":
         has_rule = True
         sql_query = sql_query + """ 
@@ -65,8 +56,28 @@ def generate_delete_tracker_rules(trackers, data_elements, org_units, org_unit_d
     if not has_rule:
         delete_all_tracker_programs(all_uid, f)
     else:
+        write(f, delete_mandatory_dependencies(f, sql_trackers) + "\n")
         write(f, fix_final_query(sql_query) + "\n")
 
+def delete_mandatory_dependencies(f, trackers):
+    """todo review all the dependencies"""
+    write(f, """
+        --remove all tracker
+        DELETE FROM trackedentitydatavalueaudit where {programstageinstanceid}
+        in ( select psi.{programstageinstanceid}  from {programstageinstance} psi
+        inner join programstage ps on ps.programstageid=psi.programstageid
+        inner join program p on p.programid=ps.programid
+        where p.uid in {tracker_uids});
+    """.format(programstageinstanceid=get_event_identifier_name(), programstageinstance=get_event_table_name(),
+               tracker_uids=trackers))
+    write(f, """
+        DELETE FROM {programstageinstancecomments} where {programstageinstanceid}
+        in ( select {programstageinstanceid} from {programstageinstance} where programstageid in
+        (select programstageid from programstage where programid in
+        (select programid from program where uid in {tracker_uids})));
+    """.format(programstageinstancecomments=get_event_comment_table(),
+               programstageinstanceid=get_event_identifier_name(), programstageinstance=get_event_table_name(),
+               tracker_uids=trackers))
 
 def delete_all_tracker_programs(trackers, f):
     trackers = convert_to_sql_format(trackers)
@@ -140,7 +151,7 @@ def delete_all_tracker_programs(trackers, f):
         DELETE FROM {programinstance} where {trackedentityinstanceid} in ( select * from tei_to_remove);
         DELETE FROM {trackedentityinstance} where {trackedentityinstanceid} in ( select * from tei_to_remove);
         DELETE FROM trackedentityprogramowner where {trackedentityinstanceid} in ( select * from tei_to_remove);
-        drop MATERIALIZED tei_to_remove ;
+        DROP MATERIALIZED view tei_to_remove ;
         --remove tracker finish
     """.format(programinstance=get_enrollment_table_name(), trackedentityinstance=get_tracker_table_name(),
                trackedentityinstanceid=get_tracker_identifier_name()))
