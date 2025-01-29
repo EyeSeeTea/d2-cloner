@@ -4,7 +4,7 @@ from src.preprocess.sql_generation.table_key import TableKey
 TABLES_2_41 = {
     TableKey.EVENT: "event",
     TableKey.ENROLLMENT: "enrollment",
-    TableKey.TRACKER: "trackedentityid",
+    TableKey.TRACKER: "trackedentity",
     TableKey.EVENT_COMMENT: "event_notes",
     TableKey.ENROLLMENT_COMMENT: "enrollment_note",
     TableKey.USER: "userinfo"
