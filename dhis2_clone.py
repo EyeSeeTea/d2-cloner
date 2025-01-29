@@ -271,7 +271,8 @@ def get_version(config):
 
 
 def run(cmd):
-    log(cmd)
+    cmd_remove_password = re.sub(r'(--api-local-(?:username|password)|--db-remote)\s+\S+', r'\1 [HIDDEN]', cmd)
+    log(cmd_remove_password)
     ret = os.system(cmd)
     if ret != 0:
         sys.exit(ret)
