@@ -278,7 +278,12 @@ def run(cmd):
 
 
 def log(txt):
-    clean_txt = re.sub(r"(--auth|--api-local-(?:username|password)|--db-remote)|://(.*?):(.*?)@", "://\\1:PASSWORD@", txt)
+    clean_auth = re.sub(
+        r"(--auth\s+')(.*?):(.*?)(')",
+        "--auth user:PASSWORD",
+        txt
+    )
+    clean_txt = re.sub(r"://(.*?):(.*?)@", "://\\1:PASSWORD@", clean_auth)
     out = "[%s] %s" % (time.strftime("%Y-%m-%d %T"), clean_txt)
     print((magenta(out) if COLOR else out))
     sys.stdout.flush()
