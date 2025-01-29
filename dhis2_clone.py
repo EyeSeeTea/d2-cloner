@@ -271,15 +271,14 @@ def get_version(config):
 
 
 def run(cmd):
-    cmd_remove_password = re.sub(r'(--api-local-(?:username|password)|--db-remote)\s+\S+', r'\1 [HIDDEN]', cmd)
-    log(cmd_remove_password)
+    log(cmd)
     ret = os.system(cmd)
     if ret != 0:
         sys.exit(ret)
 
 
 def log(txt):
-    clean_txt = re.sub(r"://(.*?):(.*?)@", "://\\1:PASSWORD@", txt)
+    clean_txt = re.sub(r"(--auth|--api-local-(?:username|password)|--db-remote)|://(.*?):(.*?)@", "://\\1:PASSWORD@", txt)
     out = "[%s] %s" % (time.strftime("%Y-%m-%d %T"), clean_txt)
     print((magenta(out) if COLOR else out))
     sys.stdout.flush()
