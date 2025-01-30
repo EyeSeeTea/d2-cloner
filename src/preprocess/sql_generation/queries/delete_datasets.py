@@ -47,13 +47,17 @@ def generate_delete_datasets_rules(datasets, data_elements, org_units,
         """.format(oudescendants=sql_org_unit_descendants)
 
     if not has_rule:
-        delete_all_data_sets(all_uid, f)
+        delete_all_data_sets_from_lists(all_uid, f)
     else:
         write(f, fix_final_query(sql_query) + "\n")
 
 
+def delete_all_data_sets_from_lists(programs, f):
+    programs = convert_to_sql_format(programs)
+    delete_all_data_sets(programs, f)
+
+
 def delete_all_data_sets(datasets, f):
-    datasets = convert_to_sql_format(datasets)
     write(f, """
         --remove all datasets
         DELETE FROM datavalueaudit where dataelementid in 

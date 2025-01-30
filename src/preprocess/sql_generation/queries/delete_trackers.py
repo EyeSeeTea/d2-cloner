@@ -54,7 +54,7 @@ def generate_delete_tracker_rules(trackers, data_elements, org_units, org_unit_d
         """.format(org_units=sql_org_unit_descendants)
 
     if not has_rule:
-        delete_all_tracker_programs(all_uid, f)
+        delete_all_tracker_programs_from_lists(all_uid, f)
     else:
         write(f, delete_mandatory_dependencies(f, sql_trackers) + "\n")
         write(f, fix_final_query(sql_query) + "\n")
@@ -79,8 +79,11 @@ def delete_mandatory_dependencies(f, trackers):
                programstageinstanceid=get_event_identifier_name(), programstageinstance=get_event_table_name(),
                tracker_uids=trackers))
 
-def delete_all_tracker_programs(trackers, f):
+def delete_all_tracker_programs_from_lists(trackers, f):
     trackers = convert_to_sql_format(trackers)
+    delete_all_tracker_programs(trackers, f)
+
+def delete_all_tracker_programs(trackers, f):
     write(f, """
         create MATERIALIZED view tei_to_remove as select {trackedentityinstanceid} "teiid"
         from {programinstance} where programid in (select programid from program where uid in {tracker_uids});

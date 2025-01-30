@@ -63,13 +63,16 @@ def generate_delete_event_rules(event_program, data_elements, org_units,
           """.format(uids=sql_org_unit_descendants)
 
     if not has_rule:
-        delete_all_event_programs(all_uid, f)
+        delete_all_event_programs_from_lists(all_uid, f)
     else:
         write(f, fix_final_query(sql_query) + "\n")
 
 
-def delete_all_event_programs(programs, f):
+def delete_all_event_programs_from_lists(programs, f):
     programs = convert_to_sql_format(programs)
+    delete_all_event_programs(programs, f)
+
+def delete_all_event_programs(programs, f):
     write(f, """
         --remove all events
         DELETE FROM trackedentitydatavalueaudit where {programstageinstanceid} 
