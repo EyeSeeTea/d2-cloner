@@ -6,6 +6,7 @@ import requests
 
 from d2apy import dhis2api
 
+from src.common.config import Config
 from src.postprocess.list_modifier import *
 from src.common.debug import debug
 from faker import Faker
@@ -152,7 +153,7 @@ def get_users_by_group_names(api, user_group_names, api_version):
     if not user_group_names:
         return []
 
-    if api_version == "2.36":
+    if Config.get_post_api_version() >= 36:
         response = api.get(
             "/users",
             {
@@ -162,7 +163,7 @@ def get_users_by_group_names(api, user_group_names, api_version):
             },
         )
         return response["users"]
-    elif api_version == "2.34":
+    elif Config.get_post_api_version() == 34:
         response = api.get(
             "/userGroups",
             {
