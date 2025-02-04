@@ -13,7 +13,7 @@ TABLES_2_41 = {
 TABLES_2_38 = {
     TableKey.EVENT: "programstageinstance",
     TableKey.ENROLLMENT: "programinstance",
-    TableKey.TRACKER: "trackerentityinstance",
+    TableKey.TRACKER: "trackedentityinstance",
     TableKey.EVENT_COMMENT: "programstageinstancecomments",
     TableKey.ENROLLMENT_COMMENT: "programinstancecomments",
     TableKey.USER: "user"
@@ -21,7 +21,7 @@ TABLES_2_38 = {
 
 def _get_tables_for_version():
     version = Config.get_pre_api_version()
-    if version >= 2.41:
+    if version >= 41:
         return TABLES_2_41
     else:
         return TABLES_2_38
