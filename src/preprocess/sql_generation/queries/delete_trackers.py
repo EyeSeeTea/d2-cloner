@@ -109,15 +109,15 @@ def delete_all_tracker_programs(trackers, f):
                tracker_uids=trackers))
 
     write(f, """
-        DELETE FROM trackedentityattributevalue where {trackedentityinstanceid} 
-        in ( select {trackedentityinstanceid} from {programinstance} where programid in(select 
-        programid from program where uid in {tracker_uids}));
-    """.format(trackedentityinstanceid=get_tracker_identifier_name(), programinstance=get_enrollment_table_name(),
-               tracker_uids=trackers))
-    write(f, """
         DELETE FROM trackedentityattributevalueaudit where {trackedentityinstanceid} 
         in ( select {trackedentityinstanceid} from {programinstance} where programid 
         in(select programid from program where uid in {tracker_uids}));
+    """.format(trackedentityinstanceid=get_tracker_identifier_name(), programinstance=get_enrollment_table_name(),
+               tracker_uids=trackers))
+    write(f, """
+        DELETE FROM trackedentityattributevalue where {trackedentityinstanceid} 
+        in ( select {trackedentityinstanceid} from {programinstance} where programid in(select 
+        programid from program where uid in {tracker_uids}));
     """.format(trackedentityinstanceid=get_tracker_identifier_name(), programinstance=get_enrollment_table_name(),
                tracker_uids=trackers))
 
@@ -152,8 +152,8 @@ def delete_all_tracker_programs(trackers, f):
 
     write(f, """
         DELETE FROM {programinstance} where {trackedentityinstanceid} in ( select * from tei_to_remove);
-        DELETE FROM {trackedentityinstance} where {trackedentityinstanceid} in ( select * from tei_to_remove);
         DELETE FROM trackedentityprogramowner where {trackedentityinstanceid} in ( select * from tei_to_remove);
+        DELETE FROM {trackedentityinstance} where {trackedentityinstanceid} in ( select * from tei_to_remove);
         DROP MATERIALIZED view tei_to_remove ;
         --remove tracker finish
     """.format(programinstance=get_enrollment_table_name(), trackedentityinstance=get_tracker_table_name(),
