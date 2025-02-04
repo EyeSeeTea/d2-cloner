@@ -132,7 +132,7 @@ def create_org_units_to_remove_views_and_indexes(f):
                 {trackedentityinstanceid} IN (SELECT * FROM rm_trackedentityinstance) OR 
                 {programstageinstanceid}  IN (SELECT * FROM rm_programstageinstance) OR 
                 {programinstanceid}       IN (SELECT * FROM rm_programinstance); 
-        CREATE UNIQUE INDEX idx_programmessage ON rm_programmessage ({id}); 
+        CREATE UNIQUE INDEX idx_programmessage ON rm_programmessage (id); 
         CREATE INDEX IF NOT EXISTS idx_datavalue_organisationunitid                 ON datavalue                 (sourceid); 
         CREATE INDEX IF NOT EXISTS idx_datavalueaudit_organisationunitid            ON datavalueaudit            (organisationunitid); 
         CREATE INDEX IF NOT EXISTS idx_program_organisationunits_organisationunitid ON program_organisationunits (organisationunitid); 
@@ -148,8 +148,9 @@ def create_org_units_to_remove_views_and_indexes(f):
         CREATE INDEX IF NOT EXISTS idx_programstagenotification_psi                        ON programnotificationinstance              ({programstageinstanceid}); 
         CREATE INDEX IF NOT EXISTS idx_relationshipitem_programstageinstanceid             ON relationshipitem                         ({programstageinstanceid}); 
         CREATE INDEX IF NOT EXISTS idx_s9i10v8xg7d22hlhmesia51l                            ON programstageinstance_messageconversation ({programstageinstanceid}); 
-    """).format(programstageinstanceid=get_event_identifier_name(), programstageinstance=get_event_table_name(),programinstanceid=get_enrollment_identifier_name(),programinstance=get_enrollment_table_name(),trackerentityinstanceid=get_tracker_identifier_name()
-            ,trackerentityinstance=get_tracker_table_name())
+    """.format(programstageinstanceid=get_event_identifier_name(), programstageinstance=get_event_table_name(),programinstanceid=get_enrollment_identifier_name(),
+               programinstance=get_enrollment_table_name(), trackedentityinstance=get_tracker_table_name(), trackedentityinstanceid = get_tracker_identifier_name(),
+               programstageinstancecomments=get_event_comment_table()))
 
 
 def generate_delete_org_unit_tree_rules(orgunits, f):
