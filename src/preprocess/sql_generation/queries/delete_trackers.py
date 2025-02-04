@@ -152,6 +152,7 @@ def delete_all_tracker_programs(trackers, f):
 
     write(f, """
         DELETE FROM {programinstance} where {trackedentityinstanceid} in ( select * from tei_to_remove);
+        DELETE FROM trackedentityattributevalue where {trackedentityinstanceid} in ( select * from tei_to_remove);
         DELETE FROM trackedentityprogramowner where {trackedentityinstanceid} in ( select * from tei_to_remove);
         DELETE FROM {trackedentityinstance} where {trackedentityinstanceid} in ( select * from tei_to_remove);
         DROP MATERIALIZED view tei_to_remove ;
