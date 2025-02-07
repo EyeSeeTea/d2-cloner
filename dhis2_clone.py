@@ -360,7 +360,7 @@ def start_tomcat(cfg, args):
         )
         if args.post_sql:
             abort_clone = is_post_sql_execution_valid(cfg["local_docker_image"], "Error detected while executing SQL file: /data/db/post_strict_sql/test.sql")
-            if abort_clone:
+            if not abort_clone:
                 log("Error executing post-sql files. aborting...")
                 run(
                     "d2-docker stop {} ".format(
@@ -377,7 +377,7 @@ def is_post_sql_execution_valid(container, search_text, interval=15):
         if search_text in log_output:
             print(f"Match: {search_text}")
             return False
-        if "Exit code of psql: 0" in log_output:
+        elif "[dhis2-core-start] Start Tomcat catalina" in log_output:
             return True
         print("Waiting...")
         time.sleep(interval)
