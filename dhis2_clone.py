@@ -353,11 +353,34 @@ def start_tomcat(cfg, args):
                 (("--deploy-path '%s'" % deploy_path) if deploy_path else ""),
                 (("--tomcat-server-xml '%s'" % server_xml_path) if server_xml_path else ""),
                 (("--dhis-conf '%s'" % dhis_conf_path) if dhis_conf_path else ""),
-                (("--run-sql '%s'" % post_sql) if post_sql else ""),
+                (("--run-sql '%s' --strict-sql " % post_sql) if post_sql else ""),
                 (("--run-scripts '%s'" % post_scripts_dir) if post_scripts_dir else ""),
                 (("--auth '%s'" % (args.api_local_username + ":" + args.api_local_password)) if api_url else "")
             )
         )
+        if args.post_sql:
+            abort_clone = is_post_sql_execution_valid(cfg["local_docker_image"], "Error detected while executing SQL file: /data/db/post_strict_sql/test.sql")
+            if abort_clone:
+                log("Error executing post-sql files. aborting...")
+                run(
+                    "d2-docker stop {} ".format(
+                        get_local_docker_image(cfg, args, "start")
+                    )
+                )
+                sys.exit(1)
+
+
+def is_post_sql_execution_valid(container, search_text, interval=15):
+    time.sleep(30) #give some seconds to wait for the d2-docker start
+    while True:
+        log_output = subprocess.getoutput(f"d2-docker logs {container}")
+        if search_text in log_output:
+            print(f"Match: {search_text}")
+            return False
+        if "Exit code of psql: 0" in log_output:
+            return True
+        print("Waiting...")
+        time.sleep(interval)
 
 
 def stop_tomcat(cfg, args):
