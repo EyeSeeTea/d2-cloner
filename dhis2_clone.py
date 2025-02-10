@@ -163,6 +163,7 @@ def get_args():
     add("--no-preprocess", action="store_true", help="don't do preprocessing")
     add("--manual-restart", action="store_true", help="don't stop/start tomcat")
     add("--post-sql", nargs="+", default=[], help="sql files to run post-clone")
+    add("--strict-sql", action="store_true", help="stop the sql script on first fail and show in the log")
     add("--pre-api", help="Pre Api calls compatible versions: 2.34 / 2.36 (default: 2.36)")
     add("--post-api", help="Post Api calls compatible versions: 2.34 / 2.36 (default: 2.36)")
     add(
@@ -344,7 +345,7 @@ def start_tomcat(cfg, args):
             return
         post_scripts_dir = cfg.get("local_docker_post_clone_scripts_dir", None)
         api_url = cfg["api_local_url"]
-
+        strict_sql_enabled = args.strict_sql
         run(
             "d2-docker {} start {} --port={} --detach {} {} {} {} {} {}".format(
                 (("--temp-directory '%s'" % temporal_folder) if temporal_folder else ""),
@@ -353,7 +354,7 @@ def start_tomcat(cfg, args):
                 (("--deploy-path '%s'" % deploy_path) if deploy_path else ""),
                 (("--tomcat-server-xml '%s'" % server_xml_path) if server_xml_path else ""),
                 (("--dhis-conf '%s'" % dhis_conf_path) if dhis_conf_path else ""),
-                (("--run-sql '%s' --strict-sql " % post_sql) if post_sql else ""),
+                (("--run-sql '%s'%s" % (post_sql, " --strict-sql " if strict_sql_enabled else "")) if post_sql else ""),
                 (("--run-scripts '%s'" % post_scripts_dir) if post_scripts_dir else ""),
                 (("--auth '%s'" % (args.api_local_username + ":" + args.api_local_password)) if api_url else "")
             )
