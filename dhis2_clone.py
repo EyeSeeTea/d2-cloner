@@ -74,6 +74,12 @@ def main():
 
     if args.post_clone_scripts:
         execute_scripts(cfg, args)
+    if not args.keep_temporal and is_local_d2docker(cfg):
+        d2_docker_tmp_dir = cfg["server_dir_local"]
+        #remove temporal files but in tomcat are the real files
+        if os.path.exists(d2_docker_tmp_dir) and os.path.isdir(d2_docker_tmp_dir):
+            os.system(f"rm -rf {d2_docker_tmp_dir}/*")
+
 
     if not args.manual_restart:
         start_tomcat(cfg, args)
@@ -166,6 +172,8 @@ def get_args():
     add("--strict-sql", action="store_true", help="stop the sql script on first fail and show in the log")
     add("--pre-api", help="Pre Api calls compatible versions: 2.34 / 2.36 (default: 2.36)")
     add("--post-api", help="Post Api calls compatible versions: 2.34 / 2.36 (default: 2.36)")
+    add("--keep-temporal", help="Preserve temporary d2-docker files for cloning the instance")
+
     add(
         "--post-clone-scripts",
         action="store_true",
