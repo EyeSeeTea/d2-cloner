@@ -348,12 +348,16 @@ def start_tomcat(cfg, args):
         server_xml_path = cfg.get("local_docker_server_xml", None)
         dhis_conf_path = cfg.get("local_docker_dhis_conf", None)
         temporal_folder = cfg.get("docker_temporal_folder", None)
-        if post_sql and (len(args.post_sql) != 1 or not os.path.isdir(post_sql)):
-            log("--post-sql for d2-docker requires a single directory")
-            return
+        if post_sql:
+            if len(args.post_sql) != 1 or not os.path.isdir(post_sql):
+                log("--post-sql for d2-docker requires a single directory")
+                return
+            elif args.strict_sql:
+                add_strict_to_filenames(post_sql)
+
         post_scripts_dir = cfg.get("local_docker_post_clone_scripts_dir", None)
         api_url = cfg["api_local_url"]
-        strict_sql_enabled = args.strict_sql
+
         run(
             "d2-docker {} start {} --port={} --detach {} {} {} {} {} {}".format(
                 (("--temp-directory '%s'" % temporal_folder) if temporal_folder else ""),
@@ -362,34 +366,22 @@ def start_tomcat(cfg, args):
                 (("--deploy-path '%s'" % deploy_path) if deploy_path else ""),
                 (("--tomcat-server-xml '%s'" % server_xml_path) if server_xml_path else ""),
                 (("--dhis-conf '%s'" % dhis_conf_path) if dhis_conf_path else ""),
-                (("--run-sql '%s'%s" % (post_sql, " --strict-sql " if strict_sql_enabled else "")) if post_sql else ""),
+                (("--run-sql '%s'" % post_sql) if post_sql else ""),
                 (("--run-scripts '%s'" % post_scripts_dir) if post_scripts_dir else ""),
                 (("--auth '%s'" % (args.api_local_username + ":" + args.api_local_password)) if api_url else "")
             )
         )
-        if args.post_sql:
-            abort_clone = is_post_sql_execution_valid(cfg["local_docker_image"], "Error detected while executing SQL file: /data/db/post_strict_sql/test.sql")
-            if not abort_clone:
-                log("Error executing post-sql files. aborting...")
-                run(
-                    "d2-docker stop {} ".format(
-                        get_local_docker_image(cfg, args, "start")
-                    )
-                )
-                sys.exit(1)
 
 
-def is_post_sql_execution_valid(container, search_text, interval=15):
-    time.sleep(30) #give some seconds to wait for the d2-docker start
-    while True:
-        log_output = subprocess.getoutput(f"d2-docker logs {container}")
-        if search_text in log_output:
-            print(f"Match: {search_text}")
-            return False
-        elif "[dhis2-core-start] Start Tomcat catalina" in log_output:
-            return True
-        print("Waiting...")
-        time.sleep(interval)
+def add_strict_to_filenames(post_sql):
+    for filename in os.listdir(post_sql):
+        old_path = os.path.join(post_sql, filename)
+        if os.path.isfile(old_path):
+            name, ext = os.path.splitext(filename)
+            new_filename = f"{name}_strict{ext}"
+            new_path = os.path.join(post_sql, new_filename)
+            os.rename(old_path, new_path)
+            log(f"Renamed: {old_path} -> {new_path}")
 
 
 def stop_tomcat(cfg, args):
