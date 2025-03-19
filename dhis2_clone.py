@@ -76,7 +76,7 @@ def main():
         execute_scripts(cfg, args)
     if not args.keep_temporal and is_local_d2docker(cfg):
         d2_docker_tmp_dir = cfg["server_dir_local"]
-        #remove temporal files but in tomcat are the real files
+        #Only the d2-docker files are truly temporary files (Tomcat files shouldn't be deleted).
         if os.path.exists(d2_docker_tmp_dir) and os.path.isdir(d2_docker_tmp_dir):
             os.system(f"rm -rf {d2_docker_tmp_dir}/*")
 
