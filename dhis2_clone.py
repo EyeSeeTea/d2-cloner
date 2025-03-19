@@ -74,7 +74,7 @@ def main():
 
     if args.post_clone_scripts:
         execute_scripts(cfg, args)
-    if not args.keep_temporal and is_local_d2docker(cfg):
+    if not args.keep_temp and is_local_d2docker(cfg):
         d2_docker_tmp_dir = cfg["server_dir_local"]
         #Only the d2-docker files are truly temporary files (Tomcat files shouldn't be deleted).
         if os.path.exists(d2_docker_tmp_dir) and os.path.isdir(d2_docker_tmp_dir):
@@ -172,7 +172,7 @@ def get_args():
     add("--strict-sql", action="store_true", help="stop the sql script on first fail and show in the log")
     add("--pre-api", help="Pre Api calls compatible versions: 2.34 / 2.36 (default: 2.36)")
     add("--post-api", help="Post Api calls compatible versions: 2.34 / 2.36 (default: 2.36)")
-    add("--keep-temporal",  action="store_true", help="Preserve temporary d2-docker files for cloning the instance")
+    add("--keep-temp",  action="store_true", help="Preserve temporary d2-docker files for cloning the instance")
 
     add(
         "--post-clone-scripts",
@@ -347,7 +347,7 @@ def start_tomcat(cfg, args):
         deploy_path = cfg.get("local_docker_deploy_path", None)
         server_xml_path = cfg.get("local_docker_server_xml", None)
         dhis_conf_path = cfg.get("local_docker_dhis_conf", None)
-        temporal_folder = cfg.get("docker_temporal_folder", None)
+        temp_folder = cfg.get("docker_temp_folder", None)
         if post_sql:
             if len(args.post_sql) != 1 or not os.path.isdir(post_sql):
                 log("--post-sql for d2-docker requires a single directory")
@@ -360,7 +360,7 @@ def start_tomcat(cfg, args):
 
         run(
             "d2-docker {} start {} --port={} --detach {} {} {} {} {} {}".format(
-                (("--temp-directory '%s'" % temporal_folder) if temporal_folder else ""),
+                (("--temp-directory '%s'" % temp_folder) if temp_folder else ""),
                 get_local_docker_image(cfg, args, "start"),
                 cfg["local_docker_port"],
                 (("--deploy-path '%s'" % deploy_path) if deploy_path else ""),
@@ -482,11 +482,11 @@ def get_db(cfg, args):
         apps_dir = os.path.join(dir_local, "files", "apps")
         documents_dir = os.path.join(dir_local, "files", "document")
         datavalues_dir = os.path.join(dir_local, "files", "dataValue")
-        temporal_folder = cfg.get("docker_temporal_folder", None)
+        temp_folder = cfg.get("docker_temp_folder", None)
 
         run(
             "d2-docker {} create data {} --sql={} {} {} {}".format(
-                (("--temp-directory '%s'" % temporal_folder) if temporal_folder else ""),
+                (("--temp-directory '%s'" % temp_folder) if temp_folder else ""),
                 get_local_docker_image(cfg, args, "stop"),
                 sql_path,
                 (("--apps-dir '%s'" % apps_dir) if os.path.isdir(apps_dir) else ""),
