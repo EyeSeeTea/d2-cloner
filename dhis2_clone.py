@@ -14,6 +14,8 @@ import argparse
 from subprocess import Popen
 
 import psycopg2
+
+from src.common.config import Config
 from src.preprocess import preprocess
 from src.postprocess import postprocess
 
@@ -35,6 +37,8 @@ def main():
         check_use_backup(cfg["hostname_remote"], args.use_backup)
 
     pre_api_version, post_api_version = get_api_version(args, cfg)
+
+    Config(pre_api_version, post_api_version)
 
     if args.update_config:
         update_config(args.config)
@@ -92,9 +96,20 @@ def main():
 
 
 def get_api_version(args, cfg):
-    supported_versions = ["2.34", "2.36"]
+    supported_versions = ["2.34", "2.36", "2.38", "2.41", "34", "36", "38", "41"]
     pre_api_version = None
     post_api_version = None
+
+    if args.pre_api is not None:
+        pre_api_version=args.pre_api
+    if args.post_api is not None:
+        post_api_version=args.post_api
+
+    # Read versions from the config if not provided as a parameter.
+    if pre_api_version is None:
+        pre_api_version = cfg["pre_api"]
+    if post_api_version is None:
+        post_api_version = cfg["post_api"]
 
     if args.pre_api is not None and args.pre_api not in supported_versions:
         print("ERROR: Invalid pre api version given as param")
@@ -117,12 +132,6 @@ def get_api_version(args, cfg):
     if args.post_api in supported_versions:
         post_api_version = args.post_api
         print("Loaded " + args.post_api + "api version for post api calls")
-
-    # param version have priority to config version.
-    if pre_api_version is None:
-        pre_api_version = cfg["pre_api"]
-    if post_api_version is None:
-        post_api_version = cfg["post_api"]
 
     return pre_api_version, post_api_version
 
@@ -154,6 +163,7 @@ def get_args():
     add("--no-preprocess", action="store_true", help="don't do preprocessing")
     add("--manual-restart", action="store_true", help="don't stop/start tomcat")
     add("--post-sql", nargs="+", default=[], help="sql files to run post-clone")
+    add("--strict-sql", action="store_true", help="stop the sql script on first fail and show in the log")
     add("--pre-api", help="Pre Api calls compatible versions: 2.34 / 2.36 (default: 2.36)")
     add("--post-api", help="Post Api calls compatible versions: 2.34 / 2.36 (default: 2.36)")
     add(
@@ -269,7 +279,12 @@ def run(cmd):
 
 
 def log(txt):
-    clean_txt = re.sub(r"://(.*?):(.*?)@", "://\\1:PASSWORD@", txt)
+    clean_auth = re.sub(
+        r"(--auth\s+')(.*?):(.*?)(')",
+        "--auth user:PASSWORD",
+        txt
+    )
+    clean_txt = re.sub(r"://(.*?):(.*?)@", "://\\1:PASSWORD@", clean_auth)
     out = "[%s] %s" % (time.strftime("%Y-%m-%d %T"), clean_txt)
     print((magenta(out) if COLOR else out))
     sys.stdout.flush()
@@ -325,9 +340,13 @@ def start_tomcat(cfg, args):
         server_xml_path = cfg.get("local_docker_server_xml", None)
         dhis_conf_path = cfg.get("local_docker_dhis_conf", None)
         temporal_folder = cfg.get("docker_temporal_folder", None)
-        if post_sql and (len(args.post_sql) != 1 or not os.path.isdir(post_sql)):
-            log("--post-sql for d2-docker requires a single directory")
-            return
+        if post_sql:
+            if len(args.post_sql) != 1 or not os.path.isdir(post_sql):
+                log("--post-sql for d2-docker requires a single directory")
+                return
+            elif args.strict_sql:
+                add_strict_to_filenames(post_sql)
+
         post_scripts_dir = cfg.get("local_docker_post_clone_scripts_dir", None)
         api_url = cfg["api_local_url"]
 
@@ -344,6 +363,17 @@ def start_tomcat(cfg, args):
                 (("--auth '%s'" % (args.api_local_username + ":" + args.api_local_password)) if api_url else "")
             )
         )
+
+
+def add_strict_to_filenames(post_sql):
+    for filename in os.listdir(post_sql):
+        old_path = os.path.join(post_sql, filename)
+        if os.path.isfile(old_path):
+            name, ext = os.path.splitext(filename)
+            new_filename = f"{name}_strict{ext}"
+            new_path = os.path.join(post_sql, new_filename)
+            os.rename(old_path, new_path)
+            log(f"Renamed: {old_path} -> {new_path}")
 
 
 def stop_tomcat(cfg, args):
