@@ -204,7 +204,7 @@ def generate_anonymize_event_rules(event_program, organisationunits, data_elemen
             in ( select psi.{programinstanceid}  from programstageinstance psi 
             inner join programstage ps on ps.programstageid=psi.programstageid 
             inner join program p on p.programid=ps.programid where p.uid in {program});
-        """.format(program=sql_event_program, programstageinstance=get_event_table_name(),programinstanceid=get_enrollment_identifier_name(), programinstance=get_enrollment_table_name()))
+        """.format(program=sql_event_program,programinstanceid=get_enrollment_identifier_name(), programinstance=get_enrollment_table_name()))
         write(f, """
              update {programstageinstance} as rand set organisationunitid=
              (select organisationunitid from organisationunit where length(path)=(select length(path) from organisationunit where rand.organisationunitid= organisationunitid) ORDER BY RANDOM()

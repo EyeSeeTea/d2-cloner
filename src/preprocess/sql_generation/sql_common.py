@@ -2,7 +2,6 @@ import re
 
 
 def write(f, text):
-    # print(text)
     f.write(text)
 
 

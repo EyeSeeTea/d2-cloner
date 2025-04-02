@@ -68,4 +68,3 @@ def delete_all_data_sets(datasets, f):
         DELETE FROM datavalue where dataelementid in (select dataelementid from datasetelement 
         where datasetid in (select datasetid from dataset where uid in {datasets}));
     """.format(datasets=datasets))
-    pass
