@@ -102,8 +102,8 @@ The sections in the configuration file are:
 * ``backups_dir``: directory where it will store the backups.
 * ``backup_name``: an identifier that it will append to the name of
   the war file and database backups.
-* ``server_dir_local``: base directory of the tomcat running in the
-  local server.
+* ``server_dir_local``: base directory of the tomcat running in the local server. Although server_dir_local points to the Tomcat base directory, it is also used internally as a temporary directory by d2-docker. When running a d2-docker cloning operation, this temporary directory will be removed by default (unless you use the --keep-temp option).
+If this path is set to a critical location (such as your home directory or any folder with important files), you risk losing data. Only the d2-docker temporary files are intended to be removed, but the behavior can be misleading.
 * ``server_dir_remote``: base directory of the tomcat running in the
   remote server.
 * ``hostname_remote``: name or IP of the machine containing the remote
