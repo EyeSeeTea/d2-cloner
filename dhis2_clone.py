@@ -170,8 +170,8 @@ def get_args():
     add("--manual-restart", action="store_true", help="don't stop/start tomcat")
     add("--post-sql", nargs="+", default=[], help="sql files to run post-clone")
     add("--strict-sql", action="store_true", help="stop the sql script on first fail and show in the log")
-    add("--pre-api", help="Pre Api calls compatible versions: 2.34 / 2.36 (default: 2.36)")
-    add("--post-api", help="Post Api calls compatible versions: 2.34 / 2.36 (default: 2.36)")
+    add("--pre-api", help="Pre Api calls compatible versions: 2.34 / 2.36 / 2.38 / 2.41 (default: 2.36)")
+    add("--post-api", help="Post Api calls compatible versions: 2.34 / 2.36 / 2.38 / 2.41 (default: 2.36)")
     add("--keep-temp",  action="store_true", help="Preserve temporary d2-docker files for cloning the instance")
 
     add(

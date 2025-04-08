@@ -44,39 +44,52 @@ Instances of type ``d2-docker`` might change its image (typically, in an upgrade
 
 Setup
 -----
+.. code-block:: bash
 
-  $ sudo apt install pip3
-  $ pip install -r requirements.txt
+  sudo apt install pip3
+  pip install -r requirements.txt
 
 Usage
 -----
+.. code-block:: bash
 
-  usage: dhis2_clone [-h] [--no-backups] [--no-webapps] [--no-db]
-                   [--no-postprocess] [--manual-restart]
-                   [--post-sql POST_SQL [POST_SQL ...]] [--post-clone-scripts]
-                   [--update-config] [--no-color]
-                   CONFIG_FILE
+  dhis2_clone.py [-h] [--db-local DB_LOCAL] [--db-remote DB_REMOTE] [--api-local-username API_LOCAL_USERNAME]
+                      [--api-local-password API_LOCAL_PASSWORD] [--no-backups] [--no-webapps] [--no-db]
+                      [--no-postprocess] [--no-preprocess] [--manual-restart] [--post-sql POST_SQL [POST_SQL ...]]
+                      [--strict-sql] [--pre-api PRE_API] [--post-api POST_API] [--keep-temp] [--post-clone-scripts]
+                      [--post-import] [--update-config] [--no-color] [--start-transformed] [--stop-transformed]
+                      [--use-backup USE_BACKUP]
+                      config
 
-Clone a dhis2 installation from another server.
+positional arguments::
 
-positional arguments:
-  config                file with configuration
+  config                                   file with configuration
 
-optional arguments:
-  -h, --help            show this help message and exit
-  --no-backups          don't make backups
-  --no-webapps          don't clone the webapps
-  --no-db               don't clone the database
-  --no-postprocess      don't do postprocessing
-  --manual-restart      don't stop/start tomcat
-  --post-sql POST_SQL [POST_SQL ...]
-                        sql files to run post-clone (pass a folder instead for d2-docker type)
-  --post-clone-scripts  execute all py and sh scripts in
-                        post_clone_scripts_dir (DHIS2 URL with auth passed as first argument)
-                        or local_docker_post_clone_scripts_dir for local docker.
-  --update-config       update the config file
-  --no-color            don't use colored output
-  --use-backup          Path to remote backup file to use instead of making a remote pg_dump
+options::
+
+  -h, --help                               show this help message and exit
+  --db-local DB_LOCAL                      db to be override
+  --db-remote DB_REMOTE                    db to be copied in the db-local
+  --api-local-username API_LOCAL_USERNAME  api local user
+  --api-local-password API_LOCAL_PASSWORD  api local password
+  --no-backups                             don't make backups
+  --no-webapps                             don't clone the webapps
+  --no-db                                  don't clone the database
+  --no-postprocess                         don't do postprocessing
+  --no-preprocess                          don't do preprocessing
+  --manual-restart                         don't stop/start tomcat
+  --post-sql POST_SQL [POST_SQL ...]       sql files to run post-clone
+  --strict-sql                             stop the sql script on first fail and show in the log
+  --pre-api PRE_API                        Pre Api calls compatible versions: 2.34 / 2.36 / 2.38 / 2.41 (default: 2.36)
+  --post-api POST_API                      Post Api calls compatible versions: 2.34 / 2.36 / 2.38 / 2.41 (default: 2.36)
+  --keep-temp                              Preserve temporary d2-docker files for cloning the instance
+  --post-clone-scripts                     execute all py and sh scripts in post_clone_scripts_dir
+  --post-import                            import to DHIS2 selected json files from post_process_import_dir
+  --update-config                          update the config file
+  --no-color                               don't use colored output
+  --start-transformed                      Override d2-docker image for start
+  --stop-transformed                       Override d2-docker image for stop
+  --use-backup USE_BACKUP                  Path to remote backup file to use instead of making a remote pg_dump
 
 
 Configuration
@@ -84,7 +97,7 @@ Configuration
 
 To invoke the program you need to specify a configuration file, as in::
 
-  $ dhis2_clone config_training.json
+  dhis2_clone config_training.json
 
 An example configuration file is provided in this repository
 (`configuration_example.json`_).
@@ -216,9 +229,11 @@ Automatic cloning
 -----------------
 
 You may want to run the cloning script periodically. For that, you can
-use the appropriate users's crontab::
+use the appropriate users's crontab:
 
-  $ crontab -e
+.. code-block:: bash
+
+  crontab -e
 
 For example, this will run the cloning for a training server every
 Saturday night at 22:00::
