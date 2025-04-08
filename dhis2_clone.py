@@ -173,7 +173,6 @@ def get_args():
     add("--pre-api", help="Pre Api calls compatible versions: 2.34 / 2.36 / 2.38 / 2.41 (default: 2.36)")
     add("--post-api", help="Post Api calls compatible versions: 2.34 / 2.36 / 2.38 / 2.41 (default: 2.36)")
     add("--keep-temp",  action="store_true", help="Preserve temporary d2-docker files for cloning the instance")
-
     add(
         "--post-clone-scripts",
         action="store_true",
