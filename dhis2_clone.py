@@ -374,12 +374,14 @@ def start_tomcat(cfg, args):
 
 def add_strict_to_filenames(post_sql):
     for filename in os.listdir(post_sql):
+        if '_strict' in filename:
+            continue
         old_path = os.path.join(post_sql, filename)
         if os.path.isfile(old_path):
             name, ext = os.path.splitext(filename)
             new_filename = f"{name}_strict{ext}"
             new_path = os.path.join(post_sql, new_filename)
-            os.rename(old_path, new_path)
+            os.replace(old_path, new_path)
             log(f"Renamed: {old_path} -> {new_path}")
 
 
