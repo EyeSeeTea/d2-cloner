@@ -85,6 +85,7 @@ def delete_all_tracker_programs_from_lists(trackers, f):
 
 def delete_all_tracker_programs(trackers, f):
     write(f, """
+        DROP MATERIALIZED VIEW IF EXISTS tei_to_remove;
         create MATERIALIZED view tei_to_remove as select {trackedentityinstanceid} "teiid"
         from {programinstance} where programid in (select programid from program where uid in {tracker_uids});
     """.format(trackedentityinstanceid=get_enrollment_identifier_name(),
@@ -155,7 +156,7 @@ def delete_all_tracker_programs(trackers, f):
         DELETE FROM trackedentityattributevalue where {trackedentityinstanceid} in ( select * from tei_to_remove);
         DELETE FROM trackedentityprogramowner where {trackedentityinstanceid} in ( select * from tei_to_remove);
         DELETE FROM {trackedentityinstance} where {trackedentityinstanceid} in ( select * from tei_to_remove);
-        DROP MATERIALIZED view tei_to_remove ;
+        DROP MATERIALIZED VIEW IF EXISTS tei_to_remove;
         --remove tracker finish
     """.format(programinstance=get_enrollment_table_name(), trackedentityinstance=get_tracker_table_name(),
                trackedentityinstanceid=get_tracker_identifier_name()))
