@@ -97,7 +97,12 @@ def main():
             execute_scripts(cfg, args, is_post_tomcat=True)
     else:
         log("Server not started automatically, as requested.")
-        log("No postprocessing done.")
+        if args.no_postprocess:
+            log("No postprocessing done.")
+        else:
+            import_dir = cfg["post_process_import_dir"] if "post_process_import_dir" in cfg else None
+            timeout = cfg["timeout"] if "timeout" in cfg else 900
+            postprocess.postprocess(cfg["api_local_url"], args.api_local_username, args.api_local_password, cfg["postprocess"], import_dir, timeout, post_api_version)
 
 
 def get_api_version(args, cfg):
