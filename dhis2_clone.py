@@ -422,7 +422,7 @@ def get_webapps(cfg):
     route_local = cfg["server_dir_local"]
     route_remote = "%s:%s" % (cfg["hostname_remote"], cfg["server_dir_remote"])
 
-    for mandatory, subdir in [[True, "webapps"], [False, "files/apps"], [False, "files/documents"], [False, "files/dataValue"]]:
+    for mandatory, subdir in [[True, "webapps"], [False, "files/apps"], [False, "files/document"], [False, "files/dataValue"]]:
         cmd = "rsync -avP -LK --delete --relative %s/./%s %s" % (route_remote, subdir, route_local)
         log(cmd)
         p = Popen(
