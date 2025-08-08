@@ -456,8 +456,8 @@ def get_webapps(cfg):
 def get_db(cfg, args):
     "Replace the contents of db_local with db_remote"
     exclude = (
-        "--exclude-table 'aggregated*' --exclude-table 'analytics*' "
-        "--exclude-table 'completeness*' --exclude-schema sys"
+        " --exclude-table 'analytics*' --exclude-table 'completeness*' "
+        " --exclude-schema sys "
     )
     dir_local = cfg["server_dir_local"]
 
