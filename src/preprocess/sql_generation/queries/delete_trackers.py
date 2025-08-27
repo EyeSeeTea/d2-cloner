@@ -56,100 +56,104 @@ def generate_delete_tracker_rules(trackers, data_elements, org_units, org_unit_d
     if not has_rule:
         delete_all_tracker_programs_from_lists(all_uid, f)
     else:
-        write(f, delete_mandatory_dependencies(f, sql_trackers) + "\n")
+        delete_mandatory_dependencies(f, sql_trackers)
         write(f, fix_final_query(sql_query) + "\n")
 
-def delete_mandatory_dependencies(f, trackers):
+def delete_mandatory_dependencies(f, trackers, exclude=False):
     """todo review all the dependencies"""
+    operator = "not in" if exclude else "in"
     write(f, """
         --remove all tracker
         DELETE FROM trackedentitydatavalueaudit where {programstageinstanceid}
         in ( select psi.{programstageinstanceid}  from {programstageinstance} psi
         inner join programstage ps on ps.programstageid=psi.programstageid
         inner join program p on p.programid=ps.programid
-        where p.uid in {tracker_uids});
+        where p.uid {operator} {tracker_uids});
     """.format(programstageinstanceid=get_event_identifier_name(), programstageinstance=get_event_table_name(),
-               tracker_uids=trackers))
+               tracker_uids=trackers, operator=operator))
     write(f, """
         DELETE FROM {programstageinstancecomments} where {programstageinstanceid}
         in ( select {programstageinstanceid} from {programstageinstance} where programstageid in
         (select programstageid from programstage where programid in
-        (select programid from program where uid in {tracker_uids})));
+        (select programid from program where uid {operator} {tracker_uids}))); 
     """.format(programstageinstancecomments=get_event_comment_table(),
                programstageinstanceid=get_event_identifier_name(), programstageinstance=get_event_table_name(),
-               tracker_uids=trackers))
+               tracker_uids=trackers, operator=operator))
 
 def delete_all_tracker_programs_from_lists(trackers, f):
     trackers = convert_to_sql_format(trackers)
     delete_all_tracker_programs(trackers, f)
 
-def delete_all_tracker_programs(trackers, f):
+def delete_all_tracker_programs_not_in_lists(trackers, f):
+    trackers = convert_to_sql_format(trackers)
+    delete_all_tracker_programs(trackers, f, True)
+
+def delete_all_tracker_programs(trackers, f, exclude=False):
+    operator = "not in" if exclude else "in"
     write(f, """
         DROP MATERIALIZED VIEW IF EXISTS tei_to_remove;
         create MATERIALIZED view tei_to_remove as select {trackedentityinstanceid} "teiid"
-        from {programinstance} where programid in (select programid from program where uid in {tracker_uids});
+        from {programinstance} where programid in (select programid from program where uid {operator} {tracker_uids});
     """.format(trackedentityinstanceid=get_enrollment_identifier_name(),
                programinstance=get_enrollment_table_name(),
-               tracker_uids=trackers))
+               tracker_uids=trackers, operator=operator))
     write(f, """
         --remove all tracker
         DELETE FROM trackedentitydatavalueaudit where {programstageinstanceid}
         in ( select psi.{programstageinstanceid}  from {programstageinstance} psi
         inner join programstage ps on ps.programstageid=psi.programstageid
         inner join program p on p.programid=ps.programid
-        where p.uid in {tracker_uids});
+        where p.uid {operator} {tracker_uids});
     """.format(programstageinstanceid=get_event_identifier_name(), programstageinstance=get_event_table_name(),
-               tracker_uids=trackers))
+               tracker_uids=trackers, operator=operator))
     write(f, """
         DELETE FROM {programstageinstancecomments} where {programstageinstanceid}
         in ( select {programstageinstanceid} from {programstageinstance} where programstageid in
         (select programstageid from programstage where programid in
-        (select programid from program where uid in {tracker_uids})));
+        (select programid from program where uid {operator} {tracker_uids}))); 
     """.format(programstageinstancecomments=get_event_comment_table(),
                programstageinstanceid=get_event_identifier_name(), programstageinstance=get_event_table_name(),
-               tracker_uids=trackers))
+               tracker_uids=trackers, operator=operator))
 
     write(f, """
-        DELETE FROM trackedentityattributevalueaudit where {trackedentityinstanceid} 
-        in ( select {trackedentityinstanceid} from {programinstance} where programid 
-        in(select programid from program where uid in {tracker_uids}));
+        DELETE FROM trackedentityattributevalueaudit where {trackedentityinstanceid}
+        in ( select {trackedentityinstanceid} from {programinstance} where programid in(select programid from program where uid {operator} {tracker_uids}));
     """.format(trackedentityinstanceid=get_tracker_identifier_name(), programinstance=get_enrollment_table_name(),
-               tracker_uids=trackers))
+               tracker_uids=trackers, operator=operator))
     write(f, """
-        DELETE FROM trackedentityattributevalue where {trackedentityinstanceid} 
-        in ( select {trackedentityinstanceid} from {programinstance} where programid in(select 
-        programid from program where uid in {tracker_uids}));
+        DELETE FROM trackedentityattributevalue where {trackedentityinstanceid}
+        in ( select {trackedentityinstanceid} from {programinstance} where programid in(select
+        programid from program where uid {operator} {tracker_uids}));
     """.format(trackedentityinstanceid=get_tracker_identifier_name(), programinstance=get_enrollment_table_name(),
-               tracker_uids=trackers))
+               tracker_uids=trackers, operator=operator))
 
     write(f,"""
-        DELETE FROM {programstageinstance} where programstageid in 
-        (select programstageid from programstage where programid in 
-        (select programid from program where uid in {tracker_uids}));
-    """.format(programstageinstance=get_event_table_name(), tracker_uids=trackers))
+        DELETE FROM {programstageinstance} where programstageid in
+        (select programstageid from programstage where programid in
+        (select programid from program where uid {operator} {tracker_uids}));
+    """.format(programstageinstance=get_event_table_name(), tracker_uids=trackers, operator=operator))
 
     write(f, """
-        DELETE FROM {programstageinstance} where {programstageinstanceid}  
-        in ( select psi.{programstageinstanceid}  from {programstageinstance} psi  
-        inner join programstage ps on ps.programstageid=psi.programstageid 
-        inner join program p on p.programid=ps.programid 
-        where p.uid in {tracker_uids});
+        DELETE FROM {programstageinstance} where {programstageinstanceid}
+        in ( select psi.{programstageinstanceid}  from {programstageinstance} psi
+        inner join programstage ps on ps.programstageid=psi.programstageid
+        inner join program p on p.programid=ps.programid
+        where p.uid {operator} {tracker_uids});
     """.format(programstageinstance=get_event_table_name(),
                                               programstageinstanceid=get_event_identifier_name(),
-                                              tracker_uids=trackers))
+                                              tracker_uids=trackers, operator=operator))
     write(f,"""
             DELETE FROM {programinstancecomments} 
-            where {programinstanceid} in (select {programinstanceid} from {programinstance} 
-            where programid in (select programid from program where uid in 
-            {tracker_uids}));\n
+            where {programinstanceid} in (select {programinstanceid} from {programinstance}
+            where programid in (select programid from program where uid {operator} {tracker_uids}));\n
           """.format(programinstancecomments=get_enrollment_comment_table(),
                                         programinstanceid=get_enrollment_identifier_name(),
                                         programinstance=get_enrollment_table_name(),
-                                        tracker_uids=trackers))
+                                        tracker_uids=trackers, operator=operator))
     write(f,"""
-        DELETE FROM {programinstance} 
-        where programid in (select programid from program where uid in {tracker_uids});\n
-    """.format(programinstance=get_enrollment_table_name(),tracker_uids=trackers))
+        DELETE FROM {programinstance}
+        where programid in (select programid from program where uid {operator} {tracker_uids});\n
+    """.format(programinstance=get_enrollment_table_name(),tracker_uids=trackers, operator=operator))
 
     write(f, """
         DELETE FROM {programinstance} where {trackedentityinstanceid} in ( select * from tei_to_remove);

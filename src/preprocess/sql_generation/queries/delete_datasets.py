@@ -57,14 +57,20 @@ def delete_all_data_sets_from_lists(programs, f):
     delete_all_data_sets(programs, f)
 
 
-def delete_all_data_sets(datasets, f):
+def delete_all_data_sets_not_in_lists(programs, f):
+    programs = convert_to_sql_format(programs)
+    delete_all_data_sets(programs, f, True)
+
+
+def delete_all_data_sets(datasets, f, exclude=False):
+    operator = "not in" if exclude else "in"
     write(f, """
         --remove all datasets
-        DELETE FROM datavalueaudit where dataelementid in 
-        (select dataelementid from datasetelement 
-        where datasetid in (select datasetid from dataset where uid in {datasets}));
-    """.format(datasets=datasets))
+        DELETE FROM datavalueaudit where dataelementid in
+        (select dataelementid from datasetelement
+        where datasetid in (select datasetid from dataset where uid {operator} {datasets}));
+    """.format(datasets=datasets, operator=operator))
     write(f, """
-        DELETE FROM datavalue where dataelementid in (select dataelementid from datasetelement 
-        where datasetid in (select datasetid from dataset where uid in {datasets}));
-    """.format(datasets=datasets))
+        DELETE FROM datavalue where dataelementid in (select dataelementid from datasetelement
+        where datasetid in (select datasetid from dataset where uid {operator} {datasets}));
+    """.format(datasets=datasets, operator=operator))

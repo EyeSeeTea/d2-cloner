@@ -72,31 +72,37 @@ def delete_all_event_programs_from_lists(programs, f):
     programs = convert_to_sql_format(programs)
     delete_all_event_programs(programs, f)
 
-def delete_all_event_programs(programs, f):
+
+def delete_all_event_programs_not_in_lists(programs, f):
+    programs = convert_to_sql_format(programs)
+    delete_all_event_programs(programs, f, True)
+
+def delete_all_event_programs(programs, f, exclude=False):
+    operator = "not in" if exclude else "in"
     write(f, """
         --remove all events
-        DELETE FROM trackedentitydatavalueaudit where {programstageinstanceid} 
-        in ( select psi.{programstageinstanceid}  from {programstageinstance} psi 
-        inner join programstage ps on ps.programstageid=psi.programstageid 
-        inner join program p on p.programid=ps.programid where p.uid in {programs});
+        DELETE FROM trackedentitydatavalueaudit where {programstageinstanceid}
+        in ( select psi.{programstageinstanceid}  from {programstageinstance} psi
+        inner join programstage ps on ps.programstageid=psi.programstageid
+        inner join program p on p.programid=ps.programid where p.uid {operator} {programs});
     """.format(programstageinstanceid=get_event_identifier_name(),
                programstageinstance=get_event_table_name(),
-               programs=programs))
+               programs=programs, operator=operator))
     write(f,
           """
-        DELETE FROM {programstageinstancecomments} where {programstageinstanceid} 
-        in ( select psi.{programstageinstanceid}  from {programstageinstance} psi 
-        inner join programstage ps on ps.programstageid=psi.programstageid 
-        inner join program p on p.programid=ps.programid where p.uid in {programs});
+        DELETE FROM {programstageinstancecomments} where {programstageinstanceid}
+        in ( select psi.{programstageinstanceid}  from {programstageinstance} psi
+        inner join programstage ps on ps.programstageid=psi.programstageid
+        inner join program p on p.programid=ps.programid where p.uid {operator} {programs});
         """.format(programstageinstancecomments=get_event_comment_table(),
                    programstageinstanceid=get_event_identifier_name(),
                    programstageinstance=get_event_table_name(),
-                   programs=programs))
+                   programs=programs, operator=operator))
     write(f, """
-        DELETE FROM {programstageinstance} where {programstageinstanceid} 
-        in ( select psi.{programstageinstanceid}  from {programstageinstance} psi 
-        inner join programstage ps on ps.programstageid=psi.programstageid 
-        inner join program p on p.programid=ps.programid 
-        where p.uid in {programs});
+        DELETE FROM {programstageinstance} where {programstageinstanceid}
+        in ( select psi.{programstageinstanceid}  from {programstageinstance} psi
+        inner join programstage ps on ps.programstageid=psi.programstageid
+        inner join program p on p.programid=ps.programid
+        where p.uid {operator} {programs});
     """.format(programstageinstanceid=get_event_identifier_name(),
-           programstageinstance=get_event_table_name(), programs=programs))
+           programstageinstance=get_event_table_name(), programs=programs, operator=operator))

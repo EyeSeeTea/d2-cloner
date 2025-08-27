@@ -2,12 +2,12 @@ import os
 import shutil
 
 from src.preprocess.sql_generation.queries.delete_datasets import generate_delete_datasets_rules, \
-    delete_all_data_sets_from_lists
+    delete_all_data_sets_from_lists, delete_all_data_sets_not_in_lists
 from src.preprocess.sql_generation.queries.delete_orgunits import start_ou_materialized_view, \
     generate_delete_org_unit_tree_rules, generate_delete_org_unit_level_by_parent_rules, \
     generate_delete_org_unit_level_rules, delete_org_units
-from src.preprocess.sql_generation.queries.delete_programs import generate_delete_event_rules, delete_all_event_programs_from_lists
-from src.preprocess.sql_generation.queries.delete_trackers import generate_delete_tracker_rules, delete_all_tracker_programs_from_lists
+from src.preprocess.sql_generation.queries.delete_programs import generate_delete_event_rules, delete_all_event_programs_from_lists, delete_all_event_programs_not_in_lists
+from src.preprocess.sql_generation.queries.delete_trackers import generate_delete_tracker_rules, delete_all_tracker_programs_from_lists, delete_all_tracker_programs_not_in_lists
 from src.preprocess.sql_generation.queries.remove_dependencies import remove_all_unnecessary_dependencies
 from src.preprocess.sql_generation.queries.sql_anonymizer import generate_anonymize_user_queries, \
     generate_anonymize_datasets_rules, generate_anonymize_tracker_rules, generate_anonymize_event_rules
@@ -17,6 +17,7 @@ anonymize_rule = "anonymizeData"
 remove_orgunit_tree = "removeOrganisationUnitTree"
 remove_orgunit_level = "removeOrganisationUnitTreeByLevel"
 remove_rule = "removeData"
+remove_all_data_rule = "removeAllData"
 program_type = "eventPrograms"
 tracker_type = "trackerPrograms"
 dataset_type = "dataSets"
@@ -82,6 +83,19 @@ def remove_all(list_uid, f):
             delete_all_tracker_programs_from_lists(list_uid[key], f)
 
 
+def get_all_metadata_uids(departments, metadata_key, exclude_key):
+    uids = []
+    for dep_key in departments.keys():
+        if dep_key == exclude_key:
+            continue
+        if metadata_key in departments[dep_key]:
+            uids.extend(departments[dep_key][metadata_key])
+    uids = list(set(uids))
+    if len(uids) == 0:
+        uids = [""]
+    return uids
+
+
 def generate_queries(departament, f, preprocess_api_version):
     org_unit_deletion_grouped_rules = []
     for key in departament.keys():
@@ -101,6 +115,23 @@ def generate_queries(departament, f, preprocess_api_version):
                 generate_anonymize_user_queries(new_admin, old_admin, exclude_users, f, preprocess_api_version)
             elif rule["action"] == remove_orgunit_tree or rule["action"] == remove_orgunit_level:
                 org_unit_deletion_grouped_rules.append(rule)
+
+            elif rule[action] == remove_all_data_rule:
+
+                if metadata_type in rule.keys():
+                    has_datasets = check_if_has_metadata_type(rule, dataset_type)
+                    has_event_program = check_if_has_metadata_type(rule, program_type)
+                    has_tracker_program = check_if_has_metadata_type(rule, tracker_type)
+
+                if has_datasets:
+                    all_datasets = get_all_metadata_uids(departament, dataset_type, key)
+                    delete_all_data_sets_not_in_lists(all_datasets, f)
+                if has_tracker_program:
+                    all_trackers = get_all_metadata_uids(departament, tracker_type, key)
+                    delete_all_tracker_programs_not_in_lists(all_trackers, f)
+                if has_event_program:
+                    all_programs = get_all_metadata_uids(departament, program_type, key)
+                    delete_all_event_programs_not_in_lists(all_programs, f)
 
             elif rule[action] == remove_rule or rule[action] == anonymize_rule:
 
