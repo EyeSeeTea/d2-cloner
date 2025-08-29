@@ -142,6 +142,15 @@ def delete_all_tracker_programs(trackers, f, exclude=False):
     """.format(programstageinstance=get_event_table_name(),
                                               programstageinstanceid=get_event_identifier_name(),
                                               tracker_uids=trackers, operator=operator))
+
+    write(f,"""
+        DELETE FROM {programstageinstance} where {programinstanceid} in (select {programinstanceid} from {programinstance}  
+        where programstageid in (select programstageid from programstage where programid in (select programid 
+        from program where uid {operator} {tracker_uids})));\n
+    """.format(programstageinstance=get_event_table_name(), programinstanceid= get_enrollment_identifier_name(),
+               programinstance=get_enrollment_table_name(),tracker_uids=trackers, operator=operator))
+
+
     write(f,"""
             DELETE FROM {programinstancecomments} 
             where {programinstanceid} in (select {programinstanceid} from {programinstance}
@@ -154,6 +163,14 @@ def delete_all_tracker_programs(trackers, f, exclude=False):
         DELETE FROM {programinstance}
         where programid in (select programid from program where uid {operator} {tracker_uids});\n
     """.format(programinstance=get_enrollment_table_name(),tracker_uids=trackers, operator=operator))
+
+    write(f, """
+        delete from trackedentitydatavalueaudit where {programstageinstanceid} in (select {programstageinstanceid} from {programstageinstance} where {programinstanceid} in (select {programinstanceid} FROM {programinstance} where {trackedentityinstanceid} in ( select * from tei_to_remove)));
+        delete from {programstageinstance} where {programinstanceid} in (select {programinstanceid} FROM {programinstance} where {trackedentityinstanceid} in ( select * from tei_to_remove));"""
+          .format(programstageinstance=get_event_table_name(), programstageinstanceid=get_event_identifier_name(),
+                  programinstanceid=get_enrollment_identifier_name(), programinstance=get_enrollment_table_name(),
+                  trackedentityinstance=get_tracker_table_name(),
+               trackedentityinstanceid=get_tracker_identifier_name()))
 
     write(f, """
         DELETE FROM {programinstance} where {trackedentityinstanceid} in ( select * from tei_to_remove);

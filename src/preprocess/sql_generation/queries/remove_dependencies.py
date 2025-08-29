@@ -2,6 +2,9 @@ from src.preprocess.sql_generation.sql_common import write
 
 
 def remove_all_unnecessary_dependencies(f, preprocess_api_version):
+    write(f, f"""
+    SELECT 'Starting DELETE DEPENDENCIES Block ' AS info;
+    """)
     if preprocess_api_version == "34":
         write(f, """
 DELETE FROM programstageinstance_messageconversation;
@@ -37,14 +40,12 @@ DELETE FROM messageconversation;
     """)
     elif preprocess_api_version == "41":
         write(f, """
-DELETE FROM programinstancecomments;
 DELETE FROM datavalueaudit;
 DELETE FROM trackedentitydatavalueaudit;
 DELETE FROM trackedentityattributevalueaudit;
 DELETE FROM dataapprovalaudit;
 DELETE FROM interpretation_comments;
 DELETE FROM interpretationcomment;
-DELETE FROM interpretationusergroupaccesses;
 DELETE FROM intepretation_likedby;
 DELETE FROM messageconversation_messages;
 DELETE FROM messageconversation_usermessages;
@@ -60,3 +61,6 @@ delete from programmessage;
 delete from programownershiphistory;
 delete from programtempownershipaudit;
     """)
+    write(f, f"""
+        SELECT 'Close DELETE DEPENDENCIES Block' AS info;
+        """)
