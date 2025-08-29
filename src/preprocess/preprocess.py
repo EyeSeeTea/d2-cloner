@@ -17,7 +17,7 @@ anonymize_rule = "anonymizeData"
 remove_orgunit_tree = "removeOrganisationUnitTree"
 remove_orgunit_level = "removeOrganisationUnitTreeByLevel"
 remove_rule = "removeData"
-remove_all_data_rule = "removeAllData"
+remove_all_unlisted_rule = "removeUnlistedData"
 program_type = "eventPrograms"
 tracker_type = "trackerPrograms"
 dataset_type = "dataSets"
@@ -98,9 +98,13 @@ def get_all_metadata_uids(departments, metadata_key, exclude_key):
 
 def generate_queries(departament, f, preprocess_api_version):
     org_unit_deletion_grouped_rules = []
+    remove_all_unlisted = False
     for key in departament.keys():
-        f.write("--Departament:" + key + "\n")
-        print("--Departament:" + key + "\n")
+        info_message=f"--Starting departament {key}"
+        f.write(info_message)
+        f.write(f"""
+        SELECT quote_literal($${info_message}$$) AS info;
+        """)
         if actions not in departament[key]:
             continue
         for rule in departament[key][actions]:
@@ -113,28 +117,13 @@ def generate_queries(departament, f, preprocess_api_version):
                 old_admin = get_rule_content(rule, select_old_admin_user)
                 exclude_users = get_rule_content(rule, exclude_user_names)
                 generate_anonymize_user_queries(new_admin, old_admin, exclude_users, f, preprocess_api_version)
-            elif rule["action"] == remove_orgunit_tree or rule["action"] == remove_orgunit_level:
+            elif rule[action] == remove_orgunit_tree or rule[action] == remove_orgunit_level:
                 org_unit_deletion_grouped_rules.append(rule)
 
-            elif rule[action] == remove_all_data_rule:
-
-                if metadata_type in rule.keys():
-                    has_datasets = check_if_has_metadata_type(rule, dataset_type)
-                    has_event_program = check_if_has_metadata_type(rule, program_type)
-                    has_tracker_program = check_if_has_metadata_type(rule, tracker_type)
-
-                if has_datasets:
-                    all_datasets = get_all_metadata_uids(departament, dataset_type, key)
-                    delete_all_data_sets_not_in_lists(all_datasets, f)
-                if has_tracker_program:
-                    all_trackers = get_all_metadata_uids(departament, tracker_type, key)
-                    delete_all_tracker_programs_not_in_lists(all_trackers, f)
-                if has_event_program:
-                    all_programs = get_all_metadata_uids(departament, program_type, key)
-                    delete_all_event_programs_not_in_lists(all_programs, f)
+            elif rule[action] == remove_all_unlisted_rule:
+                remove_all_unlisted = True
 
             elif rule[action] == remove_rule or rule[action] == anonymize_rule:
-
                 # get metadata types
                 if metadata_type in rule.keys():
                     has_datasets = check_if_has_metadata_type(rule, dataset_type)
@@ -204,6 +193,20 @@ def generate_queries(departament, f, preprocess_api_version):
                                                                  anonimize_org_units, anonimize_phone, anonimize_mail,
                                                                  anonimize_coordinate,
                                                                  departament[key][tracker_type], f)
+    if remove_all_unlisted:
+        f.write(f"""
+        SELECT 'Starting unlisted uids' AS info;
+        """)
+        #Remove all the not listed datavalue/event/tracker at the end as last step
+        all_datasets = get_all_metadata_uids(departament, dataset_type, key)
+        all_trackers = get_all_metadata_uids(departament, tracker_type, key)
+        all_programs = get_all_metadata_uids(departament, program_type, key)
+        all_programs_and_trackers = all_programs + all_trackers
+        print("--removeall")
+        delete_all_data_sets_not_in_lists(all_datasets, f)
+        delete_all_tracker_programs_not_in_lists(all_programs_and_trackers, f)
+        delete_all_event_programs_not_in_lists(all_programs_and_trackers, f)
+
     if len(org_unit_deletion_grouped_rules)>0:
         start_ou_materialized_view(f)
         position = 0
@@ -246,12 +249,13 @@ def check_if_has_metadata_type(rule, check_type):
 
 def add_rules_by_departament(departament, entries):
     for entry in entries:
-        exist = False
+        valid_rule = False
         for key in departament.keys():
-            if entry[select_departament].upper() == key.upper():
+            if entry[action] == remove_all_unlisted_rule or entry[select_departament].upper() == key.upper():
                 if actions not in departament[key].keys():
                     departament[key][actions] = list()
                 departament[key][actions].append(entry)
-                exist = True
-        if not exist:
+                valid_rule = True
+
+        if not valid_rule:
             print("--unknown departament key for entry:" + entry[select_departament])
