@@ -9,10 +9,10 @@ def generate_delete_tracker_rules(trackers, data_elements, org_units, org_unit_d
     sql_all = convert_to_sql_format(all_uid)
     sql_trackers = convert_to_sql_format(trackers)
     write(f, f"""
-    SELECT 'Starting DELETE block for eventPrograms: All: '
-           || quote_literal({sql_all if sql_all else "()"})
+    SELECT 'Starting DELETE block for trackerPrograms: All: '
+           || quote_literal($${sql_all or 'NO_IDS'}$$)
            || ' and Detailed: '
-           || quote_literal({sql_trackers if sql_trackers else "()"})
+           || quote_literal($${sql_trackers or 'NO_IDS'}$$) as info;
     """)
     sql_data_elements = convert_to_sql_format(data_elements)
     sql_org_units = convert_to_sql_format(org_units)
@@ -100,10 +100,10 @@ def delete_all_tracker_programs_not_in_lists(trackers, f):
 
 def delete_all_tracker_programs(trackers, f, exclude=False):
     write(f, f"""
-    SELECT 'Starting DELETE block  for eventPrograms: ' 
-           || quote_literal({trackers if trackers else "()"}) 
-           || ' not in?: {exclude}' AS info;
-    """)
+        SELECT 'Starting DELETE block for trackerPrograms: '
+               || quote_literal($${trackers or 'NO_IDS'}$$)
+               || ' not in?: {exclude}' AS info;
+        """)
     operator = "not in" if exclude else "in"
     #Careful: since the NOT IN operator is applied in the following queries, the initial one must be an IN for all cases.
     write(f, """

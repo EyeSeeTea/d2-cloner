@@ -10,7 +10,7 @@ def generate_delete_event_rules(event_program, data_elements, org_units,
     sql_org_units = convert_to_sql_format(org_units)
     sql_org_unit_descendants = convert_to_sql_format(org_unit_descendants)
     write(f, f"""
-    SELECT 'Starting DELETE block  for eventPrograms Detailed: ' || quote_literal($${sql_event_program or "NO_IDS"}$$) AS info;
+    SELECT 'Starting DELETE block  for eventPrograms Detailed: ' || quote_literal($${sql_event_program or 'NO_IDS'}$$) AS info;
     \n
 """)
     has_rule = False
