@@ -223,6 +223,14 @@ If this path is set to a critical location (such as your home directory or any f
   give a url, and the blocks contained in that url will be added to
   the list of blocks.
 
+* ``removeUnlistedData``: deletes ALL data for *non-listed* items in the departament list of programs/dataset uids.
+  - For tracker/event programs: removes **events**, **enrollments**, and **trackedEntityInstances** from every program **not** present in the departament metadata list.
+  - For aggregate datasets: removes **dataValues** from every dataset **not** present in the departament metadata list.
+    Example:
+     {
+      "action": "removeUnlistedData"
+      }
+
 .. _`conninfo`: https://www.postgresql.org/docs/9.3/static/libpq-connect.html#LIBPQ-CONNSTRING
 
 Automatic cloning
