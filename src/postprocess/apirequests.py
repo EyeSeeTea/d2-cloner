@@ -42,7 +42,11 @@ def activate(api, users):
     debug("Activating %d user(s)..." % len(users))
     for user in users:
         if "userCredentials" not in user.keys():
-            debug("error with user"+ json.dumps(user))
+            if Config.get_post_api_version() >41:
+                user["disabled"] = False
+                api.put("/users/" + user["id"], user)
+            else:
+                debug("error with user"+ json.dumps(user))
         else:
             user["userCredentials"]["disabled"] = False
             api.put("/users/" + user["id"], user)
@@ -96,27 +100,46 @@ def add_roles(api, users, roles_to_add):
     debug("Adding %d roles to %d users..." % (len(roles_to_add), len(users)))
     for user in users:
         roles = unique(get_roles(user) + roles_to_add)
-        user["userCredentials"]["userRoles"] = roles
+        if Config.get_post_api_version() > 41:
+            user["userRoles"] = roles
+        else:
+            user["userCredentials"]["userRoles"] = roles
+
         api.put("/users/" + user["id"], user)
 
 
 def remove_groups(api, users, groups_to_remove_from):
     debug("Removing %d users from %d groups..." % (len(users), len(groups_to_remove_from)))
-    response = api.get(
-        "/userGroups",
-        {
-            "paging": False,
-            "filter": "name:in:[%s]" % ",".join(groups_to_remove_from),
-            "fields": (":all"),
-        },
-    )
-    for group in response["userGroups"]:
-        group["users"] = [
-            user
-            for user in group["users"]
-            if user not in map(lambda element: pick(element, ["id"]), users)
-        ]
-        api.put("/userGroups/" + group["id"], group)
+    if Config.get_pre_api_version() >=39:
+        response = api.get(
+            "/userGroups",
+            {
+                "paging": False,
+                "filter": "name:in:[%s]" % ",".join(groups_to_remove_from),
+                "fields": "id",
+            },
+        )
+        for group in response.get("userGroups", []):
+            payload = {
+                "deletions": [{"id": user["id"]} for user in users]
+            }
+            api.post(f"/userGroups/{group['id']}/users", payload)
+    else:
+        response = api.get(
+            "/userGroups",
+            {
+                "paging": False,
+                "filter": "name:in:[%s]" % ",".join(groups_to_remove_from),
+                "fields": (":all"),
+            },
+        )
+        for group in response["userGroups"]:
+            group["users"] = [
+                user
+                for user in group["users"]
+                if user not in map(lambda element: pick(element, ["id"]), users)
+            ]
+            api.put("/userGroups/" + group["id"], group)
 
 
 def get_users_by_usernames(api, usernames):
@@ -131,18 +154,28 @@ def get_users_by_usernames(api, usernames):
             "/users",
             {
                 "paging": False,
-                "fields": ":all,userCredentials[:all,userRoles[id,name]]",
+                "fields": ":all,userCredentials[:all,userRoles[id,name]],userRoles[id,name]",
             },
         )
     else:
-        response = api.get(
-            "/users",
-            {
-                "paging": False,
-                "filter": "userCredentials.username:in:[%s]" % ",".join(usernames),
-                "fields": ":all,userCredentials[:all,userRoles[id,name]]",
-            },
-        )
+        if Config.get_post_api_version()>41:
+            response = api.get(
+                "/users",
+                {
+                    "paging": False,
+                    "filter": "username:in:[%s]" % ",".join(usernames),
+                    "fields": ":all,userRoles[id,name]",
+                },
+            )
+        else:
+            response = api.get(
+                "/users",
+                {
+                    "paging": False,
+                    "filter": "userCredentials.username:in:[%s]" % ",".join(usernames),
+                    "fields": ":all,userCredentials[:all,userRoles[id,name]]",
+                },
+            )
     return response["users"]
 
 
@@ -159,7 +192,7 @@ def get_users_by_group_names(api, user_group_names, api_version):
             {
                 "paging": False,
                 "filter": "userGroups.name:in:[%s]" % ",".join(user_group_names),
-                "fields": ("id,name,:all,[:all,userCredentials[:all,userRoles[id,name]]]"),
+                "fields": ("id,name,:all,[:all,userRoles[id,name],userCredentials[:all,userRoles[id,name]]]"),
             },
         )
         return response["users"]
@@ -170,7 +203,7 @@ def get_users_by_group_names(api, user_group_names, api_version):
                 "paging": False,
                 "filter": "name:in:[%s]" % ",".join(user_group_names),
                 "fields": ("id,name,"
-                           "users[:all,userCredentials[:all,userRoles[id,name]]]"),
+                           "users[:all,userRoles[id,name],userCredentials[:all,userRoles[id,name]]]"),
             },
         )
     return sum((x["users"] for x in response["userGroups"]), [])
@@ -236,4 +269,7 @@ def get_username(user):
 
 
 def get_roles(user):
-    return user["userCredentials"]["userRoles"]
+    if Config.get_post_api_version() > 41:
+        return user["userRoles"]
+    else:
+        return user["userCredentials"]["userRoles"]
