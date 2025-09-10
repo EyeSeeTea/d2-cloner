@@ -204,8 +204,8 @@ def generate_queries(departament, f, preprocess_api_version):
         all_programs_and_trackers = all_programs + all_trackers
         print("--removeall")
         delete_all_data_sets_not_in_lists(all_datasets, f)
+        #Remove all unlisted programs in the same block than tracker programs.
         delete_all_tracker_programs_not_in_lists(all_programs_and_trackers, f)
-        delete_all_event_programs_not_in_lists(all_programs_and_trackers, f)
 
     if len(org_unit_deletion_grouped_rules)>0:
         start_ou_materialized_view(f)
