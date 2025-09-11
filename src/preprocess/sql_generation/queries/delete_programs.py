@@ -79,45 +79,39 @@ def delete_all_event_programs_from_lists(programs, f):
     programs = convert_to_sql_format(programs)
     delete_all_event_programs(programs, f)
 
-
-def delete_all_event_programs_not_in_lists(programs, f):
-    programs = convert_to_sql_format(programs)
-    delete_all_event_programs(programs, f, True)
-
-def delete_all_event_programs(programs, f, exclude=False):
+def delete_all_event_programs(programs, f):
     write(f, f"""
     SELECT 'Starting DELETE block for eventPrograms All: '
            || quote_literal($${programs or 'NO_IDS'}$$) AS info;
     """)
 
-    operator = "not in" if exclude else "in"
     write(f, """
         DELETE FROM trackedentitydatavalueaudit where {programstageinstanceid}
-        {operator} ( select psi.{programstageinstanceid}  from {programstageinstance} psi
+        in ( select psi.{programstageinstanceid}  from {programstageinstance} psi
         inner join programstage ps on ps.programstageid=psi.programstageid
         inner join program p on p.programid=ps.programid where p.uid in {programs});
     """.format(programstageinstanceid=get_event_identifier_name(),
                programstageinstance=get_event_table_name(),
-               programs=programs, operator=operator))
+               programs=programs))
     write(f,
           """
         DELETE FROM {programstageinstancecomments} where {programstageinstanceid}
-        {operator} ( select psi.{programstageinstanceid}  from {programstageinstance} psi
+        in ( select psi.{programstageinstanceid}  from {programstageinstance} psi
         inner join programstage ps on ps.programstageid=psi.programstageid
         inner join program p on p.programid=ps.programid where p.uid in {programs});
         """.format(programstageinstancecomments=get_event_comment_table(),
                    programstageinstanceid=get_event_identifier_name(),
                    programstageinstance=get_event_table_name(),
-                   programs=programs, operator=operator))
+                   programs=programs))
     write(f, """
         DELETE FROM {programstageinstance} where {programstageinstanceid}
-        {operator} ( select psi.{programstageinstanceid}  from {programstageinstance} psi
+        in ( select psi.{programstageinstanceid}  from {programstageinstance} psi
         inner join programstage ps on ps.programstageid=psi.programstageid
         inner join program p on p.programid=ps.programid
         where p.uid in {programs});
         --end remove events block
     """.format(programstageinstanceid=get_event_identifier_name(),
-           programstageinstance=get_event_table_name(), programs=programs, operator=operator))
+           programstageinstance=get_event_table_name(), programs=programs))
 
     write(f, f"""
     SELECT 'Close DELETE EVENT PROGRAMS Block' AS info;

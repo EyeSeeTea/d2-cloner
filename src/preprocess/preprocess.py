@@ -6,7 +6,7 @@ from src.preprocess.sql_generation.queries.delete_datasets import generate_delet
 from src.preprocess.sql_generation.queries.delete_orgunits import start_ou_materialized_view, \
     generate_delete_org_unit_tree_rules, generate_delete_org_unit_level_by_parent_rules, \
     generate_delete_org_unit_level_rules, delete_org_units
-from src.preprocess.sql_generation.queries.delete_programs import generate_delete_event_rules, delete_all_event_programs_from_lists, delete_all_event_programs_not_in_lists
+from src.preprocess.sql_generation.queries.delete_programs import generate_delete_event_rules, delete_all_event_programs_from_lists
 from src.preprocess.sql_generation.queries.delete_trackers import generate_delete_tracker_rules, delete_all_tracker_programs_from_lists, delete_all_tracker_programs_not_in_lists
 from src.preprocess.sql_generation.queries.remove_dependencies import remove_all_unnecessary_dependencies
 from src.preprocess.sql_generation.queries.sql_anonymizer import generate_anonymize_user_queries, \
@@ -202,7 +202,7 @@ def generate_queries(departament, f, preprocess_api_version):
         all_trackers = get_all_metadata_uids(departament, tracker_type, key)
         all_programs = get_all_metadata_uids(departament, program_type, key)
         all_programs_and_trackers = all_programs + all_trackers
-        print("--removeall")
+        print("--remove-all")
         delete_all_data_sets_not_in_lists(all_datasets, f)
         #Remove all unlisted programs in the same block than tracker programs.
         delete_all_tracker_programs_not_in_lists(all_programs_and_trackers, f)
