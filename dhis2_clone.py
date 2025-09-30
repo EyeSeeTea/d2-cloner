@@ -137,8 +137,8 @@ def get_api_version(args, cfg):
     if args.post_api in supported_versions:
         post_api_version = args.post_api
 
-    print("Loaded " + args.pre_api + "api version for pre api calls")
-    print("Loaded " + args.post_api + "api version for post api calls")
+    print("Loaded " + pre_api_version + "api version for pre api calls")
+    print("Loaded " + post_api_version + "api version for post api calls")
     return pre_api_version, post_api_version
 
 
