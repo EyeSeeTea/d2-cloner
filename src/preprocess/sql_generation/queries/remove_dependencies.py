@@ -3,7 +3,7 @@ from src.preprocess.sql_generation.sql_common import write
 
 def remove_all_unnecessary_dependencies(f, preprocess_api_version):
     write(f, f"""
-    SELECT 'Starting DELETE DEPENDENCIES Block ' AS info;
+    SELECT 'Starting DELETE DEPENDENCIES Block version: {preprocess_api_version}' AS info;
     """)
     if preprocess_api_version == "34":
         write(f, """
@@ -21,7 +21,7 @@ DELETE FROM messageconversation_messages;
 DELETE FROM messageconversation_usermessages;
 DELETE FROM messageconversation;
     """)
-    elif preprocess_api_version == "36":
+    elif preprocess_api_version < "40":
         write(f, """
 DELETE FROM programstageinstance_messageconversation;
 DELETE FROM programinstancecomments;
@@ -38,7 +38,7 @@ DELETE FROM messageconversation_messages;
 DELETE FROM messageconversation_usermessages;
 DELETE FROM messageconversation;
     """)
-    elif preprocess_api_version == "41":
+    else:
         write(f, """
 DELETE FROM datavalueaudit;
 DELETE FROM trackedentitydatavalueaudit;
