@@ -5,7 +5,7 @@ def remove_all_unnecessary_dependencies(f, preprocess_api_version):
     write(f, f"""
     SELECT 'Starting DELETE DEPENDENCIES Block version: {preprocess_api_version}' AS info;
     """)
-    if preprocess_api_version == "34":
+    if preprocess_api_version == 34:
         write(f, """
 DELETE FROM programstageinstance_messageconversation;
 DELETE FROM programinstancecomments;
@@ -21,7 +21,7 @@ DELETE FROM messageconversation_messages;
 DELETE FROM messageconversation_usermessages;
 DELETE FROM messageconversation;
     """)
-    elif preprocess_api_version < "40":
+    elif preprocess_api_version < 40:
         write(f, """
 DELETE FROM programstageinstance_messageconversation;
 DELETE FROM programinstancecomments;
