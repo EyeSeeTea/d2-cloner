@@ -98,6 +98,14 @@ def delete_all_tracker_programs_not_in_lists(trackers, f):
     trackers = convert_to_sql_format(trackers)
     delete_all_tracker_programs(trackers, f, True)
 
+
+def create_index_to_improve_deletion(f):
+    write(f, """
+        CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_tei_to_remove_trid ON tei_to_remove(trackedentityid); 
+        CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_programs_to_remove_pid ON programs_to_remove(programid);
+    """)
+
+
 def delete_all_tracker_programs(trackers, f, exclude=False):
     write(f, f"""
         SELECT 'Starting DELETE block for trackerPrograms: '
@@ -118,7 +126,7 @@ def delete_all_tracker_programs(trackers, f, exclude=False):
         DROP MATERIALIZED VIEW IF EXISTS programs_to_remove;
         create MATERIALIZED view programs_to_remove as (select programid from program where uid {operator} {tracker_uids});
     """.format(tracker_uids=trackers, operator=operator))
-
+    create_index_to_improve_deletion(f)
     write(f, """
         DELETE FROM trackedentitydatavalueaudit where {programstageinstanceid}
         in ( select psi.{programstageinstanceid}  from {programstageinstance} psi
