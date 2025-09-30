@@ -61,7 +61,7 @@ def main():
         log("No preprocessing done, as requested.")
     elif "preprocess" in cfg:
         if cfg["pre_sql_dir"]:
-            preprocess.preprocess(cfg["preprocess"], cfg["departments"], cfg["pre_sql_dir"], pre_api_version)
+            preprocess.preprocess(cfg["preprocess"], cfg["departments"], cfg["pre_sql_dir"])
             add_preprocess_sql_file(args, cfg)
         else:
             log("pre_sql_dir not exist in config file")
@@ -89,7 +89,7 @@ def main():
         elif "api_local_url" in cfg and "postprocess" in cfg:
             timeout = cfg["timeout"] if "timeout" in cfg else 900
             postprocess.postprocess(cfg["api_local_url"], args.api_local_username,
-                                    args.api_local_password, cfg["postprocess"], import_dir, timeout, post_api_version)
+                                    args.api_local_password, cfg["postprocess"], import_dir, timeout)
         else:
             log("No postprocessing done.")
 
@@ -134,11 +134,11 @@ def get_api_version(args, cfg):
 
     if args.pre_api in supported_versions:
         pre_api_version = args.pre_api
-        print("Loaded " + args.pre_api + "api version for pre api calls")
     if args.post_api in supported_versions:
         post_api_version = args.post_api
-        print("Loaded " + args.post_api + "api version for post api calls")
 
+    print("Loaded " + args.pre_api + "api version for pre api calls")
+    print("Loaded " + args.post_api + "api version for post api calls")
     return pre_api_version, post_api_version
 
 
