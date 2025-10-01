@@ -95,14 +95,18 @@ def main():
 
         if args.post_clone_scripts:
             execute_scripts(cfg, args, is_post_tomcat=True)
-
     else:
         log("Server not started automatically, as requested.")
-        log("No postprocessing done.")
+        if args.no_postprocess:
+            log("No postprocessing done.")
+        else:
+            import_dir = cfg["post_process_import_dir"] if "post_process_import_dir" in cfg else None
+            timeout = cfg["timeout"] if "timeout" in cfg else 900
+            postprocess.postprocess(cfg["api_local_url"], args.api_local_username, args.api_local_password, cfg["postprocess"], import_dir, timeout, post_api_version)
 
 
 def get_api_version(args, cfg):
-    supported_versions = ["2.34", "2.36", "2.38", "2.41", "34", "36", "38", "41"]
+    supported_versions = ["2.34", "2.36", "2.38", "2.41", "2.42", "34", "36", "38", "41", "42"]
     pre_api_version = None
     post_api_version = None
 
@@ -456,8 +460,8 @@ def get_webapps(cfg):
 def get_db(cfg, args):
     "Replace the contents of db_local with db_remote"
     exclude = (
-        "--exclude-table 'aggregated*' --exclude-table 'analytics*' "
-        "--exclude-table 'completeness*' --exclude-schema sys"
+        " --exclude-table 'analytics*' --exclude-table 'completeness*' "
+        " --exclude-schema sys "
     )
     dir_local = cfg["server_dir_local"]
 
