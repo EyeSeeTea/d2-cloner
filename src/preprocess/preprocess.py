@@ -81,11 +81,9 @@ def remove_all(list_uid, f):
             delete_all_tracker_programs_from_lists(list_uid[key], f)
 
 
-def get_all_metadata_uids(departments, metadata_key, exclude_key):
+def get_all_listed_uids(departments, metadata_key):
     uids = []
     for dep_key in departments.keys():
-        if dep_key == exclude_key:
-            continue
         if metadata_key in departments[dep_key]:
             uids.extend(departments[dep_key][metadata_key])
     uids = list(set(uids))
@@ -195,10 +193,10 @@ def generate_queries(departament, f, preprocess_api_version):
         f.write(f"""
         SELECT 'Starting unlisted uids' AS info;
         """)
-        #Remove all the not listed datavalue/event/tracker at the end as last step
-        all_datasets = get_all_metadata_uids(departament, dataset_type, key)
-        all_trackers = get_all_metadata_uids(departament, tracker_type, key)
-        all_programs = get_all_metadata_uids(departament, program_type, key)
+        #Get all listed uids to exclude it from the remove unlisted actions
+        all_datasets = get_all_listed_uids(departament, dataset_type)
+        all_trackers = get_all_listed_uids(departament, tracker_type)
+        all_programs = get_all_listed_uids(departament, program_type)
         all_programs_and_trackers = all_programs + all_trackers
         print("--remove-all")
         delete_all_data_sets_not_in_lists(all_datasets, f)
