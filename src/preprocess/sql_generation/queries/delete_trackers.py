@@ -113,6 +113,12 @@ def delete_all_tracker_programs(trackers, f, exclude=False):
                || ' not in?: {exclude}' AS info;
         """)
     operator = "not in" if exclude else "in"
+
+    if not trackers:
+        #If the selected or unlisted tracker uids is empty, we must exit without remove trackers
+        write(f, "SELECT 'No tracker UIDs provided; skipping delete block' AS info;\n")
+        return
+
     #Careful: since the NOT IN operator is applied in the following queries, the initial one must be an IN for all cases.
     write(f, """
         DROP MATERIALIZED VIEW IF EXISTS tei_to_remove;
