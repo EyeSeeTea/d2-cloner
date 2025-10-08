@@ -102,7 +102,7 @@ def main():
         else:
             import_dir = cfg["post_process_import_dir"] if "post_process_import_dir" in cfg else None
             timeout = cfg["timeout"] if "timeout" in cfg else 900
-            postprocess.postprocess(cfg["api_local_url"], args.api_local_username, args.api_local_password, cfg["postprocess"], import_dir, timeout, post_api_version)
+            postprocess.postprocess(cfg["api_local_url"], args.api_local_username, args.api_local_password, cfg["postprocess"], import_dir, timeout)
 
 
 def get_api_version(args, cfg):
