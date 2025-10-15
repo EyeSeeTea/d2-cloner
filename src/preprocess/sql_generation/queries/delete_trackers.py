@@ -59,8 +59,11 @@ def compose_custom_query(tracker_uis, sql_data_elements, sql_org_units, sql_org_
 
     if sql_org_unit_descendants != "":
         sql_query = sql_query + """ 
-        and organisationunitid in (select organisationunitid from organisationunit where 
-        path like (select concat(path,'/%') from organisationunit where uid in {org_units})) and 
+        and organisationunitid in (SELECT DISTINCT child.organisationunitid
+            FROM organisationunit AS child
+            JOIN organisationunit AS parent
+            ON child.path LIKE parent.path || '/%'
+            WHERE parent.uid IN {org_units}) and   
         """.format(org_units=sql_org_unit_descendants)
     return sql_query
 
