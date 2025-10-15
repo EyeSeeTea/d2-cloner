@@ -8,6 +8,14 @@ def generate_delete_tracker_rules(trackers, data_elements, org_units, org_unit_d
                                   all_uid, f):
     sql_all = convert_to_sql_format(all_uid)
     sql_trackers = convert_to_sql_format(trackers)
+    tracker_program_uids = sql_trackers if sql_trackers != "" else sql_all
+    if tracker_program_uids == "":
+        write(f, f"""
+        SELECT 'No UIDs provided for this department; skipping tracked entity and tracker program deletion' AS info;
+        """)
+        return
+
+
     write(f, f"""
     SELECT 'Starting DELETE block for trackerPrograms: All: '
            || quote_literal($${sql_all or 'NO_IDS'}$$)
@@ -17,56 +25,47 @@ def generate_delete_tracker_rules(trackers, data_elements, org_units, org_unit_d
     sql_data_elements = convert_to_sql_format(data_elements)
     sql_org_units = convert_to_sql_format(org_units)
     sql_org_unit_descendants = convert_to_sql_format(org_unit_descendants)
-    has_rule = False
-    sql_query = """
-        DELETE FROM {programstageinstance} where programstageid in 
-        (select programstageid from programstage where programid in 
-        (select programid from program where uid in {uids})) 
-    """.format(programstageinstance=get_event_table_name(),uids=sql_all)
 
+    if sql_data_elements != "" or sql_org_units != "" or sql_org_unit_descendants != "":
+        sql_query = compose_custom_query(tracker_program_uids, sql_data_elements, sql_org_units, sql_org_unit_descendants)
+        delete_mandatory_dependencies(f, tracker_program_uids)
+        write(f, fix_final_query(sql_query) + "\n")
+    else:
+        delete_all_tracker_programs_from_lists(tracker_program_uids, f)
+
+def compose_custom_query(tracker_uis, sql_data_elements, sql_org_units, sql_org_unit_descendants):
+    sql_data_elements = sql_data_elements.replace("(", "").replace(")", "")
     if sql_data_elements != "":
-        has_rule = True
-        sql_data_elements = sql_data_elements.replace("(", "").replace(")", "")
+        # Removing these data elements requires updating the eventdatavalues JSONB.
         sql_query = """ 
-             update {programstageinstance} set eventdatavalues = eventdatavalues - {remove_data_elements_uid}  where eventdatavalues ? 
-             {where_data_elements_uid} and 
-         """.format(programstageinstance=get_event_table_name(),remove_data_elements_uid=sql_data_elements,
-                    where_data_elements_uid=sql_data_elements)
-
-        if sql_trackers != "":
-            sql_query = sql_query + """ 
-                programstageid in (select programstageid from programstage where programid in 
-                (select programid from program where uid in {tracker_program_uid})) and 
-            """.format(tracker_program_uid=sql_trackers)
-        else:
-            sql_query = sql_query + """ 
-                 programstageid in (select programstageid from programstage where programid in 
-                 (select programid from program where uid in {tracker_program_uid})) and 
-             """.format(tracker_program_uid=sql_all)
+                     update {programstageinstance} set eventdatavalues = eventdatavalues - {remove_data_elements_uid}  where eventdatavalues ? 
+                     {where_data_elements_uid} and programstageid in (select programstageid from programstage where programid in
+                     (select programid from program where uid in {tracker_program_uid})) and 
+                 """.format(programstageinstance=get_event_table_name(), remove_data_elements_uid=sql_data_elements,
+                            where_data_elements_uid=sql_data_elements, tracker_program_uid=tracker_uis)
+    else:
+        # If we don't need to remove data values, we should delete the events.
+        sql_query = """
+            DELETE FROM {programstageinstance} where programstageid in 
+            (select programstageid from programstage where programid in 
+            (select programid from program where uid in {uids})) 
+        """.format(programstageinstance=get_event_table_name(), uids=tracker_uis)
 
     if sql_org_units != "":
-        has_rule = True
         sql_query = sql_query + """ 
              and organisationunitid in (select organisationunitid from organisationunit where 
              uid in {org_units}) and 
          """.format(org_units=sql_org_units)
 
     if sql_org_unit_descendants != "":
-        has_rule = True
         sql_query = sql_query + """ 
         and organisationunitid in (select organisationunitid from organisationunit where 
         path like (select concat(path,'/%') from organisationunit where uid in {org_units})) and 
         """.format(org_units=sql_org_unit_descendants)
-
-    if not has_rule:
-        delete_all_tracker_programs_from_lists(all_uid, f)
-    else:
-        delete_mandatory_dependencies(f, sql_trackers)
-        write(f, fix_final_query(sql_query) + "\n")
-
+    return sql_query
 
 def delete_mandatory_dependencies(f, trackers, exclude=False):
-    """todo review all the dependencies"""
+    """this query is called only when we are trying to remove only a custom dataelements/orgunits/orgunit leveles from tracker programs"""
     operator = "not in" if exclude else "in"
     write(f, """
         --remove all tracker dependencies
@@ -92,7 +91,7 @@ def delete_mandatory_dependencies(f, trackers, exclude=False):
 
 def delete_all_tracker_programs_from_lists(trackers, f):
     trackers = convert_to_sql_format(trackers)
-    delete_all_tracker_programs(trackers, f)
+    delete_all_tracker_programs(trackers, f, False)
 
 def delete_all_tracker_programs_not_in_lists(trackers, f):
     trackers = convert_to_sql_format(trackers)
