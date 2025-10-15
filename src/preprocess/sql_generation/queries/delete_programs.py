@@ -31,9 +31,11 @@ def compose_custom_query(event_program_uids, sql_data_elements, sql_org_units, s
 
     if sql_org_unit_descendants != "":
         sql_query = sql_query + """
-                 organisationunitid in (select organisationunitid from organisationunit  
-                 where path like (select concat(path,'/%') from organisationunit  
-                 where uid in {uids})) and 
+                 organisationunitid in (SELECT DISTINCT child.organisationunitid
+                    FROM organisationunit AS child
+                    JOIN organisationunit AS parent
+                      ON child.path LIKE parent.path || '/%'
+                        WHERE parent.uid IN {uids}) and  
               """.format(uids=sql_org_unit_descendants)
     return sql_query
 
