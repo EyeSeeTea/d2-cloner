@@ -5,6 +5,7 @@ def generate_delete_datasets_rules(datasets, data_elements, org_units,
                                    org_unit_descendants, all_uid, f):
     sql_all = convert_to_sql_format(all_uid)
     sql_datasets = convert_to_sql_format(datasets)
+    dataset_uids = sql_datasets if sql_datasets != "" else sql_all
     write(f, f"""
     SELECT 'Starting DELETE block  for dataSets: All: ' || quote_literal($${sql_all or 'NO_IDS'}$$) ||
            ' and Detailed: ' || quote_literal($${sql_datasets or 'NO_IDS'}$$) AS info;
@@ -12,51 +13,42 @@ def generate_delete_datasets_rules(datasets, data_elements, org_units,
     sql_data_elements = convert_to_sql_format(data_elements)
     sql_org_units = convert_to_sql_format(org_units)
     sql_org_unit_descendants = convert_to_sql_format(org_unit_descendants)
-    sql_query = """
-        DELETE FROM datavalue where dataelementid in (select dataelementid from datasetelement 
-        where datasetid in ( select datasetid from dataset where uid in {all})) and
-    """.format(all=sql_all)
-    has_rule = False
-    if sql_data_elements != "":
-        has_rule = True
-        if sql_datasets != "":
-            sql_query = sql_query + """ 
-                dataelementid in (select dataelementid from dataelement where uid in {dataelements}  
-                and dataelementid in (select dataelementid from datasetelement where datasetid  
-                in ( select datasetid from dataset where uid in {datasets}))) and 
-            """.format(dataelements=sql_data_elements, datasets=sql_datasets)
-        else:
-            sql_query = sql_query + """  
-                 dataelementid in (select dataelementid from dataelement where uid in {dataelements} 
-                 and dataelementid in (select dataelementid from datasetelement 
-                 where datasetid in ( select datasetid from dataset where uid in {datasets}))) and 
-            """.format(dataelements=sql_data_elements, datasets=sql_all)
-    elif sql_datasets != "":
-        has_rule = True
-        sql_query = sql_query + """ 
-             dataelementid in (select dataelementid from datasetelement
-             where datasetid in ( select datasetid from dataset where uid in {datasets})) and 
-        """.format(datasets=sql_datasets)
-    if sql_org_units != "":
-        has_rule = True
-        sql_query = sql_query + """ 
-            sourceid in (select organisationunitid from organisationunit where uid in {orgunits}) and 
-        """.format(orgunits=sql_org_units)
-    if sql_org_unit_descendants != "":
-        has_rule = True
-        sql_query = sql_query + """ 
-            sourceid in (select organisationunitid from organisationunit where path 
-            like (select concat(path,'/%') from organisationunit where uid in {oudescendants})) and 
-        """.format(oudescendants=sql_org_unit_descendants)
 
-    if not has_rule:
-        delete_all_data_sets_from_lists(all_uid, f)
-    else:
+    if sql_data_elements != "" or sql_org_units != "" or sql_org_unit_descendants != "":
+        sql_query = compose_custom_query(dataset_uids, sql_data_elements, sql_org_units, sql_org_unit_descendants)
         write(f, fix_final_query(sql_query) + "\n")
+    else:
+        delete_all_data_sets_from_lists(dataset_uids, f)
 
     write(f, f"""
     SELECT 'Close DELETE Dataset Block' AS info;
     """)
+
+
+def compose_custom_query(datasets_uids_program_uids, sql_data_elements, sql_org_units, sql_org_unit_descendants):
+    sql_query = """
+            DELETE FROM datavalue where dataelementid in (select dataelementid from datasetelement 
+            where datasetid in ( select datasetid from dataset where uid in {all})) and 
+        """.format(all=datasets_uids_program_uids)
+    if sql_data_elements != "":
+            sql_query = sql_query + """  
+                     dataelementid in (select dataelementid from dataelement where uid in {dataelements} 
+                     and dataelementid in (select dataelementid from datasetelement 
+                     where datasetid in ( select datasetid from dataset where uid in {datasets}))) and 
+                """.format(dataelements=sql_data_elements, datasets=datasets_uids_program_uids)
+    if sql_org_units != "":
+        sql_query = sql_query + """ 
+                sourceid in (select organisationunitid from organisationunit where uid in {orgunits}) and 
+            """.format(orgunits=sql_org_units)
+    if sql_org_unit_descendants != "":
+        sql_query = sql_query + """ 
+                sourceid in (SELECT DISTINCT child.organisationunitid
+                FROM organisationunit AS child
+                JOIN organisationunit AS parent
+                ON child.path LIKE parent.path || '/%'
+                WHERE parent.uid IN {oudescendants}) and 
+            """.format(oudescendants=sql_org_unit_descendants)
+    return sql_query
 
 
 def delete_all_data_sets_from_lists(programs, f):
