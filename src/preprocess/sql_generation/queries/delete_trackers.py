@@ -8,8 +8,8 @@ def generate_delete_tracker_rules(trackers, data_elements, org_units, org_unit_d
                                   all_uid, f):
     sql_all = convert_to_sql_format(all_uid)
     sql_trackers = convert_to_sql_format(trackers)
-    tracker_program_uids = sql_trackers if sql_trackers != "" else sql_all
-    if tracker_program_uids == "":
+    tracker_program_uids_sql = sql_trackers if sql_trackers != "" else sql_all
+    if tracker_program_uids_sql == "":
         write(f, f"""
         SELECT 'No UIDs provided for this department; skipping tracked entity and tracker program deletion' AS info;
         """)
@@ -27,11 +27,11 @@ def generate_delete_tracker_rules(trackers, data_elements, org_units, org_unit_d
     sql_org_unit_descendants = convert_to_sql_format(org_unit_descendants)
 
     if sql_data_elements != "" or sql_org_units != "" or sql_org_unit_descendants != "":
-        sql_query = compose_custom_query(tracker_program_uids, sql_data_elements, sql_org_units, sql_org_unit_descendants)
-        delete_mandatory_dependencies(f, tracker_program_uids)
+        sql_query = compose_custom_query(tracker_program_uids_sql, sql_data_elements, sql_org_units, sql_org_unit_descendants)
+        delete_mandatory_dependencies(f, tracker_program_uids_sql)
         write(f, fix_final_query(sql_query) + "\n")
     else:
-        delete_all_tracker_programs_from_lists(tracker_program_uids, f)
+        delete_all_tracker_programs(tracker_program_uids_sql, f, False)
 
 def compose_custom_query(tracker_uis, sql_data_elements, sql_org_units, sql_org_unit_descendants):
     sql_data_elements = sql_data_elements.replace("(", "").replace(")", "")
@@ -93,12 +93,12 @@ def delete_mandatory_dependencies(f, trackers, exclude=False):
     """)
 
 def delete_all_tracker_programs_from_lists(trackers, f):
-    trackers = convert_to_sql_format(trackers)
-    delete_all_tracker_programs(trackers, f, False)
+    tracker_uids_sql = convert_to_sql_format(trackers)
+    delete_all_tracker_programs(tracker_uids_sql, f, False)
 
 def delete_all_tracker_programs_not_in_lists(trackers, f):
-    trackers = convert_to_sql_format(trackers)
-    delete_all_tracker_programs(trackers, f, True)
+    tracker_uids_sql = convert_to_sql_format(trackers)
+    delete_all_tracker_programs(tracker_uids_sql, f, True)
 
 
 def create_index_to_improve_deletion(f):

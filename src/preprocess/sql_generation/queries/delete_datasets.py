@@ -5,7 +5,7 @@ def generate_delete_datasets_rules(datasets, data_elements, org_units,
                                    org_unit_descendants, all_uid, f):
     sql_all = convert_to_sql_format(all_uid)
     sql_datasets = convert_to_sql_format(datasets)
-    dataset_uids = sql_datasets if sql_datasets != "" else sql_all
+    dataset_uids_sql = sql_datasets if sql_datasets != "" else sql_all
     write(f, f"""
     SELECT 'Starting DELETE block  for dataSets: All: ' || quote_literal($${sql_all or 'NO_IDS'}$$) ||
            ' and Detailed: ' || quote_literal($${sql_datasets or 'NO_IDS'}$$) AS info;
@@ -15,10 +15,10 @@ def generate_delete_datasets_rules(datasets, data_elements, org_units,
     sql_org_unit_descendants = convert_to_sql_format(org_unit_descendants)
 
     if sql_data_elements != "" or sql_org_units != "" or sql_org_unit_descendants != "":
-        sql_query = compose_custom_query(dataset_uids, sql_data_elements, sql_org_units, sql_org_unit_descendants)
+        sql_query = compose_custom_query(dataset_uids_sql, sql_data_elements, sql_org_units, sql_org_unit_descendants)
         write(f, fix_final_query(sql_query) + "\n")
     else:
-        delete_all_data_sets_from_lists(dataset_uids, f)
+        delete_all_data_sets(dataset_uids_sql, f, False)
 
     write(f, f"""
     SELECT 'Close DELETE Dataset Block' AS info;
@@ -51,14 +51,14 @@ def compose_custom_query(datasets_uids_program_uids, sql_data_elements, sql_org_
     return sql_query
 
 
-def delete_all_data_sets_from_lists(programs, f):
-    programs = convert_to_sql_format(programs)
-    delete_all_data_sets(programs, f)
+def delete_all_data_sets_from_lists(datasets, f):
+    datasets_uids_sql = convert_to_sql_format(datasets)
+    delete_all_data_sets(datasets_uids_sql, f, False)
 
 
-def delete_all_data_sets_not_in_lists(programs, f):
-    programs = convert_to_sql_format(programs)
-    delete_all_data_sets(programs, f, True)
+def delete_all_data_sets_not_in_lists(datasets, f):
+    datasets_uids_sql = convert_to_sql_format(datasets)
+    delete_all_data_sets(datasets_uids_sql, f, True)
 
 
 def delete_all_data_sets(datasets, f, exclude=False):
