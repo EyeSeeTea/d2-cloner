@@ -1,4 +1,4 @@
-d2apy>=1.0.0
-Faker>=19.6.2
-psycopg2-binary>=2.9.8
-Requests>=2.31.0
+d2apy==1.0.0
+Faker==37.11.0
+psycopg2-binary==2.9.11
+requests==2.32.5
