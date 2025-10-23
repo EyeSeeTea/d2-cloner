@@ -262,10 +262,11 @@ def delete_all_tracker_programs(trackers, f, exclude=False):
         DELETE FROM trackedentityprogramowner WHERE {trackedentityid} IN (SELECT trackedentityid FROM tei_to_remove);
         DELETE FROM {trackedentity} WHERE {trackedentityid} IN (SELECT trackedentityid FROM tei_to_remove);
 
-        DROP MATERIALIZED VIEW IF EXISTS tei_to_remove;
-        DROP MATERIALIZED VIEW IF EXISTS programs_to_remove;
+
         DROP MATERIALIZED VIEW IF EXISTS events_to_remove;
         DROP MATERIALIZED VIEW IF EXISTS enrollments_to_remove;
+        DROP MATERIALIZED VIEW IF EXISTS tei_to_remove;
+        DROP MATERIALIZED VIEW IF EXISTS programs_to_remove;
     """.format(
         trackedentity=get_tracker_table_name(),
         trackedentityid=get_tracker_identifier_name()
