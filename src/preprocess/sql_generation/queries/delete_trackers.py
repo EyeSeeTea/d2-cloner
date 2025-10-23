@@ -104,11 +104,11 @@ def delete_all_tracker_programs_not_in_lists(trackers, f):
 def create_index_to_improve_deletion(f):
     write(f, """
         CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_tei_to_remove_trid ON tei_to_remove({trackedentityid}); 
+         CREATE INDEX IF NOT EXISTS idx_events_to_remove ON events_to_remove ({eventid});
+        CREATE INDEX IF NOT EXISTS idx_enrollments_to_remove ON enrollments_to_remove ({enrollmentid});
         CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_programs_to_remove_pid ON programs_to_remove(programid);
-        CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_programstage_programid ON programstage (programid);
-        CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_event_programstageid ON {event} (programstageid);
-    """.format(trackedentityid=get_tracker_identifier_name(),
-               event=get_event_table_name()))
+    """.format(trackedentityid=get_tracker_identifier_name(), event=get_event_table_name(),
+               eventid=get_event_identifier_name(),enrollmentid=get_enrollment_identifier_name()))
 
 
 def delete_all_tracker_programs(trackers, f, exclude=False):
@@ -136,32 +136,55 @@ def delete_all_tracker_programs(trackers, f, exclude=False):
     write(f, """
         DROP MATERIALIZED VIEW IF EXISTS programs_to_remove;
         create MATERIALIZED view programs_to_remove as (select programid from program where uid {operator} {tracker_uids});
+        
     """.format(tracker_uids=trackers, operator=operator))
-    create_index_to_improve_deletion(f)
-
-    # Remove Tracked entity data value audits (audits from events) -  program and tei-enrollment-program
+    # Group all enrollments to be removed from the target programs, plus events in enrollments of tracked entities within those programs
     write(f, """
-        DELETE FROM trackedentitydatavalueaudit tva
-        WHERE
-          tva.{eventid} IN (
-            SELECT e.{eventid}
-            FROM {event} e
-            WHERE e.programstageid IN (
-              SELECT ps.programstageid
-              FROM programstage ps
-              WHERE ps.programid IN (SELECT programid FROM programs_to_remove)
-            )
-          )
-          OR
-          tva.{eventid} IN (
-            SELECT e.{eventid}
-            FROM {event} e
-            WHERE e.{enrollmentid} IN (
-                SELECT pi.{enrollmentid}
-                FROM {enrollment} pi
-                WHERE pi.{trackedentityid} IN (SELECT trackedentityid FROM tei_to_remove)
-            )
-          );
+            DROP MATERIALIZED VIEW IF EXISTS enrollments_to_remove;
+            CREATE MATERIALIZED VIEW enrollments_to_remove AS
+                SELECT e.{enrollmentid}
+                FROM {enrollment} e
+                WHERE e.programid IN (SELECT programid FROM programs_to_remove)
+                UNION
+                SELECT e.{enrollmentid}
+                FROM {enrollment} e
+                WHERE e.{trackedentityid} IN (SELECT {trackedentityid} FROM tei_to_remove);
+        """.format(enrollmentid=get_enrollment_identifier_name(), enrollment=get_enrollment_table_name(), trackedentityid=get_tracker_identifier_name()))
+    # Group all events to be removed from the target programs, plus events in enrollments of tracked entities within those programs
+    write(f, """
+            DROP MATERIALIZED VIEW IF EXISTS events_to_remove;
+            CREATE MATERIALIZED VIEW events_to_remove AS
+                SELECT e.{eventid}
+                FROM {event} e
+                WHERE e.programstageid IN (
+                    SELECT ps.programstageid
+                    FROM programstage ps
+                    WHERE ps.programid IN (SELECT programid FROM programs_to_remove)
+                )
+                UNION
+                SELECT e.{eventid}
+                FROM {event} e
+                WHERE e.{enrollmentid} IN (
+                    SELECT en.{enrollmentid}
+                    FROM {enrollment} en
+                    WHERE en.{trackedentityid} IN (SELECT trackedentityid FROM tei_to_remove)
+                );
+        """.format(
+        event=get_event_table_name(), eventid=get_event_identifier_name(), enrollment=get_enrollment_table_name(),
+        enrollmentid=get_enrollment_identifier_name(), trackedentityid=get_tracker_identifier_name()))
+    create_index_to_improve_deletion(f)
+    #Informative query
+    write(f, """
+      SELECT 'Events to be deleted: ' || COUNT(*)::text AS info FROM events_to_remove;
+      SELECT 'Enrollments to be deleted: ' || COUNT(*)::text FROM enrollments_to_remove;
+      SELECT 'Tracked entities to be deleted: ' || COUNT(*)::text FROM tei_to_remove;
+    """)
+    # Remove Tracked entity data value audits (audits from events) -  program and tei-enrollment-program
+
+    write(f, "SELECT 'Deleting trackedentitydatavalueaudit....' AS info;\n")
+    write(f, """
+        DELETE FROM trackedentitydatavalueaudit 
+        WHERE {eventid} IN (SELECT {eventid} FROM events_to_remove);
     """.format(
         event=get_event_table_name(),
         eventid=get_event_identifier_name(),
@@ -171,28 +194,10 @@ def delete_all_tracker_programs(trackers, f, exclude=False):
     ))
 
     # Remove Event comments in program and tei-enrollment-program
+    write(f, "SELECT 'Deleting event_comment....' AS info;\n")
     write(f, """
-        DELETE FROM {event_comment} ec
-        WHERE
-          ec.{eventid} IN (
-            SELECT e.{eventid}
-            FROM {event} e
-            WHERE e.programstageid IN (
-              SELECT ps.programstageid
-              FROM programstage ps
-              WHERE ps.programid IN (SELECT programid FROM programs_to_remove)
-            )
-          )
-          OR
-          ec.{eventid} IN (
-            SELECT e.{eventid}
-            FROM {event} e
-            WHERE e.{enrollmentid} IN (
-              SELECT pi.{enrollmentid}
-              FROM {enrollment} pi
-              WHERE pi.{trackedentityid} IN (SELECT trackedentityid FROM tei_to_remove)
-            )
-          );
+        DELETE FROM {event_comment} 
+        WHERE {eventid} IN (SELECT {eventid} FROM events_to_remove);
     """.format(
         event_comment=get_event_comment_table(),
         eventid=get_event_identifier_name(),
@@ -203,89 +208,55 @@ def delete_all_tracker_programs(trackers, f, exclude=False):
     ))
 
     # Remove TrackedAttributeValueAudits in teis from programs
+    write(f, "SELECT 'Deleting trackedentityattributevalueaudit....' AS info;\n")
     write(f, """
         DELETE FROM trackedentityattributevalueaudit
-        WHERE {trackedentityid} IN (
-          SELECT {trackedentityid}
-          FROM {enrollment}
-          WHERE programid IN (SELECT programid FROM programs_to_remove)
-        );
+        WHERE {trackedentityid} IN (SELECT trackedentityid FROM tei_to_remove);
     """.format(
         trackedentityid=get_tracker_identifier_name(),
         enrollment=get_enrollment_table_name()
     ))
     # TrackedAttributeValues in teis from programs
+    write(f, "SELECT 'Deleting trackedentityattributevalue....' AS info;\n")
     write(f, """
         DELETE FROM trackedentityattributevalue
-        WHERE {trackedentityid} IN (
-          SELECT {trackedentityid}
-          FROM {enrollment}
-          WHERE programid IN (SELECT programid FROM programs_to_remove)
-        );
+        WHERE {trackedentityid} IN (SELECT trackedentityid FROM tei_to_remove);
     """.format(
         trackedentityid=get_tracker_identifier_name(),
         enrollment=get_enrollment_table_name()
     ))
 
-    # Remove Events in programs
+    # Delete events from the selected programs and any events linked via enrollments of tracked entities marked for removal (even if they belong to other programs)
+    write(f, "SELECT 'Deleting event....' AS info;\n")
     write(f, """
         DELETE FROM {event} e
-          WHERE e.programstageid IN (
-              SELECT ps.programstageid
-              FROM programstage ps
-              WHERE ps.programid IN (SELECT programid FROM programs_to_remove)
-          );
+        WHERE {eventid} IN (SELECT {eventid} FROM events_to_remove);
     """.format(
-        event=get_event_table_name()
-    ))
-
-    # Remove Events associated with trackerEntities marked to be removed (could be in another program)
-    write(f, """          
-        DELETE FROM {event} e
-        WHERE e.{enrollmentid} IN (
-          SELECT en.{enrollmentid}
-          FROM {enrollment} en
-          WHERE en.{trackedentityid} IN (SELECT trackedentityid FROM tei_to_remove)
-        );
-    """.format(
-        event=get_event_table_name(),
-        enrollment=get_enrollment_table_name(),
-        enrollmentid=get_enrollment_identifier_name(),
-        trackedentityid=get_tracker_identifier_name()
+        event=get_event_table_name(), eventid = get_event_identifier_name()
     ))
 
     # Remove enrollment_comment in programs and teis.
+    write(f, "SELECT 'Deleting enrollment_comment....' AS info;\n")
     write(f, """
-        DELETE FROM {enrollment_comment} ec
-        WHERE
-          ec.{enrollmentid} IN (
-            SELECT {enrollmentid}
-            FROM {enrollment}
-            WHERE programid IN (SELECT programid FROM programs_to_remove)
-            or {trackedentityid} IN (SELECT trackedentityid FROM tei_to_remove)
-          );
+        DELETE FROM {enrollment_comment}
+        WHERE {enrollmentid} IN (select {enrollmentid} FROM enrollments_to_remove);
     """.format(
         enrollment_comment=get_enrollment_comment_table(),
         enrollmentid=get_enrollment_identifier_name(),
-        enrollment=get_enrollment_table_name(),
-        trackedentityid=get_tracker_identifier_name()
     ))
 
     # Remove enrollment in programs and teis.
+    write(f, "SELECT 'Deleting enrollment....' AS info;\n")
     write(f, """
         DELETE FROM {enrollment} e
-        WHERE
-          ( 
-              e.programid IN (SELECT programid FROM programs_to_remove)
-              OR
-              e.{trackedentityid} IN (SELECT trackedentityid FROM tei_to_remove) 
-           );
+        WHERE {enrollmentid} IN (select {enrollmentid} FROM enrollments_to_remove);
     """.format(
         enrollment=get_enrollment_table_name(),
-        trackedentityid=get_tracker_identifier_name()
+        enrollmentid=get_enrollment_identifier_name()
     ))
 
     # 9) Limpieza final de TEIs y relaciones
+    write(f, "SELECT 'Deleting trackedentity and dependencies....' AS info;\n")
     write(f, """
         DELETE FROM trackedentityattributevalue WHERE {trackedentityid} IN (SELECT trackedentityid FROM tei_to_remove);
         DELETE FROM trackedentityprogramowner WHERE {trackedentityid} IN (SELECT trackedentityid FROM tei_to_remove);
@@ -293,6 +264,8 @@ def delete_all_tracker_programs(trackers, f, exclude=False):
 
         DROP MATERIALIZED VIEW IF EXISTS tei_to_remove;
         DROP MATERIALIZED VIEW IF EXISTS programs_to_remove;
+        DROP MATERIALIZED VIEW IF EXISTS events_to_remove;
+        DROP MATERIALIZED VIEW IF EXISTS enrollments_to_remove;
     """.format(
         trackedentity=get_tracker_table_name(),
         trackedentityid=get_tracker_identifier_name()
