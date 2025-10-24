@@ -4,34 +4,46 @@ from src.preprocess.sql_generation.versioned_table_names import *
 
 def delete_org_unit_data_and_views(f):
     write(f, """
-        --remove organisationUnits -- data
-        DELETE FROM {programstageinstancecomments}     WHERE {programstageinstanceid}  IN (SELECT * FROM rm_programstageinstance);
-    """.format(programstageinstancecomments= get_event_comment_table(), programstageinstanceid=get_event_identifier_name()))
+        SELECT 'Starting DELETE block  for OU delete' AS d2_docker_presql_script;
+        SELECT 'orgUnitsToDelete: ' || COUNT(*)::text AS d2_docker_presql_script FROM orgUnitsToDelete;
+        SELECT 'rm_trackedentity: ' || COUNT(*)::text AS d2_docker_presql_script FROM rm_trackedentity;
+        SELECT 'rm_enrollment: ' || COUNT(*)::text AS d2_docker_presql_script FROM rm_enrollment;
+        SELECT 'rm_event: ' || COUNT(*)::text AS d2_docker_presql_script FROM rm_event;
+    """)
 
     if Config.get_pre_api_version() <= 36:
         write(f, """
-            DELETE FROM programinstanceaudit             WHERE {programinstanceid}       IN (SELECT * FROM rm_programinstance);
-        """.format(programinstanceid=get_enrollment_identifier_name()))
+            DELETE FROM enrollmentaudit             WHERE {enrollmentid}       IN (SELECT * FROM rm_enrollment);
+        """.format(enrollmentid=get_enrollment_identifier_name()))
 
     write(f, """
-        DELETE FROM trackedentitydatavalueaudit      WHERE {programstageinstanceid}  IN (SELECT * FROM rm_programstageinstance);
-        DELETE FROM {programstageinstance}             WHERE {programstageinstanceid}  IN (SELECT * FROM rm_programstageinstance);
+        DELETE FROM trackedentitydatavalueaudit      WHERE {eventid}  IN (SELECT * FROM rm_event);
+        DELETE FROM {event_comment}     WHERE {eventid}  IN (SELECT * FROM rm_event);
+        DELETE FROM {event}             WHERE {eventid}  IN (SELECT * FROM rm_event);
         
-        DELETE FROM {programinstancecomments}          WHERE {programinstanceid}       IN (SELECT * FROM rm_programinstance);
-        DELETE FROM {programinstance}                  WHERE {programinstanceid}       IN (SELECT * FROM rm_programinstance);
+        DELETE FROM {enrollment_comment}          WHERE {enrollmentid}       IN (SELECT * FROM rm_enrollment);
+        DELETE FROM {enrollment}                  WHERE {enrollmentid}       IN (SELECT * FROM rm_enrollment);
         DELETE FROM datavalue where sourceid in (select organisationunitid from orgUnitsToDelete);
         DELETE FROM datavalueaudit where organisationunitid in (select organisationunitid  from orgUnitsToDelete);
         
-        DELETE FROM trackedentityattributevalue      WHERE {trackedentityinstanceid} IN (SELECT * FROM rm_trackedentityinstance);
-        DELETE FROM trackedentityattributevalueaudit WHERE {trackedentityinstanceid} IN (SELECT * FROM rm_trackedentityinstance);
+        DELETE FROM trackedentityattributevalue      WHERE {trackedentityid} IN (SELECT * FROM rm_trackedentity);
+        DELETE FROM trackedentityattributevalueaudit WHERE {trackedentityid} IN (SELECT * FROM rm_trackedentity);
         DELETE FROM trackedentityprogramowner        WHERE organisationunitid      IN (SELECT * FROM orgUnitsToDelete);
-        DELETE FROM {trackedentityinstance}            WHERE {trackedentityinstanceid} IN (SELECT * FROM rm_trackedentityinstance);
-    """.format(programstageinstanceid = get_event_identifier_name(), programstageinstance = get_event_table_name(),
-                   programinstancecomments=get_event_comment_table(), programinstanceid= get_enrollment_identifier_name(),
-                   programinstance=get_enrollment_table_name(), trackedentityinstanceid=get_tracker_identifier_name(),
-                   trackedentityinstance=get_tracker_table_name()))
+        DELETE FROM {trackedentity}            WHERE {trackedentityid} IN (SELECT * FROM rm_trackedentity);
+    """.format(eventid = get_event_identifier_name(), event = get_event_table_name(),
+                   event_comment=get_event_comment_table(), enrollmentid= get_enrollment_identifier_name(),
+                   enrollment=get_enrollment_table_name(), trackedentityid=get_tracker_identifier_name(),
+                   enrollment_comment=get_enrollment_comment_table(),
+                   trackedentity=get_tracker_table_name()))
+
+    if Config.get_pre_api_version() <= 38:
+        write(f, """
+            DELETE FROM interpretationuseraccesses       WHERE interpretationid        IN (SELECT * FROM rm_interpretation);
+            DELETE FROM organisationunitattributevalues where organisationunitid in (select * from orgUnitsToDelete);
+            DELETE FROM chart_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
+            """)
+
     write(f, """
-        DELETE FROM interpretationuseraccesses       WHERE interpretationid        IN (SELECT * FROM rm_interpretation);
         DELETE FROM interpretation_comments          WHERE interpretationid        IN (SELECT * FROM rm_interpretation);
         DELETE FROM intepretation_likedby            WHERE interpretationid        IN (SELECT * FROM rm_interpretation);
         DELETE FROM interpretation                   WHERE interpretationid        IN (SELECT * FROM rm_interpretation);
@@ -47,7 +59,6 @@ def delete_org_unit_data_and_views(f):
         DELETE FROM _organisationunitgroupsetstructure where organisationunitid in (select * from orgUnitsToDelete);
         DELETE FROM datavalueaudit where organisationunitid in (select * from orgUnitsToDelete);
         DELETE FROM categoryoption_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
-        DELETE FROM chart_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
         DELETE FROM dataapproval where organisationunitid in (select * from orgUnitsToDelete);
         DELETE FROM dataapprovalaudit where organisationunitid in (select * from orgUnitsToDelete);
         DELETE FROM eventchart_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
@@ -55,7 +66,6 @@ def delete_org_unit_data_and_views(f):
         DELETE FROM eventvisualization_organisationunits WHERE organisationunitid      IN (SELECT * FROM orgUnitsToDelete);
         DELETE FROM lockexception where organisationunitid in (select * from orgUnitsToDelete);
         DELETE FROM mapview_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
-        DELETE FROM organisationunitattributevalues where organisationunitid in (select * from orgUnitsToDelete);
         DELETE FROM program_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
         DELETE FROM programmessage_emailaddresses   WHERE programmessageemailaddressid      IN (SELECT * FROM rm_programmessage);
         DELETE FROM programmessage_deliverychannels  WHERE programmessagedeliverychannelsid IN (SELECT * FROM rm_programmessage);
@@ -79,6 +89,11 @@ def delete_org_unit_data_and_views(f):
         DROP MATERIALIZED VIEW if exists orgUnitsToDelete CASCADE;
     """)
 
+    write(f, f"""
+    SELECT 'Close DELETE organisationunits Block' AS D2_DOCKER_PRESQL_SCRIPT;
+    """)
+
+
 
 def delete_org_units(f):
     create_org_units_to_remove_views_and_indexes(f)
@@ -101,26 +116,26 @@ def create_org_units_to_remove_views_and_indexes(f):
     write(f, """
         CREATE UNIQUE INDEX idx_orgs ON orgUnitsToDelete (organisationunitid); 
         
-        CREATE MATERIALIZED VIEW rm_trackedentityinstance 
-            AS SELECT {trackedentityinstanceid} FROM {trackedentityinstance} WHERE 
+        CREATE MATERIALIZED VIEW rm_trackedentity 
+            AS SELECT {trackedentityid} FROM {trackedentity} WHERE 
                 organisationunitid IN (SELECT * FROM orgUnitsToDelete); 
-        CREATE UNIQUE INDEX idx_trackedentityinstance ON rm_trackedentityinstance ({trackedentityinstanceid}); 
+        CREATE UNIQUE INDEX idx_trackedentity ON rm_trackedentity ({trackedentityid}); 
         
-        CREATE MATERIALIZED VIEW rm_programinstance 
-            AS SELECT {programinstanceid} FROM {programinstance} WHERE 
+        CREATE MATERIALIZED VIEW rm_enrollment 
+            AS SELECT {enrollmentid} FROM {enrollment} WHERE 
                 organisationunitid IN (SELECT * FROM orgUnitsToDelete); 
-        CREATE UNIQUE INDEX idx_programinstance ON rm_programinstance ({programinstanceid}); 
+        CREATE UNIQUE INDEX idx_enrollment ON rm_enrollment ({enrollmentid}); 
         
-        CREATE MATERIALIZED VIEW rm_programstageinstance_orgs 
-            AS SELECT {programstageinstanceid} FROM {programstageinstance} WHERE 
+        CREATE MATERIALIZED VIEW rm_event_orgs 
+            AS SELECT {eventid} FROM {event} WHERE 
                 organisationunitid IN (SELECT * FROM orgUnitsToDelete); 
-        CREATE MATERIALIZED VIEW rm_programstageinstance_programinstance 
-            AS SELECT {programstageinstanceid} FROM {programstageinstance} WHERE 
-                {programinstanceid} IN (SELECT * FROM rm_programinstance); 
-        CREATE MATERIALIZED VIEW rm_programstageinstance 
-            AS SELECT * FROM rm_programstageinstance_orgs 
-            UNION ALL SELECT * FROM rm_programstageinstance_programinstance; 
-        CREATE UNIQUE INDEX idx_programstageinstance ON rm_programstageinstance ({programstageinstanceid}); 
+        CREATE MATERIALIZED VIEW rm_event_enrollment 
+            AS SELECT {eventid} FROM {event} WHERE 
+                {enrollmentid} IN (SELECT * FROM rm_enrollment); 
+        CREATE MATERIALIZED VIEW rm_event 
+            AS SELECT * FROM rm_event_orgs 
+            UNION ALL SELECT * FROM rm_event_enrollment; 
+        CREATE UNIQUE INDEX idx_event ON rm_event ({eventid}); 
         
         CREATE MATERIALIZED VIEW rm_interpretation 
             AS SELECT interpretationid FROM interpretation WHERE organisationunitid IN (SELECT * FROM orgUnitsToDelete); 
@@ -129,28 +144,28 @@ def create_org_units_to_remove_views_and_indexes(f):
         CREATE MATERIALIZED VIEW rm_programmessage 
             AS SELECT id FROM programmessage WHERE 
                 organisationunitid      IN (SELECT * FROM orgUnitsToDelete) OR 
-                {trackedentityinstanceid} IN (SELECT * FROM rm_trackedentityinstance) OR 
-                {programstageinstanceid}  IN (SELECT * FROM rm_programstageinstance) OR 
-                {programinstanceid}       IN (SELECT * FROM rm_programinstance); 
+                {trackedentityid} IN (SELECT * FROM rm_trackedentity) OR 
+                {eventid}  IN (SELECT * FROM rm_event) OR 
+                {enrollmentid}       IN (SELECT * FROM rm_enrollment); 
         CREATE UNIQUE INDEX idx_programmessage ON rm_programmessage (id); 
         CREATE INDEX IF NOT EXISTS idx_datavalue_organisationunitid                 ON datavalue                 (sourceid); 
         CREATE INDEX IF NOT EXISTS idx_datavalueaudit_organisationunitid            ON datavalueaudit            (organisationunitid); 
         CREATE INDEX IF NOT EXISTS idx_program_organisationunits_organisationunitid ON program_organisationunits (organisationunitid); 
         CREATE INDEX IF NOT EXISTS idx_orgunitgroup_organisationunitid              ON orgunitgroupmembers       (organisationunitid); 
-        CREATE INDEX IF NOT EXISTS idx_programinstance_organisationunitid           ON {programinstance}           (organisationunitid); 
+        CREATE INDEX IF NOT EXISTS idx_enrollment_organisationunitid           ON {enrollment}           (organisationunitid); 
         CREATE INDEX IF NOT EXISTS idx_dataset_organisationunit                     ON datasetsource             (sourceid); 
         CREATE INDEX IF NOT EXISTS idx_parentid                                     ON organisationunit          (parentid); 
-        CREATE INDEX IF NOT EXISTS idx_programstageinstance_organisationunitid      ON {programstageinstance}      (organisationunitid); 
-        CREATE INDEX IF NOT EXISTS idx_trackedentityinstance_organisationunitid     ON {trackedentityinstance}     (organisationunitid); 
-        CREATE INDEX IF NOT EXISTS idx_entityinstancedatavalueaudit_programstageinstanceid ON trackedentitydatavalueaudit              ({programstageinstanceid}); 
-        CREATE INDEX IF NOT EXISTS idx_programmessage_programstageinstanceid               ON programmessage                           ({programstageinstanceid}); 
-        CREATE INDEX IF NOT EXISTS idx_programstageinstancecomments_programstageinstanceid ON {programstageinstancecomments}             ({programstageinstanceid}); 
-        CREATE INDEX IF NOT EXISTS idx_programstagenotification_psi                        ON programnotificationinstance              ({programstageinstanceid}); 
-        CREATE INDEX IF NOT EXISTS idx_relationshipitem_programstageinstanceid             ON relationshipitem                         ({programstageinstanceid}); 
-        CREATE INDEX IF NOT EXISTS idx_s9i10v8xg7d22hlhmesia51l                            ON programstageinstance_messageconversation ({programstageinstanceid}); 
-    """.format(programstageinstanceid=get_event_identifier_name(), programstageinstance=get_event_table_name(),programinstanceid=get_enrollment_identifier_name(),
-               programinstance=get_enrollment_table_name(), trackedentityinstance=get_tracker_table_name(), trackedentityinstanceid = get_tracker_identifier_name(),
-               programstageinstancecomments=get_event_comment_table()))
+        CREATE INDEX IF NOT EXISTS idx_event_organisationunitid      ON {event}      (organisationunitid); 
+        CREATE INDEX IF NOT EXISTS idx_trackedentity_organisationunitid     ON {trackedentity}     (organisationunitid); 
+        CREATE INDEX IF NOT EXISTS idx_entityinstancedatavalueaudit_eventid ON trackedentitydatavalueaudit              ({eventid}); 
+        CREATE INDEX IF NOT EXISTS idx_programmessage_eventid               ON programmessage                           ({eventid}); 
+        CREATE INDEX IF NOT EXISTS idx_event_comment_eventid ON {event_comment}             ({eventid}); 
+        CREATE INDEX IF NOT EXISTS idx_programstagenotification_psi                        ON programnotificationinstance              ({eventid}); 
+        CREATE INDEX IF NOT EXISTS idx_relationshipitem_eventid             ON relationshipitem                         ({eventid}); 
+        CREATE INDEX IF NOT EXISTS idx_s9i10v8xg7d22hlhmesia51l                            ON event_messageconversation ({eventid}); 
+    """.format(eventid=get_event_identifier_name(), event=get_event_table_name(),enrollmentid=get_enrollment_identifier_name(),
+               enrollment=get_enrollment_table_name(), trackedentity=get_tracker_table_name(), trackedentityid = get_tracker_identifier_name(),
+               event_comment=get_event_comment_table()))
 
 
 def generate_delete_org_unit_tree_rules(orgunits, f):
