@@ -230,6 +230,12 @@ If this path is set to a critical location (such as your home directory or any f
      {
       "action": "removeUnlistedData"
       }
+* ``showDataSummary``: displays data counts grouped by program and dataset at the end of preprocess.sql execution.
+
+    Example:
+    {
+        "action": "showDataSummary"
+    }
 
 .. _`conninfo`: https://www.postgresql.org/docs/9.3/static/libpq-connect.html#LIBPQ-CONNSTRING
 
