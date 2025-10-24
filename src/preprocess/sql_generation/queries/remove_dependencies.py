@@ -3,7 +3,7 @@ from src.preprocess.sql_generation.sql_common import write
 
 def remove_all_unnecessary_dependencies(f, preprocess_api_version):
     write(f, f"""
-    SELECT 'Starting DELETE DEPENDENCIES Block version: {preprocess_api_version}' AS info;
+    SELECT 'Starting DELETE DEPENDENCIES Block version: {preprocess_api_version}' AS D2_DOCKER_PRESQL_SCRIPT;
     """)
     if preprocess_api_version == 34:
         write(f, """
@@ -62,5 +62,5 @@ delete from programownershiphistory;
 delete from programtempownershipaudit;
     """)
     write(f, f"""
-        SELECT 'Close DELETE DEPENDENCIES Block' AS info;
+        SELECT 'Close DELETE DEPENDENCIES Block' AS D2_DOCKER_PRESQL_SCRIPT;
         """)
