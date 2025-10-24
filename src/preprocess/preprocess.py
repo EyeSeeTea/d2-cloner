@@ -2,6 +2,7 @@ import os
 import shutil
 
 from src.common.config import Config
+from src.preprocess.sql_generation.queries.data_summary import show_data_summary
 from src.preprocess.sql_generation.queries.delete_datasets import generate_delete_datasets_rules, \
     delete_all_data_sets_from_lists, delete_all_data_sets_not_in_lists
 from src.preprocess.sql_generation.queries.delete_orgunits import start_ou_materialized_view, \
@@ -19,6 +20,7 @@ remove_orgunit_tree = "removeOrganisationUnitTree"
 remove_orgunit_level = "removeOrganisationUnitTreeByLevel"
 remove_rule = "removeData"
 remove_all_unlisted_rule = "removeUnlistedData"
+show_data_summary_rule = "showDataSummary"
 program_type = "eventPrograms"
 tracker_type = "trackerPrograms"
 dataset_type = "dataSets"
@@ -95,6 +97,7 @@ def get_all_listed_uids(departments, metadata_key):
 def generate_queries(departament, f, preprocess_api_version):
     org_unit_deletion_grouped_rules = []
     remove_all_unlisted = False
+    show_data_grouped_by_program_summary = False
     for key in departament.keys():
         info_message=f"--Starting departament {key}"
         f.write(info_message)
@@ -107,7 +110,6 @@ def generate_queries(departament, f, preprocess_api_version):
             has_datasets = False
             has_event_program = False
             has_tracker_program = False
-
             if rule[action] == anonymize_users:
                 new_admin = get_rule_content(rule, select_new_admin_user)
                 old_admin = get_rule_content(rule, select_old_admin_user)
@@ -118,7 +120,8 @@ def generate_queries(departament, f, preprocess_api_version):
 
             elif rule[action] == remove_all_unlisted_rule:
                 remove_all_unlisted = True
-
+            elif rule[action] == show_data_summary_rule:
+                show_data_grouped_by_program_summary = True
             elif rule[action] == remove_rule or rule[action] == anonymize_rule:
                 # get metadata types
                 if metadata_type in rule.keys():
@@ -223,6 +226,10 @@ def generate_queries(departament, f, preprocess_api_version):
         write_end_of_sentence(f)
         delete_org_units(f)
 
+    if show_data_grouped_by_program_summary:
+        print("show data summary3!")
+        show_data_summary(f)
+
 
 def get_rule_content(rule, rule_type):
     if rule_type in rule.keys():
@@ -247,7 +254,7 @@ def add_rules_by_departament(departament, entries):
     for entry in entries:
         valid_rule = False
         for key in departament.keys():
-            if entry[action] == remove_all_unlisted_rule or entry[select_departament].upper() == key.upper():
+            if entry[action] == remove_all_unlisted_rule or entry[action] == show_data_summary_rule or entry[select_departament].upper() == key.upper():
                 if actions not in departament[key].keys():
                     departament[key][actions] = list()
                 departament[key][actions].append(entry)
