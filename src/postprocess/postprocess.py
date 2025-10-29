@@ -20,7 +20,7 @@ from src.common.debug import debug
 from src.postprocess import apirequests
 
 
-def postprocess(url, username, password, entries, import_dir, timeout, api_version):
+def postprocess(url, username, password, entries, import_dir, timeout):
     """Execute actions on the appropriate users as specified in entries.
 
     The entries structure looks like:
@@ -50,7 +50,7 @@ def postprocess(url, username, password, entries, import_dir, timeout, api_versi
     apirequests.wait_for_server(api, timeout)
 
     for entry in [expand_url(x) for x in entries]:
-        execute(api, entry, import_dir, api_version)
+        execute(api, entry, import_dir)
 
 
 def expand_url(entry):
@@ -68,13 +68,13 @@ def is_url(x):
     return type(x) == str and x.startswith("http")
 
 
-def execute(api, entry, import_dir, api_version):
+def execute(api, entry, import_dir):
     "Execute the action described in one entry of the postprocessing"
     get = lambda x: entry.get(x, [])
     contains = lambda x: x in entry
 
     if contains("selectUsernames") or contains("selectFromGroups"):
-        users = select_users(api, get("selectUsernames"), get("selectFromGroups"), api_version)
+        users = select_users(api, get("selectUsernames"), get("selectFromGroups"))
         debug("Users selected: %s" % ", ".join(get_username(x) for x in users))
         if not users:
             return
@@ -109,11 +109,11 @@ def execute(api, entry, import_dir, api_version):
         raise ValueError("Unknown action: %s" % action)
 
 
-def select_users(api, usernames, users_from_group_names, api_version):
+def select_users(api, usernames, users_from_group_names):
     "Return users with from usernames and from groups users_from_group_names"
     return unique(
         apirequests.get_users_by_usernames(api, usernames)
-        + apirequests.get_users_by_group_names(api, users_from_group_names, api_version)
+        + apirequests.get_users_by_group_names(api, users_from_group_names)
     )
 
 

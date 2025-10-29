@@ -114,7 +114,8 @@
       "selectMetadataType": ["organisationUnits"],
       "selectOrganisationUnit": [ "hmZE3mVAZFf", "G3thRWUQAX9", "HfVjCurKxh2", "seHJdofSPcM" ],
       "action": "removeOrganisationUnitTree"
-    }
+    },
+    {"action": "showDataSummary"}
   ],
   "postprocess": [
     {

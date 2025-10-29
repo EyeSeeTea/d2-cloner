@@ -179,7 +179,7 @@ def get_users_by_usernames(api, usernames):
     return response["users"]
 
 
-def get_users_by_group_names(api, user_group_names, api_version):
+def get_users_by_group_names(api, user_group_names):
     "Return list of users belonging to any of the given user groups"
     debug("Get users from groups: names=%s" % user_group_names)
 
