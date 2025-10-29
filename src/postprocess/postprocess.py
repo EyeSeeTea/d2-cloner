@@ -20,7 +20,7 @@ from src.common.debug import debug
 from src.postprocess import apirequests
 
 
-def postprocess(cfg, entries, import_dir):
+def postprocess(url, username, password, entries, import_dir, timeout):
     """Execute actions on the appropriate users as specified in entries.
 
     The entries structure looks like:
@@ -45,12 +45,12 @@ def postprocess(cfg, entries, import_dir):
     and "addRolesFromTemplate" (a string) if that's the action.
     """
 
-    api = apirequests.init_api(cfg["url"], cfg["username"], cfg["password"])
+    api = apirequests.init_api(url, username, password)
 
-    apirequests.wait_for_server(api)
+    apirequests.wait_for_server(api, timeout)
 
     for entry in [expand_url(x) for x in entries]:
-        execute(api, entry, cfg, import_dir)
+        execute(api, entry, import_dir)
 
 
 def expand_url(entry):
@@ -68,7 +68,7 @@ def is_url(x):
     return type(x) == str and x.startswith("http")
 
 
-def execute(api, entry, cfg, import_dir):
+def execute(api, entry, import_dir):
     "Execute the action described in one entry of the postprocessing"
     get = lambda x: entry.get(x, [])
     contains = lambda x: x in entry
@@ -91,6 +91,8 @@ def execute(api, entry, cfg, import_dir):
     action = get("action")
     if action == "activate":
         apirequests.activate(api, users)
+    elif action == "fakerizeAllUserFields":
+        apirequests.fakerize_users(api, users, get("excludeUsernames"))
     elif action == "deleteOthers":
         apirequests.delete_others(api, users)
     elif action == "addRoles":

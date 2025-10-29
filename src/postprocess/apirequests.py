@@ -6,35 +6,67 @@ import requests
 
 from d2apy import dhis2api
 
+from src.common.config import Config
 from src.postprocess.list_modifier import *
 from src.common.debug import debug
+from faker import Faker
 
 
 def init_api(url, username, password):
     return dhis2api.Dhis2Api(url, username, password)
 
 
-def wait_for_server(api, timeout=900):
+def wait_for_server(api, timeout):
     "Sleep until server is ready to accept requests"
     debug("Check active API: %s" % api.api_url)
     import time as time_
+
     start_time = time_.time()
     while True:
         try:
             api.get("/me")
             break
-        except (requests.exceptions.HTTPError, requests.exceptions.ConnectionError) as exc:
-            debug(exc)
+        except requests.exceptions.HTTPError:
+            debug("(HttpError) The instance is booting, it may take a few minutes...  Please wait")
             if time_.time() - start_time > timeout:
                 raise RuntimeError("Timeout: could not connect to the API")
-            time_.sleep(10)
+            time_.sleep(60)
+        except requests.exceptions.ConnectionError:
+            debug("(Connection) The instance is booting, it may take a few minutes... Please wait")
+            if time_.time() - start_time > timeout:
+                raise RuntimeError("Timeout: could not connect to the API")
+            time_.sleep(60)
 
 
 def activate(api, users):
     debug("Activating %d user(s)..." % len(users))
     for user in users:
-        user["userCredentials"]["disabled"] = False
-        api.put("/users/" + user["id"], user)
+        if "userCredentials" not in user.keys():
+            if Config.get_post_api_version() >41:
+                user["disabled"] = False
+                api.put("/users/" + user["id"], user)
+            else:
+                debug("error with user"+ json.dumps(user))
+        else:
+            user["userCredentials"]["disabled"] = False
+            api.put("/users/" + user["id"], user)
+
+
+def fakerize_users(api, users, excludeUsers):
+    debug("Fakerize %d users..." % (len(users)))
+    fake = Faker()
+    for user in users:
+        if user["userCredentials"]["username"] not in excludeUsers:
+            name, surname = fake.name()
+            user["surname"] = surname
+            user["firstName"] = name
+            user["name"] = name
+            user["userCredentials"]["name"] = name
+            user["phoneNumber"] = fake.phone_number()
+            user["jobTitle"] = fake.job()
+            user["nationality"] = fake.country()
+
+            api.put("/users/" + user["id"], user)
 
 
 def delete_others(api, users):
@@ -68,27 +100,46 @@ def add_roles(api, users, roles_to_add):
     debug("Adding %d roles to %d users..." % (len(roles_to_add), len(users)))
     for user in users:
         roles = unique(get_roles(user) + roles_to_add)
-        user["userCredentials"]["userRoles"] = roles
+        if Config.get_post_api_version() > 41:
+            user["userRoles"] = roles
+        else:
+            user["userCredentials"]["userRoles"] = roles
+
         api.put("/users/" + user["id"], user)
 
 
 def remove_groups(api, users, groups_to_remove_from):
     debug("Removing %d users from %d groups..." % (len(users), len(groups_to_remove_from)))
-    response = api.get(
-        "/userGroups",
-        {
-            "paging": False,
-            "filter": "name:in:[%s]" % ",".join(groups_to_remove_from),
-            "fields": ("*"),
-        },
-    )
-    for group in response["userGroups"]:
-        group["users"] = [
-            user
-            for user in group["users"]
-            if user not in map(lambda element: pick(element, ["id"]), users)
-        ]
-        api.put("/userGroups/" + group["id"], group)
+    if Config.get_pre_api_version() >=39:
+        response = api.get(
+            "/userGroups",
+            {
+                "paging": False,
+                "filter": "name:in:[%s]" % ",".join(groups_to_remove_from),
+                "fields": "id",
+            },
+        )
+        for group in response.get("userGroups", []):
+            payload = {
+                "deletions": [{"id": user["id"]} for user in users]
+            }
+            api.post(f"/userGroups/{group['id']}/users", payload)
+    else:
+        response = api.get(
+            "/userGroups",
+            {
+                "paging": False,
+                "filter": "name:in:[%s]" % ",".join(groups_to_remove_from),
+                "fields": (":all"),
+            },
+        )
+        for group in response["userGroups"]:
+            group["users"] = [
+                user
+                for user in group["users"]
+                if user not in map(lambda element: pick(element, ["id"]), users)
+            ]
+            api.put("/userGroups/" + group["id"], group)
 
 
 def get_users_by_usernames(api, usernames):
@@ -98,14 +149,33 @@ def get_users_by_usernames(api, usernames):
     if not usernames:
         return []
 
-    response = api.get(
-        "/users",
-        {
-            "paging": False,
-            "filter": "userCredentials.username:in:[%s]" % ",".join(usernames),
-            "fields": ":all,userCredentials[:all,userRoles[id,name]]",
-        },
-    )
+    if "*" in usernames or ":all" in usernames:
+        response = api.get(
+            "/users",
+            {
+                "paging": False,
+                "fields": ":all,userCredentials[:all,userRoles[id,name]],userRoles[id,name]",
+            },
+        )
+    else:
+        if Config.get_post_api_version()>41:
+            response = api.get(
+                "/users",
+                {
+                    "paging": False,
+                    "filter": "username:in:[%s]" % ",".join(usernames),
+                    "fields": ":all,userRoles[id,name]",
+                },
+            )
+        else:
+            response = api.get(
+                "/users",
+                {
+                    "paging": False,
+                    "filter": "userCredentials.username:in:[%s]" % ",".join(usernames),
+                    "fields": ":all,userCredentials[:all,userRoles[id,name]]",
+                },
+            )
     return response["users"]
 
 
@@ -116,14 +186,26 @@ def get_users_by_group_names(api, user_group_names):
     if not user_group_names:
         return []
 
-    response = api.get(
-        "/userGroups",
-        {
-            "paging": False,
-            "filter": "name:in:[%s]" % ",".join(user_group_names),
-            "fields": ("id,name," "users[:all,userCredentials[:all,userRoles[id,name]]]"),
-        },
-    )
+    if Config.get_post_api_version() >= 36:
+        response = api.get(
+            "/users",
+            {
+                "paging": False,
+                "filter": "userGroups.name:in:[%s]" % ",".join(user_group_names),
+                "fields": ("id,name,:all,[:all,userRoles[id,name],userCredentials[:all,userRoles[id,name]]]"),
+            },
+        )
+        return response["users"]
+    elif Config.get_post_api_version() == 34:
+        response = api.get(
+            "/userGroups",
+            {
+                "paging": False,
+                "filter": "name:in:[%s]" % ",".join(user_group_names),
+                "fields": ("id,name,"
+                           "users[:all,userRoles[id,name],userCredentials[:all,userRoles[id,name]]]"),
+            },
+        )
     return sum((x["users"] for x in response["userGroups"]), [])
 
 
@@ -181,10 +263,13 @@ def change_server_name(api, new_name):
 
 def get_username(user):
     if "userCredentials" in user.keys():
-          return user["userCredentials"]["username"]
+        return user["userCredentials"]["username"]
     else:
-          return user["username"]
+        return user["username"]
 
 
 def get_roles(user):
-    return user["userCredentials"]["userRoles"]
+    if Config.get_post_api_version() > 41:
+        return user["userRoles"]
+    else:
+        return user["userCredentials"]["userRoles"]

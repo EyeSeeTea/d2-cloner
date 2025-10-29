@@ -18,7 +18,7 @@ The steps are:
 * Start the tomcat/d2-docker again.
 
 Any step can be individually switched off (``--no-backups``,
-``--no-webapps``, ``--no-db``, ``--manual-restart``).
+``--no-webapps``, ``--no-db``, ``--manual-restart``, ``--use-backup``).
 
 Also, it can run some sql scripts on the database before starting the
 server again (``--post-sql``). This is useful in several
@@ -44,38 +44,52 @@ Instances of type ``d2-docker`` might change its image (typically, in an upgrade
 
 Setup
 -----
+.. code-block:: bash
 
-  $ sudo apt install pip3
-  $ pip3 install psycopg2-binary jsonobject
+  sudo apt install pip3
+  pip install -r requirements.txt
 
 Usage
 -----
+.. code-block:: bash
 
-  usage: dhis2_clone [-h] [--no-backups] [--no-webapps] [--no-db]
-                   [--no-postprocess] [--manual-restart]
-                   [--post-sql POST_SQL [POST_SQL ...]] [--post-clone-scripts]
-                   [--update-config] [--no-color]
-                   CONFIG_FILE
+  dhis2_clone.py [-h] [--db-local DB_LOCAL] [--db-remote DB_REMOTE] [--api-local-username API_LOCAL_USERNAME]
+                      [--api-local-password API_LOCAL_PASSWORD] [--no-backups] [--no-webapps] [--no-db]
+                      [--no-postprocess] [--no-preprocess] [--manual-restart] [--post-sql POST_SQL [POST_SQL ...]]
+                      [--strict-sql] [--pre-api PRE_API] [--post-api POST_API] [--keep-temp] [--post-clone-scripts]
+                      [--post-import] [--update-config] [--no-color] [--start-transformed] [--stop-transformed]
+                      [--use-backup USE_BACKUP]
+                      config
 
-Clone a dhis2 installation from another server.
+positional arguments::
 
-positional arguments:
-  config                file with configuration
+  config                                   file with configuration
 
-optional arguments:
-  -h, --help            show this help message and exit
-  --no-backups          don't make backups
-  --no-webapps          don't clone the webapps
-  --no-db               don't clone the database
-  --no-postprocess      don't do postprocessing
-  --manual-restart      don't stop/start tomcat
-  --post-sql POST_SQL [POST_SQL ...]
-                        sql files to run post-clone (pass a folder instead for d2-docker type)
-  --post-clone-scripts  execute all py and sh scripts in
-                        post_clone_scripts_dir (DHIS2 URL with auth passed as first argument)
-                        or local_docker_post_clone_scripts_dir for local docker.
-  --update-config       update the config file
-  --no-color            don't use colored output
+options::
+
+  -h, --help                               show this help message and exit
+  --db-local DB_LOCAL                      db to be override
+  --db-remote DB_REMOTE                    db to be copied in the db-local
+  --api-local-username API_LOCAL_USERNAME  api local user
+  --api-local-password API_LOCAL_PASSWORD  api local password
+  --no-backups                             don't make backups
+  --no-webapps                             don't clone the webapps
+  --no-db                                  don't clone the database
+  --no-postprocess                         don't do postprocessing
+  --no-preprocess                          don't do preprocessing
+  --manual-restart                         don't stop/start tomcat
+  --post-sql POST_SQL [POST_SQL ...]       sql files to run post-clone
+  --strict-sql                             stop the sql script on first fail and show in the log
+  --pre-api PRE_API                        Pre Api calls compatible versions: 2.34 / 2.36 / 2.38 / 2.41 (default: 2.36)
+  --post-api POST_API                      Post Api calls compatible versions: 2.34 / 2.36 / 2.38 / 2.41 (default: 2.36)
+  --keep-temp                              Preserve temporary d2-docker files for cloning the instance
+  --post-clone-scripts                     execute all py and sh scripts in post_clone_scripts_dir
+  --post-import                            import to DHIS2 selected json files from post_process_import_dir
+  --update-config                          update the config file
+  --no-color                               don't use colored output
+  --start-transformed                      Override d2-docker image for start
+  --stop-transformed                       Override d2-docker image for stop
+  --use-backup USE_BACKUP                  Path to remote backup file to use instead of making a remote pg_dump
 
 
 Configuration
@@ -83,7 +97,7 @@ Configuration
 
 To invoke the program you need to specify a configuration file, as in::
 
-  $ dhis2_clone config_training.json
+  dhis2_clone config_training.json
 
 An example configuration file is provided in this repository
 (`configuration_example.json`_).
@@ -101,8 +115,8 @@ The sections in the configuration file are:
 * ``backups_dir``: directory where it will store the backups.
 * ``backup_name``: an identifier that it will append to the name of
   the war file and database backups.
-* ``server_dir_local``: base directory of the tomcat running in the
-  local server.
+* ``server_dir_local``: base directory of the tomcat running in the local server. Although server_dir_local points to the Tomcat base directory, it is also used internally as a temporary directory by d2-docker. When running a d2-docker cloning operation, this temporary directory will be removed by default (unless you use the --keep-temp option).
+If this path is set to a critical location (such as your home directory or any folder with important files), you risk losing data. Only the d2-docker temporary files are intended to be removed, but the behavior can be misleading.
 * ``server_dir_remote``: base directory of the tomcat running in the
   remote server.
 * ``hostname_remote``: name or IP of the machine containing the remote
@@ -115,8 +129,9 @@ The sections in the configuration file are:
   example, if it is ``dhis2-demo.war``, the webserver will respond at
   ``https://.../dhis2-demo``).
 * ``war_remote``: name of the remote war file.
+* ``docker_temp_folder``: Base folder for the docker creation temp folders.
 * ``api_local``: if some post-processing steps are applied, this
-  section needs to define a ``url``, ``username`` and ``password`` to
+  section needs to define as params the username and password ``url``, ``username`` and ``password`` to
   connect to the running DHIS2 system after the cloning.
 * ``postprocess``: list of blocks, each containing users (specified by
   ``selectUsernames`` and/or ``selectFromGroups``) and an ``action``
@@ -126,6 +141,101 @@ The sections in the configuration file are:
   username whose roles we want to add). Instead of a block, you can
   give a url, and the blocks contained in that url will be added to
   the list of blocks.
+* ``preprocess``: list of blocks, each containing actions for each department (specified in
+  ``departments``) All the rules will create a sql file to execute after launch tomcat.
+  In the case of edit a department metadata, you should include the metadata type in ``selectMetadataType``
+  the department ``selectDepartament``, and the ``action``, for example anonymizeData or deleteData
+  and the list of metadata: selectDatasets, selectTrackedEntityAttributes, selectDataElements,
+  Valid options: dataSets, programs, trackerPrograms. Format: ["dataSets"]
+  Examples:
+    {
+      "selectDepartament": "NTD",
+      "selectMetadataType": ["trackerPrograms","eventPrograms","dataSets"],
+      "selectDatasets": [
+          "tnek2LjfuIm",
+          "zna8KfLMXn4",
+          "XBgvNrxpcDC",
+          "WHPEpoVDFFv",
+          "SAV16xEdCZW",
+          "AAYgHGENgbF",
+          "NKWbkXyfO5F",
+          "oVxjBKA1Yzu",
+          "S1UMweeoPsi",
+          "s3iaozBY0dv",
+          "JP4bMwvJ6oU",
+          "U5ejGQdX4Ih"
+      ],
+      "action": "removeData"
+    }
+  selectEventProgram or selectTrackerProgram to filter the event programs or tracker programs.1
+  You could also filter by
+      "selectOrgUnitAndDescendants": ["example_uid"],
+      "selectDataElements": ["example_uid"],
+      "selectOrgUnits": ["example_uid"],
+  You can also remove organisationunits using the action: ``removeOrganisationUnitTree``
+  you must add the organisationunit uids: selectOrganisationUnit: ["uid","uid2"]
+  or ``removeOrganisationUnitTreeByLevel`` (needs a level attribute, like level:3).
+  Examples:
+    {
+      "selectDepartament": "All",
+      "selectMetadataType": ["organisationUnits"],
+      "selectOrganisationUnit": [ "hmZE3mVAZFf", "G3thRWUQAX9", "HfVjCurKxh2", "seHJdofSPcM" ],
+      "action": "removeOrganisationUnitTree"
+    },
+    {
+      "selectDepartament": "All",
+      "selectMetadataType": ["organisationUnits"],
+      "level": 3,
+      "action": "removeOrganisationUnitTreeByLevel"
+    }
+  To anonymizeData you should use the action "anonymizeData" and could add the following params
+    {
+      "selectDepartament": "NTD",
+      "selectMetadataType": ["trackerPrograms"],
+      "anonymizePhone": true,
+      "anonymizeMail": true,
+      "anonymizeOrgUnit": true,
+      "anonymizeCoordinates": true,
+      "selectTrackedEntityAttributes": ["oTvXfEywjT3", "n8E6WIyAwcC", "DwZNiXy5Daz", "FHw1NKy0PWY", "eQtZaLIO3XU",
+        "na3ZJRtjpGH", "HkBG3DVELBM", "sKBh0kazOCk", "AAkZm4ZxFw7", "ENRjVGxVL6l", "aBaYLJryaMr", "iy884aJfYTc"],
+      "action": "anonymizeData"
+    },
+    {
+      "selectDepartament": "HWF",
+      "selectMetadataType": ["dataSets"],
+      "action": "anonymizeData"
+    },
+  To anonimize users except some of them, you should fill the follow rule:
+     {
+      "selectDepartament": "ALL",
+      "selectAdminUser": "newadmin",
+      "excludeUsernames": [
+        "oldadmin", "oldadmin2"
+      ],
+      "selectOldAdminUser": "oldadmin",
+      "action": "anonymizeUsers"
+      }
+
+  to perform on them (``activate`` to activate them, ``deleteOthers``
+  to keep them in exclusive, ``addRoles`` to specify a list of extra
+  roles to give, or ``addRolesFromTemplate`` to give a reference
+  username whose roles we want to add). Instead of a block, you can
+  give a url, and the blocks contained in that url will be added to
+  the list of blocks.
+
+* ``removeUnlistedData``: deletes ALL data for *non-listed* items in the departament list of programs/dataset uids.
+  - For tracker/event programs: removes **events**, **enrollments**, and **trackedEntityInstances** from every program **not** present in the departament metadata list.
+  - For aggregate datasets: removes **dataValues** from every dataset **not** present in the departament metadata list.
+    Example:
+     {
+      "action": "removeUnlistedData"
+      }
+* ``showDataSummary``: displays data counts grouped by program and dataset at the end of preprocess.sql execution.
+
+    Example:
+    {
+        "action": "showDataSummary"
+    }
 
 .. _`conninfo`: https://www.postgresql.org/docs/9.3/static/libpq-connect.html#LIBPQ-CONNSTRING
 
@@ -133,9 +243,11 @@ Automatic cloning
 -----------------
 
 You may want to run the cloning script periodically. For that, you can
-use the appropriate users's crontab::
+use the appropriate users's crontab:
 
-  $ crontab -e
+.. code-block:: bash
+
+  crontab -e
 
 For example, this will run the cloning for a training server every
 Saturday night at 22:00::
@@ -176,6 +288,7 @@ have a local installation of:
 * ``pg_dump`` (used to make a backup of the local database, and a dump
   of the remote one -- so this one needs to exist on ``hostname_remote``
   too).
+* ``zcat`` (used to read remote backup).
 
 User permissions
 ~~~~~~~~~~~~~~~~
@@ -198,14 +311,28 @@ The program assumes that it runs with permissions to:
 * Have read and write access to the local database thru the ``db_local``
   conninfo string, and read access to the remote one thru ``db_remote``.
 
+* Have read access to the remote backup file if ``--use-backup`` is used.
+
 If it runs any kind of postprocessing (by having an ``api_local`` and
 ``postprocess`` section in the configuration file), it will also need
 permissions to:
 
 * Access the running dhis2 instance thru the ``url``, ``username`` and
   ``password`` present in the ``api_local`` section, and have
-  permissions to change the users.
+  permissions to change the users. Using --api-local-username,
+  --api-local-password params
 
 In any case, it does not assume permissions to:
 
 * Delete and create databases.
+
+Api versions
+~~~~~~~~~~~~~~~~
+
+You can filter vi api version in the preprocess or proprocess, for example
+adding in the config file:
+
+  "pre_api": "2.36",
+  "post_api": "2.34",
+
+or adding as param pre-api/post-api apiversion
