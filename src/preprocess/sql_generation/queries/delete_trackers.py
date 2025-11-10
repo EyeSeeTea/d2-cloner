@@ -155,7 +155,8 @@ def delete_all_tracker_programs(trackers, f, exclude=False):
             CREATE MATERIALIZED VIEW enrollments_to_remove AS
                 SELECT e.{enrollmentid}
                 FROM {enrollment} e
-                WHERE e.programid IN (SELECT programid FROM programs_to_remove)
+                WHERE e.programid IN (SELECT programid FROM programs_to_remove) 
+                and e.programid in (select programid from program where type = 'WITH_REGISTRATION')
                 UNION
                 SELECT e.{enrollmentid}
                 FROM {enrollment} e
