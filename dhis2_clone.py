@@ -76,10 +76,9 @@ def main():
         execute_scripts(cfg, args)
     if not args.keep_temp and is_local_d2docker(cfg):
         d2_docker_tmp_dir = cfg["server_dir_local"]
-        #Only the d2-docker files are truly temporary files (Tomcat files shouldn't be deleted).
+        # Only the d2-docker files are truly temporary files (Tomcat files shouldn't be deleted).
         if os.path.exists(d2_docker_tmp_dir) and os.path.isdir(d2_docker_tmp_dir):
             os.system(f"rm -rf {d2_docker_tmp_dir}/*")
-
 
     if not args.manual_restart:
         start_tomcat(cfg, args)
@@ -102,7 +101,8 @@ def main():
         else:
             import_dir = cfg["post_process_import_dir"] if "post_process_import_dir" in cfg else None
             timeout = cfg["timeout"] if "timeout" in cfg else 900
-            postprocess.postprocess(cfg["api_local_url"], args.api_local_username, args.api_local_password, cfg["postprocess"], import_dir, timeout)
+            postprocess.postprocess(cfg["api_local_url"], args.api_local_username,
+                                    args.api_local_password, cfg["postprocess"], import_dir, timeout)
 
 
 def get_api_version(args, cfg):
@@ -111,9 +111,9 @@ def get_api_version(args, cfg):
     post_api_version = None
 
     if args.pre_api is not None:
-        pre_api_version=args.pre_api
+        pre_api_version = args.pre_api
     if args.post_api is not None:
-        post_api_version=args.post_api
+        post_api_version = args.post_api
 
     # Read versions from the config if not provided as a parameter.
     if pre_api_version is None:
@@ -536,6 +536,10 @@ def empty_db(db_local):
                     "SELECT %(prefix)s_name FROM information_schema.%(name)s "
                     "WHERE %(prefix)s_schema='public' "
                     "AND %(prefix)s_catalog='%(db_name)s'"
+                    "AND %(prefix)s_name NOT IN ("
+                    "  SELECT objid::regclass::text FROM pg_depend "
+                    "  WHERE deptype = 'e'"
+                    ")"
                     % {"prefix": prefix, "name": name, "db_name": db_name}
                 )
                 results_tuples = cur.fetchall()
@@ -548,8 +552,13 @@ def empty_db(db_local):
                 log("Dropping %d %s..." % (len(xs), name))
                 kind = name[:-1].upper()  # "tables" -> "TABLE"
                 for x in xs:
-                    cur.execute("DROP %s IF EXISTS %s CASCADE" % (kind, x))
-                    conn.commit()
+                    try:
+                        cur.execute("DROP %s IF EXISTS %s CASCADE" % (kind, x))
+                        conn.commit()
+                    except Exception as e:
+                        log("Error dropping %s %s: %s" % (kind, x, e))
+                        conn.rollback()
+                        sys.exit(1)
 
             drop("views")
             drop("tables")
