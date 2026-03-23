@@ -136,8 +136,18 @@ def delete_all_tracker_programs(trackers, f, exclude=False):
         return
 
     #Careful: since the NOT IN operator is applied in the following queries, the initial one must be an IN for all cases.
+    # Fail if residual materialized views exist from a previous failed execution.
+    # Their presence means the previous deletion did not complete and data may not have been properly removed.
     write(f, """
-        DROP MATERIALIZED VIEW IF EXISTS tei_to_remove;
+        DO $$
+        BEGIN
+            IF EXISTS (SELECT 1 FROM pg_matviews WHERE matviewname IN ('tei_to_remove', 'enrollments_to_remove', 'events_to_remove', 'programs_to_remove')) THEN
+                RAISE EXCEPTION 'Residual materialized views detected (tei_to_remove, enrollments_to_remove, etc). A previous deletion execution failed before cleanup. The database may contain data that should have been deleted. Manual intervention is required.';
+            END IF;
+        END
+        $$;
+    """)
+    write(f, """
         create MATERIALIZED view tei_to_remove as select DISTINCT {trackedentityid} as "trackedentityid"
         from {enrollment} where programid in (select programid from program where uid {operator} {tracker_uids}) 
         and {trackedentityid} is not null ;
@@ -145,13 +155,11 @@ def delete_all_tracker_programs(trackers, f, exclude=False):
                enrollment=get_enrollment_table_name(),
                tracker_uids=trackers, operator=operator))
     write(f, """
-        DROP MATERIALIZED VIEW IF EXISTS programs_to_remove;
         create MATERIALIZED view programs_to_remove as (select programid from program where uid {operator} {tracker_uids});
         
     """.format(tracker_uids=trackers, operator=operator))
     # Group all enrollments to be removed from the target programs, plus events in enrollments of tracked entities within those programs
     write(f, """
-            DROP MATERIALIZED VIEW IF EXISTS enrollments_to_remove;
             CREATE MATERIALIZED VIEW enrollments_to_remove AS
                 SELECT e.{enrollmentid}
                 FROM {enrollment} e
@@ -164,7 +172,6 @@ def delete_all_tracker_programs(trackers, f, exclude=False):
         """.format(enrollmentid=get_enrollment_identifier_name(), enrollment=get_enrollment_table_name(), trackedentityid=get_tracker_identifier_name()))
     # Group all events to be removed from the target programs, plus events in enrollments of tracked entities within those programs
     write(f, """
-            DROP MATERIALIZED VIEW IF EXISTS events_to_remove;
             CREATE MATERIALIZED VIEW events_to_remove AS
                 SELECT e.{eventid}
                 FROM {event} e
