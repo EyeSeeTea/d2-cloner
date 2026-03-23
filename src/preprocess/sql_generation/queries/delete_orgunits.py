@@ -86,7 +86,14 @@ def delete_org_unit_data_and_views(f):
         DELETE FROM minmaxdataelement WHERE sourceid in (select * from orgUnitsToDelete);
         DELETE FROM visualization_organisationunits WHERE organisationunitid in (select * from orgUnitsToDelete);
         DELETE FROM organisationunit WHERE organisationunitid in (select * from orgUnitsToDelete);
-        DROP MATERIALIZED VIEW if exists orgUnitsToDelete CASCADE;
+        DROP MATERIALIZED VIEW IF EXISTS rm_programmessage;
+        DROP MATERIALIZED VIEW IF EXISTS rm_interpretation;
+        DROP MATERIALIZED VIEW IF EXISTS rm_event;
+        DROP MATERIALIZED VIEW IF EXISTS rm_event_enrollment;
+        DROP MATERIALIZED VIEW IF EXISTS rm_event_orgs;
+        DROP MATERIALIZED VIEW IF EXISTS rm_enrollment;
+        DROP MATERIALIZED VIEW IF EXISTS rm_trackedentity;
+        DROP MATERIALIZED VIEW IF EXISTS orgUnitsToDelete;
     """)
 
     write(f, f"""
