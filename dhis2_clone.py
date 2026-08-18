@@ -11,6 +11,7 @@ import re
 import time
 import json
 import argparse
+from contextlib import contextmanager
 from subprocess import Popen
 
 import psycopg2
@@ -21,6 +22,37 @@ from src.postprocess import postprocess
 
 TIME = time.strftime("%Y-%m-%d_%H%M")
 COLOR = True
+
+# Keeps track of every phase run through step(), in order, for the final
+# summary. Each item is [name, status, seconds].
+STEPS = []
+
+
+@contextmanager
+def step(name):
+    "Wrap a phase of the clone process, logging START/OK/FAILED and duration."
+    log("==== START: %s ====" % name)
+    t0 = time.time()
+    entry = [name, "FAILED", 0.0]
+    STEPS.append(entry)
+    try:
+        yield
+    except BaseException as e:
+        entry[2] = time.time() - t0
+        log("==== FAILED: %s (%.1fs) - %s ====" % (name, entry[2], e))
+        raise
+    else:
+        entry[1] = "OK"
+        entry[2] = time.time() - t0
+        log("==== OK: %s (%.1fs) ====" % (name, entry[2]))
+
+
+def print_summary():
+    if not STEPS:
+        return
+    log("==== SUMMARY ====")
+    for name, status, seconds in STEPS:
+        log("%-6s %-30s %6.1fs" % (status, name, seconds))
 
 
 def main():
@@ -44,65 +76,79 @@ def main():
         update_config(args.config)
         sys.exit()
 
-    if not args.manual_restart:
-        stop_tomcat(cfg, args)
+    try:
+        if not args.manual_restart:
+            with step("stop_tomcat"):
+                stop_tomcat(cfg, args)
 
-    if not args.no_backups:
-        backup_db(cfg, args)
-        backup_war(cfg)
+        if not args.no_backups:
+            with step("backup_db"):
+                backup_db(cfg, args)
+            with step("backup_war"):
+                backup_war(cfg)
 
-    if not args.no_webapps:
-        get_webapps(cfg)
+        if not args.no_webapps:
+            with step("get_webapps"):
+                get_webapps(cfg)
 
-    if not args.no_db:
-        get_db(cfg, args)
+        if not args.no_db:
+            with step("get_db"):
+                get_db(cfg, args)
 
-    if args.no_preprocess:
-        log("No preprocessing done, as requested.")
-    elif "preprocess" in cfg:
-        if cfg["pre_sql_dir"]:
-            preprocess.preprocess(cfg["preprocess"], cfg["departments"], cfg["pre_sql_dir"])
-            add_preprocess_sql_file(args, cfg)
+        if args.no_preprocess:
+            log("No preprocessing done, as requested.")
+        elif "preprocess" in cfg:
+            if cfg["pre_sql_dir"]:
+                with step("preprocess"):
+                    preprocess.preprocess(cfg["preprocess"], cfg["departments"], cfg["pre_sql_dir"])
+                    add_preprocess_sql_file(args, cfg)
+            else:
+                log("pre_sql_dir not exist in config file")
         else:
-            log("pre_sql_dir not exist in config file")
-    else:
-        log("No detected preprocessing rules, skipping.")
+            log("No detected preprocessing rules, skipping.")
 
-    if args.post_sql:
-        log("Running postsql...")
-        run_sql(cfg, args)
-
-    if args.post_clone_scripts:
-        execute_scripts(cfg, args)
-    if not args.keep_temp and is_local_d2docker(cfg):
-        d2_docker_tmp_dir = cfg["server_dir_local"]
-        # Only the d2-docker files are truly temporary files (Tomcat files shouldn't be deleted).
-        if os.path.exists(d2_docker_tmp_dir) and os.path.isdir(d2_docker_tmp_dir):
-            os.system(f"rm -rf {d2_docker_tmp_dir}/*")
-
-    if not args.manual_restart:
-        start_tomcat(cfg, args)
-        import_dir = cfg["post_process_import_dir"] if "post_process_import_dir" in cfg else None
-        if args.no_postprocess:
-            log("No postprocessing done, as requested.")
-        elif "api_local_url" in cfg and "postprocess" in cfg:
-            timeout = cfg["timeout"] if "timeout" in cfg else 900
-            postprocess.postprocess(cfg["api_local_url"], args.api_local_username,
-                                    args.api_local_password, cfg["postprocess"], import_dir, timeout)
-        else:
-            log("No postprocessing done.")
+        if args.post_sql:
+            with step("run_sql"):
+                run_sql(cfg, args)
 
         if args.post_clone_scripts:
-            execute_scripts(cfg, args, is_post_tomcat=True)
-    else:
-        log("Server not started automatically, as requested.")
-        if args.no_postprocess:
-            log("No postprocessing done.")
-        else:
+            with step("post_clone_scripts (pre-tomcat)"):
+                execute_scripts(cfg, args)
+        if not args.keep_temp and is_local_d2docker(cfg):
+            d2_docker_tmp_dir = cfg["server_dir_local"]
+            # Only the d2-docker files are truly temporary files (Tomcat files shouldn't be deleted).
+            if os.path.exists(d2_docker_tmp_dir) and os.path.isdir(d2_docker_tmp_dir):
+                os.system(f"rm -rf {d2_docker_tmp_dir}/*")
+
+        if not args.manual_restart:
+            with step("start_tomcat"):
+                start_tomcat(cfg, args)
             import_dir = cfg["post_process_import_dir"] if "post_process_import_dir" in cfg else None
-            timeout = cfg["timeout"] if "timeout" in cfg else 900
-            postprocess.postprocess(cfg["api_local_url"], args.api_local_username,
-                                    args.api_local_password, cfg["postprocess"], import_dir, timeout)
+            if args.no_postprocess:
+                log("No postprocessing done, as requested.")
+            elif "api_local_url" in cfg and "postprocess" in cfg:
+                timeout = cfg["timeout"] if "timeout" in cfg else 900
+                with step("postprocess"):
+                    postprocess.postprocess(cfg["api_local_url"], args.api_local_username,
+                                            args.api_local_password, cfg["postprocess"], import_dir, timeout)
+            else:
+                log("No postprocessing done.")
+
+            if args.post_clone_scripts:
+                with step("post_clone_scripts (post-tomcat)"):
+                    execute_scripts(cfg, args, is_post_tomcat=True)
+        else:
+            log("Server not started automatically, as requested.")
+            if args.no_postprocess:
+                log("No postprocessing done.")
+            else:
+                import_dir = cfg["post_process_import_dir"] if "post_process_import_dir" in cfg else None
+                timeout = cfg["timeout"] if "timeout" in cfg else 900
+                with step("postprocess"):
+                    postprocess.postprocess(cfg["api_local_url"], args.api_local_username,
+                                            args.api_local_password, cfg["postprocess"], import_dir, timeout)
+    finally:
+        print_summary()
 
 
 def get_api_version(args, cfg):
@@ -282,11 +328,21 @@ def get_version(config):
     raise ValueError("Unknown version of configuration file.")
 
 
-def run(cmd):
+def run(cmd, label=None):
     log(cmd)
-    ret = os.system(cmd)
+    prefix = "  [%s] " % label if label else "  "
+    p = Popen(
+        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True, bufsize=1
+    )
+    for line in p.stdout:
+        print(prefix + line.rstrip("\n"))
+    sys.stdout.flush()
+    ret = p.wait()
     if ret != 0:
+        log("FAILED (exit %d): %s" % (ret, label or cmd))
         sys.exit(ret)
+    log("OK: %s" % (label or cmd))
+    return ret
 
 
 def log(txt):
@@ -319,7 +375,7 @@ def execute_scripts(cfg, args, is_post_tomcat=False):
     base_url = cfg["api_local_url"].replace("://", "://{}:{}@".format(args.api_local_username, args.api_local_password))
 
     for script in sorted(filter(is_script, files_list)):
-        run('"%s/%s" "%s"' % (dirname, script, base_url))
+        run('"%s/%s" "%s"' % (dirname, script, base_url), label=script)
 
 
 def is_local_tomcat(cfg):
@@ -573,8 +629,7 @@ def empty_db(db_local):
 def run_sql(cfg, args):
     if is_local_tomcat(cfg):
         for fname in args.post_sql:
-            log("Running postsql...  "+fname)
-            run("psql -d '%s' < '%s'" % (args.db_local, fname))
+            run("psql -d '%s' < '%s'" % (args.db_local, fname), label=os.path.basename(fname))
 
 
 if __name__ == "__main__":
