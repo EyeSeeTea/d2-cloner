@@ -328,8 +328,15 @@ def get_version(config):
     raise ValueError("Unknown version of configuration file.")
 
 
-def run(cmd, label=None):
+def run(cmd, label=None, capture=True):
     log(cmd)
+    if not capture:
+        exit_code = subprocess.call(cmd, shell=True)
+        if exit_code != 0:
+            log("FAILED (exit %d): %s" % (exit_code, label or cmd))
+            sys.exit(exit_code)
+        log("OK: %s" % (label or cmd))
+        return exit_code
     prefix = "  [%s] " % label if label else "  "
     p = Popen(
         cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True, bufsize=1
@@ -337,12 +344,12 @@ def run(cmd, label=None):
     for line in p.stdout:
         print(prefix + line.rstrip("\n"))
     sys.stdout.flush()
-    ret = p.wait()
-    if ret != 0:
-        log("FAILED (exit %d): %s" % (ret, label or cmd))
-        sys.exit(ret)
+    exit_code = p.wait()
+    if exit_code != 0:
+        log("FAILED (exit %d): %s" % (exit_code, label or cmd))
+        sys.exit(exit_code)
     log("OK: %s" % (label or cmd))
-    return ret
+    return exit_code
 
 
 def log(txt):
@@ -400,7 +407,7 @@ def get_local_docker_image(cfg, args, action):
 def start_tomcat(cfg, args):
     if is_local_tomcat(cfg):
         server_path = cfg["server_dir_local"]
-        run('"%s/bin/startup.sh"' % server_path)
+        run('"%s/bin/startup.sh"' % server_path, capture=False)
     elif is_local_d2docker(cfg):
         post_sql = args.post_sql[0] if args.post_sql else None
         deploy_path = cfg.get("local_docker_deploy_path", None)
@@ -428,7 +435,8 @@ def start_tomcat(cfg, args):
                 (("--run-sql '%s'" % post_sql) if post_sql else ""),
                 (("--run-scripts '%s'" % post_scripts_dir) if post_scripts_dir else ""),
                 (("--auth '%s'" % (args.api_local_username + ":" + args.api_local_password)) if api_url else "")
-            )
+            ),
+            capture=False,
         )
 
 
@@ -448,9 +456,9 @@ def add_strict_to_filenames(post_sql):
 def stop_tomcat(cfg, args):
     if is_local_tomcat(cfg):
         server_path = cfg["server_dir_local"]
-        run('"%s/bin/shutdown.sh"' % server_path)
+        run('"%s/bin/shutdown.sh"' % server_path, capture=False)
     elif is_local_d2docker(cfg):
-        run("d2-docker stop {}".format(get_local_docker_image(cfg, args, "stop")))
+        run("d2-docker stop {}".format(get_local_docker_image(cfg, args, "stop")), capture=False)
 
 
 def backup_db(cfg, args):
