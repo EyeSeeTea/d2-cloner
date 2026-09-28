@@ -227,7 +227,6 @@ def generate_queries(departament, f, preprocess_api_version):
         delete_org_units(f)
 
     if show_data_grouped_by_program_summary:
-        print("show data summary3!")
         show_data_summary(f)
 
 

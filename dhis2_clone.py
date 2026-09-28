@@ -457,10 +457,24 @@ def get_webapps(cfg):
             run("; ".join(commands))
 
 
+DEFAULT_EXCLUDE_TABLES = [
+    "analytics*",
+    "completeness*",
+]
+
+
+def get_exclude_tables(cfg):
+    "Return the list of tables to exclude from the dump, based on the config file"
+    if "exclude_tables_replace" in cfg:
+        return cfg["exclude_tables_replace"]
+    return DEFAULT_EXCLUDE_TABLES + cfg.get("exclude_tables_add", [])
+
+
 def get_db(cfg, args):
     "Replace the contents of db_local with db_remote"
+    exclude_tables = get_exclude_tables(cfg)
     exclude = (
-        " --exclude-table 'analytics*' --exclude-table 'completeness*' "
+        "".join(" --exclude-table '%s'" % table for table in exclude_tables) +
         " --exclude-schema sys "
     )
     dir_local = cfg["server_dir_local"]
