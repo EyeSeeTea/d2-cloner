@@ -4,6 +4,7 @@
 Clone a dhis2 installation from another server.
 """
 import errno
+import shutil
 import subprocess
 import sys
 import os
@@ -118,7 +119,12 @@ def main():
             d2_docker_tmp_dir = cfg["server_dir_local"]
             # Only the d2-docker files are truly temporary files (Tomcat files shouldn't be deleted).
             if os.path.exists(d2_docker_tmp_dir) and os.path.isdir(d2_docker_tmp_dir):
-                os.system(f"rm -rf {d2_docker_tmp_dir}/*")
+                for item in os.listdir(d2_docker_tmp_dir):
+                    item_path = os.path.join(d2_docker_tmp_dir, item)
+                    if os.path.isfile(item_path) or os.path.islink(item_path):
+                        os.unlink(item_path)
+                    elif os.path.isdir(item_path):
+                        shutil.rmtree(item_path)
 
         if not args.manual_restart:
             with step("start_tomcat"):
