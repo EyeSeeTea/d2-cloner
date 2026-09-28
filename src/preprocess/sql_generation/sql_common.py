@@ -26,6 +26,32 @@ def convert_to_possible_paths_in_sql_format(list_uid):
                                 "".join(["'%{}%'".format(uid) for uid in list_uid]) + \
         ")".replace("(or", " ")
 
+def drop_temp_indexes(f):
+    """Drop every index created as temp_idx_* to speed up the deletion above, once it's no longer needed"""
+    write(f, """
+        SELECT 'Dropping temporary deletion indexes....' AS D2_DOCKER_PRESQL_SCRIPT;
+        DO $$
+        DECLARE
+            idx RECORD;
+        BEGIN
+            FOR idx IN SELECT indexname FROM pg_indexes WHERE indexname LIKE 'temp\\_idx\\_%' LOOP
+                EXECUTE 'DROP INDEX IF EXISTS ' || quote_ident(idx.indexname);
+            END LOOP;
+        END $$;
+    """)
+
+
+def vacuum_full_analyze(f):
+    """Reclaim disk space and refresh statistics after the bulk deletes above.
+    VACUUM FULL rewrites tables one at a time, so the extra disk space it needs
+    temporarily is bounded by the single largest table being compacted, not the
+    whole database at once."""
+    write(f, """
+        SELECT 'Running VACUUM FULL ANALYZE to reclaim space and refresh stats....' AS D2_DOCKER_PRESQL_SCRIPT;
+        VACUUM FULL ANALYZE;
+    """)
+
+
 def fix_final_query(sql_query):
     """This method is required now to create the sql with the ; and remove possible unnecessary and;"""
     sql_query = sql_query + ";"
