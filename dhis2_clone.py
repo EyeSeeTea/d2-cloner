@@ -72,8 +72,9 @@ def main():
         log("Running postsql...")
         run_sql(cfg, args)
 
+    scripts_ok = True
     if args.post_clone_scripts:
-        execute_scripts(cfg, args)
+        scripts_ok = execute_scripts(cfg, args) and scripts_ok
     if not args.keep_temp and is_local_d2docker(cfg):
         d2_docker_tmp_dir = cfg["server_dir_local"]
         # Only the d2-docker files are truly temporary files (Tomcat files shouldn't be deleted).
@@ -93,7 +94,7 @@ def main():
             log("No postprocessing done.")
 
         if args.post_clone_scripts:
-            execute_scripts(cfg, args, is_post_tomcat=True)
+            scripts_ok = execute_scripts(cfg, args, is_post_tomcat=True) and scripts_ok
     else:
         log("Server not started automatically, as requested.")
         if args.no_postprocess:
@@ -103,6 +104,9 @@ def main():
             timeout = cfg["timeout"] if "timeout" in cfg else 900
             postprocess.postprocess(cfg["api_local_url"], args.api_local_username,
                                     args.api_local_password, cfg["postprocess"], import_dir, timeout)
+
+    if not scripts_ok:
+        sys.exit(1)
 
 
 def get_api_version(args, cfg):
@@ -309,9 +313,10 @@ def magenta(txt):
 
 
 def execute_scripts(cfg, args, is_post_tomcat=False):
+    "Run every matching post_clone_scripts_dir script; one failing doesn't skip the rest. Returns True iff all succeeded."
     if is_local_d2docker(cfg) and not is_post_tomcat:
         # Scripts will be executed at d2-docker start --run-scripts=DIR
-        return
+        return True
     dirname = cfg["post_clone_scripts_dir"]
     is_script = lambda fname: os.path.splitext(fname)[-1] in [".sh", ".py"]
     is_normal = lambda fname: not fname.startswith("post")
@@ -321,8 +326,15 @@ def execute_scripts(cfg, args, is_post_tomcat=False):
 
     base_url = cfg["api_local_url"].replace("://", "://{}:{}@".format(args.api_local_username, args.api_local_password))
 
+    failed_scripts = []
     for script in sorted(filter(is_script, files_list)):
-        run('"%s/%s" "%s"' % (dirname, script, base_url))
+        ret = run('"%s/%s" "%s"' % (dirname, script, base_url), fatal=False)
+        if ret != 0:
+            failed_scripts.append(script)
+
+    if failed_scripts:
+        log("ERROR: %d post_clone_scripts failed: %s" % (len(failed_scripts), ", ".join(failed_scripts)))
+    return not failed_scripts
 
 
 def is_local_tomcat(cfg):
@@ -591,7 +603,7 @@ def run_sql(cfg, args):
     if is_local_tomcat(cfg):
         for fname in args.post_sql:
             log("Running postsql...  "+fname)
-            run("psql -d '%s' < '%s'" % (args.db_local, fname))
+            run("psql -d '%s' < '%s'" % (args.db_local, fname), fatal=args.strict_sql)
 
 
 if __name__ == "__main__":
