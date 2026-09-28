@@ -394,7 +394,11 @@ def execute_scripts(cfg, args, is_post_tomcat=False):
 
     failed_scripts = []
     for script in sorted(filter(is_script, files_list)):
+        t0 = time.time()
         ret = run('"%s/%s" "%s"' % (dirname, script, base_url), label=script, fatal=False)
+        elapsed = time.time() - t0
+        status = "OK" if ret == 0 else "FAILED"
+        STEPS.append(["  " + script, status, elapsed])
         if ret != 0:
             failed_scripts.append(script)
 
