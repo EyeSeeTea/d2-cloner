@@ -106,7 +106,7 @@ def main():
 
 
 def get_api_version(args, cfg):
-    supported_versions = ["2.34", "2.36", "2.38", "2.41", "2.42", "34", "36", "38", "41", "42"]
+    supported_versions = ["2.34", "2.36", "2.38", "2.41", "2.42", "2.43", "34", "36", "38", "41", "42", "43"]
     pre_api_version = None
     post_api_version = None
 
