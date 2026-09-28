@@ -129,32 +129,29 @@ def main():
         if not args.manual_restart:
             with step("start_tomcat"):
                 start_tomcat(cfg, args)
-            import_dir = cfg.get("post_process_import_dir", None)
-            if args.no_postprocess:
-                log("No postprocessing done, as requested.")
-            elif "api_local_url" in cfg and "postprocess" in cfg:
-                timeout = cfg.get("timeout", 900)
-                with step("postprocess"):
-                    postprocess.postprocess(cfg["api_local_url"], args.api_local_username,
-                                            args.api_local_password, cfg["postprocess"], import_dir, timeout)
-            else:
-                log("No postprocessing done.")
+            do_postprocess(cfg, args)
 
             if args.post_clone_scripts:
                 with step("post_clone_scripts (post-tomcat)"):
                     execute_scripts(cfg, args, is_post_tomcat=True)
         else:
             log("Server not started automatically, as requested.")
-            if args.no_postprocess:
-                log("No postprocessing done.")
-            else:
-                import_dir = cfg.get("post_process_import_dir", None)
-                timeout = cfg.get("timeout", 900)
-                with step("postprocess"):
-                    postprocess.postprocess(cfg["api_local_url"], args.api_local_username,
-                                            args.api_local_password, cfg["postprocess"], import_dir, timeout)
+            do_postprocess(cfg, args)
     finally:
         print_summary()
+
+
+def do_postprocess(cfg, args):
+    if args.no_postprocess:
+        log("No postprocessing done, as requested.")
+    elif "api_local_url" in cfg and "postprocess" in cfg:
+        import_dir = cfg.get("post_process_import_dir", None)
+        timeout = cfg.get("timeout", 900)
+        with step("postprocess"):
+            postprocess.postprocess(cfg["api_local_url"], args.api_local_username,
+                                    args.api_local_password, cfg["postprocess"], import_dir, timeout)
+    else:
+        log("No postprocessing done.")
 
 
 def get_api_version(args, cfg):
