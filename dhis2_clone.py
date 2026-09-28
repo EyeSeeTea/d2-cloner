@@ -344,13 +344,13 @@ def run(cmd, label=None, capture=True):
         log("OK: %s" % (label or cmd))
         return exit_code
     prefix = "  [%s] " % label if label else "  "
-    p = Popen(
+    with Popen(
         cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True, bufsize=1
-    )
-    for line in p.stdout:
-        print(prefix + line.rstrip("\n"))
-    sys.stdout.flush()
-    exit_code = p.wait()
+    ) as p:
+        for line in p.stdout:
+            print(prefix + line.rstrip("\n"))
+        sys.stdout.flush()
+        exit_code = p.wait()
     if exit_code != 0:
         log("FAILED (exit %d): %s" % (exit_code, label or cmd))
         sys.exit(exit_code)
@@ -499,15 +499,15 @@ def get_webapps(cfg):
     for mandatory, subdir in [[True, "webapps"], [False, "files/apps"], [False, "files/document"], [False, "files/dataValue"]]:
         cmd = "rsync -avP -LK --delete --relative %s/./%s %s" % (route_remote, subdir, route_local)
         log(cmd)
-        p = Popen(
+        with Popen(
             cmd,
             shell=True,
             stdout=subprocess.PIPE,
             stdin=subprocess.PIPE,
             universal_newlines=True,
             stderr=subprocess.PIPE,
-        )
-        stdout, stderr = p.communicate()
+        ) as p:
+            stdout, stderr = p.communicate()
         if p.returncode != 0 and mandatory:
             log("Mandatory folder %s failed to rsync" % subdir)
             raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT) + "\n" + stderr, subdir)
