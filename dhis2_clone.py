@@ -129,11 +129,11 @@ def main():
         if not args.manual_restart:
             with step("start_tomcat"):
                 start_tomcat(cfg, args)
-            import_dir = cfg["post_process_import_dir"] if "post_process_import_dir" in cfg else None
+            import_dir = cfg.get("post_process_import_dir", None)
             if args.no_postprocess:
                 log("No postprocessing done, as requested.")
             elif "api_local_url" in cfg and "postprocess" in cfg:
-                timeout = cfg["timeout"] if "timeout" in cfg else 900
+                timeout = cfg.get("timeout", 900)
                 with step("postprocess"):
                     postprocess.postprocess(cfg["api_local_url"], args.api_local_username,
                                             args.api_local_password, cfg["postprocess"], import_dir, timeout)
@@ -148,8 +148,8 @@ def main():
             if args.no_postprocess:
                 log("No postprocessing done.")
             else:
-                import_dir = cfg["post_process_import_dir"] if "post_process_import_dir" in cfg else None
-                timeout = cfg["timeout"] if "timeout" in cfg else 900
+                import_dir = cfg.get("post_process_import_dir", None)
+                timeout = cfg.get("timeout", 900)
                 with step("postprocess"):
                     postprocess.postprocess(cfg["api_local_url"], args.api_local_username,
                                             args.api_local_password, cfg["postprocess"], import_dir, timeout)
