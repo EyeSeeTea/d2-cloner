@@ -282,11 +282,14 @@ def get_version(config):
     raise ValueError("Unknown version of configuration file.")
 
 
-def run(cmd):
+def run(cmd, fatal=True):
     log(cmd)
     ret = os.system(cmd)
     if ret != 0:
-        sys.exit(ret)
+        if fatal:
+            sys.exit(ret)
+        log("ERROR: command failed with exit code %d, continuing..." % ret)
+    return ret
 
 
 def log(txt):
