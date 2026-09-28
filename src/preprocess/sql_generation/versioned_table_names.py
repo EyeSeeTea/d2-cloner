@@ -65,3 +65,11 @@ def get_user_table_name() -> str:
 
 def get_user_identifier_name() -> str:
     return _get_identifier_name(TableKey.USER)
+
+
+def get_tracker_event_reference_column() -> str:
+    """Column used by programmessage/programnotificationinstance to reference a tracker program event.
+    Split into trackereventid/singleeventid from DHIS2 2.43 onward; a single eventid column before that."""
+    if Config.get_pre_api_version() >= 43:
+        return "trackereventid"
+    return "eventid"
