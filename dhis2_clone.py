@@ -4,6 +4,7 @@
 Clone a dhis2 installation from another server.
 """
 import errno
+import shutil
 import subprocess
 import sys
 import os
@@ -11,6 +12,7 @@ import re
 import time
 import json
 import argparse
+from contextlib import contextmanager
 from subprocess import Popen
 
 import psycopg2
@@ -21,6 +23,37 @@ from src.postprocess import postprocess
 
 TIME = time.strftime("%Y-%m-%d_%H%M")
 COLOR = True
+
+# Keeps track of every phase run through step(), in order, for the final
+# summary. Each item is [name, status, seconds].
+STEPS = []
+
+
+@contextmanager
+def step(name):
+    "Wrap a phase of the clone process, logging START/OK/FAILED and duration."
+    log(f"==== START: {name} ====")
+    t0 = time.time()
+    entry = [name, "FAILED", 0.0]
+    STEPS.append(entry)
+    error = ""
+    try:
+        yield
+        entry[1] = "OK"
+    except BaseException as e:
+        error = f" - {e}"
+        raise
+    finally:
+        entry[2] = time.time() - t0
+        log(f"==== {entry[1]}: {name} ({entry[2]:.1f}s){error} ====")
+
+
+def print_summary():
+    if not STEPS:
+        return
+    log("==== SUMMARY ====")
+    for name, status, seconds in STEPS:
+        log(f"{status:<6} {name:<30} {seconds:6.1f}s")
 
 
 def main():
@@ -44,65 +77,81 @@ def main():
         update_config(args.config)
         sys.exit()
 
-    if not args.manual_restart:
-        stop_tomcat(cfg, args)
+    try:
+        if not args.manual_restart:
+            with step("stop_tomcat"):
+                stop_tomcat(cfg, args)
 
-    if not args.no_backups:
-        backup_db(cfg, args)
-        backup_war(cfg)
+        if not args.no_backups:
+            with step("backup_db"):
+                backup_db(cfg, args)
+            with step("backup_war"):
+                backup_war(cfg)
 
-    if not args.no_webapps:
-        get_webapps(cfg)
+        if not args.no_webapps:
+            with step("get_webapps"):
+                get_webapps(cfg)
 
-    if not args.no_db:
-        get_db(cfg, args)
+        if not args.no_db:
+            with step("get_db"):
+                get_db(cfg, args)
 
-    if args.no_preprocess:
-        log("No preprocessing done, as requested.")
-    elif "preprocess" in cfg:
-        if cfg["pre_sql_dir"]:
-            preprocess.preprocess(cfg["preprocess"], cfg["departments"], cfg["pre_sql_dir"])
-            add_preprocess_sql_file(args, cfg)
+        if args.no_preprocess:
+            log("No preprocessing done, as requested.")
+        elif "preprocess" in cfg:
+            if cfg["pre_sql_dir"]:
+                with step("preprocess"):
+                    preprocess.preprocess(cfg["preprocess"], cfg["departments"], cfg["pre_sql_dir"])
+                    add_preprocess_sql_file(args, cfg)
+            else:
+                log("pre_sql_dir not exist in config file")
         else:
-            log("pre_sql_dir not exist in config file")
-    else:
-        log("No detected preprocessing rules, skipping.")
+            log("No detected preprocessing rules, skipping.")
 
-    if args.post_sql:
-        log("Running postsql...")
-        run_sql(cfg, args)
-
-    if args.post_clone_scripts:
-        execute_scripts(cfg, args)
-    if not args.keep_temp and is_local_d2docker(cfg):
-        d2_docker_tmp_dir = cfg["server_dir_local"]
-        # Only the d2-docker files are truly temporary files (Tomcat files shouldn't be deleted).
-        if os.path.exists(d2_docker_tmp_dir) and os.path.isdir(d2_docker_tmp_dir):
-            os.system(f"rm -rf {d2_docker_tmp_dir}/*")
-
-    if not args.manual_restart:
-        start_tomcat(cfg, args)
-        import_dir = cfg["post_process_import_dir"] if "post_process_import_dir" in cfg else None
-        if args.no_postprocess:
-            log("No postprocessing done, as requested.")
-        elif "api_local_url" in cfg and "postprocess" in cfg:
-            timeout = cfg["timeout"] if "timeout" in cfg else 900
-            postprocess.postprocess(cfg["api_local_url"], args.api_local_username,
-                                    args.api_local_password, cfg["postprocess"], import_dir, timeout)
-        else:
-            log("No postprocessing done.")
+        if args.post_sql:
+            with step("run_sql"):
+                run_sql(cfg, args)
 
         if args.post_clone_scripts:
-            execute_scripts(cfg, args, is_post_tomcat=True)
-    else:
-        log("Server not started automatically, as requested.")
-        if args.no_postprocess:
-            log("No postprocessing done.")
+            with step("post_clone_scripts (pre-tomcat)"):
+                execute_scripts(cfg, args)
+        if not args.keep_temp and is_local_d2docker(cfg):
+            d2_docker_tmp_dir = cfg["server_dir_local"]
+            # Only the d2-docker files are truly temporary files (Tomcat files shouldn't be deleted).
+            if os.path.exists(d2_docker_tmp_dir) and os.path.isdir(d2_docker_tmp_dir):
+                for item in os.listdir(d2_docker_tmp_dir):
+                    item_path = os.path.join(d2_docker_tmp_dir, item)
+                    if os.path.isfile(item_path) or os.path.islink(item_path):
+                        os.unlink(item_path)
+                    elif os.path.isdir(item_path):
+                        shutil.rmtree(item_path)
+
+        if not args.manual_restart:
+            with step("start_tomcat"):
+                start_tomcat(cfg, args)
+            do_postprocess(cfg, args)
+
+            if args.post_clone_scripts:
+                with step("post_clone_scripts (post-tomcat)"):
+                    execute_scripts(cfg, args, is_post_tomcat=True)
         else:
-            import_dir = cfg["post_process_import_dir"] if "post_process_import_dir" in cfg else None
-            timeout = cfg["timeout"] if "timeout" in cfg else 900
+            log("Server not started automatically, as requested.")
+            do_postprocess(cfg, args)
+    finally:
+        print_summary()
+
+
+def do_postprocess(cfg, args):
+    if args.no_postprocess:
+        log("No postprocessing done, as requested.")
+    elif "api_local_url" in cfg and "postprocess" in cfg:
+        import_dir = cfg.get("post_process_import_dir", None)
+        timeout = cfg.get("timeout", 900)
+        with step("postprocess"):
             postprocess.postprocess(cfg["api_local_url"], args.api_local_username,
                                     args.api_local_password, cfg["postprocess"], import_dir, timeout)
+    else:
+        log("No postprocessing done.")
 
 
 def get_api_version(args, cfg):
@@ -196,16 +245,16 @@ def get_args():
 
 
 def check_use_backup(remote, path):
-    status = os.system('ssh %s [ -f "%s" ]' % (remote, path))
+    status = os.system(f'ssh {remote} [ -f "{path}" ]')
     exit_code = os.waitstatus_to_exitcode(status)
     if exit_code != 0:
-        print("ERROR: remote backup file %s does not exists." % (path))
+        print(f"ERROR: remote backup file {path} does not exists.")
         sys.exit(exit_code)
 
 
 def get_config(fname, update):
     "Return dict with the options read from configuration file"
-    log("Reading from config file %s ..." % fname)
+    log(f"Reading from config file {fname} ...")
     try:
         with open(fname) as f:
             config = json.load(f)
@@ -218,7 +267,7 @@ def get_config(fname, update):
                     "Old version of configuration file. Run with " "--update-config to upgrade."
                 )
     except (AssertionError, IOError, ValueError) as e:
-        sys.exit("Error reading config file %s: %s" % (fname, e))
+        sys.exit(f"Error reading config file {fname}: {e}")
     return config
 
 
@@ -237,7 +286,7 @@ def update_config(fname):
             config["postprocess"] = entries
         name, ext = os.path.splitext(fname)
         fname_new = name + "_updated" + ext
-        log("Writing updated configuration in %s" % fname_new)
+        log(f"Writing updated configuration in {fname_new}")
         with open(fname_new, "wt") as fnew:
             json.dump(config, fnew, indent=2)
 
@@ -282,11 +331,28 @@ def get_version(config):
     raise ValueError("Unknown version of configuration file.")
 
 
-def run(cmd):
+def run(cmd, label=None, capture=True):
     log(cmd)
-    ret = os.system(cmd)
-    if ret != 0:
-        sys.exit(ret)
+    if not capture:
+        exit_code = subprocess.run(cmd, shell=True).returncode
+        if exit_code != 0:
+            log(f"FAILED (exit {exit_code}): {label or cmd}")
+            sys.exit(exit_code)
+        log(f"OK: {label or cmd}")
+        return exit_code
+    prefix = f"  [{label}] " if label else "  "
+    with Popen(
+        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True, bufsize=1
+    ) as p:
+        for line in p.stdout:
+            print(prefix + line.rstrip("\n"))
+        sys.stdout.flush()
+        exit_code = p.wait()
+    if exit_code != 0:
+        log(f"FAILED (exit {exit_code}): {label or cmd}")
+        sys.exit(exit_code)
+    log(f"OK: {label or cmd}")
+    return exit_code
 
 
 def log(txt):
@@ -296,13 +362,13 @@ def log(txt):
         txt
     )
     clean_txt = re.sub(r"://(.*?):(.*?)@", "://\\1:PASSWORD@", clean_auth)
-    out = "[%s] %s" % (time.strftime("%Y-%m-%d %T"), clean_txt)
+    out = f"[{time.strftime('%Y-%m-%d %T')}] {clean_txt}"
     print((magenta(out) if COLOR else out))
     sys.stdout.flush()
 
 
 def magenta(txt):
-    return "\x1b[35m%s\x1b[0m" % txt
+    return f"\x1b[35m{txt}\x1b[0m"
 
 
 def execute_scripts(cfg, args, is_post_tomcat=False):
@@ -316,10 +382,10 @@ def execute_scripts(cfg, args, is_post_tomcat=False):
     applied_filter = is_post if is_post_tomcat else is_normal
     files_list = filter(applied_filter, os.listdir(dirname))
 
-    base_url = cfg["api_local_url"].replace("://", "://{}:{}@".format(args.api_local_username, args.api_local_password))
+    base_url = cfg["api_local_url"].replace("://", f"://{args.api_local_username}:{args.api_local_password}@")
 
     for script in sorted(filter(is_script, files_list)):
-        run('"%s/%s" "%s"' % (dirname, script, base_url))
+        run(f'"{dirname}/{script}" "{base_url}"', label=script)
 
 
 def is_local_tomcat(cfg):
@@ -344,7 +410,7 @@ def get_local_docker_image(cfg, args, action):
 def start_tomcat(cfg, args):
     if is_local_tomcat(cfg):
         server_path = cfg["server_dir_local"]
-        run('"%s/bin/startup.sh"' % server_path)
+        run(f'"{server_path}/bin/startup.sh"', capture=False)
     elif is_local_d2docker(cfg):
         post_sql = args.post_sql[0] if args.post_sql else None
         deploy_path = cfg.get("local_docker_deploy_path", None)
@@ -361,18 +427,19 @@ def start_tomcat(cfg, args):
         post_scripts_dir = cfg.get("local_docker_post_clone_scripts_dir", None)
         api_url = cfg["api_local_url"]
 
+        temp_directory_opt = f"--temp-directory '{temp_folder}'" if temp_folder else ""
+        deploy_path_opt = f"--deploy-path '{deploy_path}'" if deploy_path else ""
+        server_xml_opt = f"--tomcat-server-xml '{server_xml_path}'" if server_xml_path else ""
+        dhis_conf_opt = f"--dhis-conf '{dhis_conf_path}'" if dhis_conf_path else ""
+        run_sql_opt = f"--run-sql '{post_sql}'" if post_sql else ""
+        run_scripts_opt = f"--run-scripts '{post_scripts_dir}'" if post_scripts_dir else ""
+        auth_opt = f"--auth '{args.api_local_username}:{args.api_local_password}'" if api_url else ""
+
         run(
-            "d2-docker {} start {} --port={} --detach {} {} {} {} {} {}".format(
-                (("--temp-directory '%s'" % temp_folder) if temp_folder else ""),
-                get_local_docker_image(cfg, args, "start"),
-                cfg["local_docker_port"],
-                (("--deploy-path '%s'" % deploy_path) if deploy_path else ""),
-                (("--tomcat-server-xml '%s'" % server_xml_path) if server_xml_path else ""),
-                (("--dhis-conf '%s'" % dhis_conf_path) if dhis_conf_path else ""),
-                (("--run-sql '%s'" % post_sql) if post_sql else ""),
-                (("--run-scripts '%s'" % post_scripts_dir) if post_scripts_dir else ""),
-                (("--auth '%s'" % (args.api_local_username + ":" + args.api_local_password)) if api_url else "")
-            )
+            f"d2-docker {temp_directory_opt} start {get_local_docker_image(cfg, args, 'start')} "
+            f"--port={cfg['local_docker_port']} --detach {deploy_path_opt} {server_xml_opt} "
+            f"{dhis_conf_opt} {run_sql_opt} {run_scripts_opt} {auth_opt}",
+            capture=False,
         )
 
 
@@ -392,9 +459,9 @@ def add_strict_to_filenames(post_sql):
 def stop_tomcat(cfg, args):
     if is_local_tomcat(cfg):
         server_path = cfg["server_dir_local"]
-        run('"%s/bin/shutdown.sh"' % server_path)
+        run(f'"{server_path}/bin/shutdown.sh"', capture=False)
     elif is_local_d2docker(cfg):
-        run("d2-docker stop {}".format(get_local_docker_image(cfg, args, "stop")))
+        run(f"d2-docker stop {get_local_docker_image(cfg, args, 'stop')}", capture=False)
 
 
 def backup_db(cfg, args):
@@ -402,13 +469,12 @@ def backup_db(cfg, args):
     if is_local_tomcat(cfg):
         backup_name = cfg["backup_name"]
         db_local = args.db_local
-        backup_file = "%s/%s_%s.dump" % (backups_dir, backup_name, TIME)
+        backup_file = f"{backups_dir}/{backup_name}_{TIME}.dump"
         run(
-            "pg_dump --file '%s' --format custom --exclude-schema sys --clean '%s' "
-            % (backup_file, db_local)
+            f"pg_dump --file '{backup_file}' --format custom --exclude-schema sys --clean '{db_local}' "
         )
     elif is_local_d2docker(cfg):
-        run("d2-docker copy {} '{}'".format(get_local_docker_image(cfg, args, "stop"), backups_dir))
+        run(f"d2-docker copy {get_local_docker_image(cfg, args, 'stop')} '{backups_dir}'")
 
 
 def backup_war(cfg):
@@ -416,30 +482,30 @@ def backup_war(cfg):
         backups_dir = cfg["backups_dir"]
         dir_local = cfg["server_dir_local"]
         war_local = cfg["war_local"]
-        backup_file = "%s/%s_%s.war" % (backups_dir, war_local[:-4], TIME)
-        run('cp "%s/webapps/%s" "%s"' % (dir_local, war_local, backup_file))
+        backup_file = f"{backups_dir}/{war_local[:-4]}_{TIME}.war"
+        run(f'cp "{dir_local}/webapps/{war_local}" "{backup_file}"')
     elif is_local_d2docker(cfg):
         pass
 
 
 def get_webapps(cfg):
     route_local = cfg["server_dir_local"]
-    route_remote = "%s:%s" % (cfg["hostname_remote"], cfg["server_dir_remote"])
+    route_remote = f"{cfg['hostname_remote']}:{cfg['server_dir_remote']}"
 
     for mandatory, subdir in [[True, "webapps"], [False, "files/apps"], [False, "files/document"], [False, "files/dataValue"]]:
-        cmd = "rsync -avP -LK --delete --relative %s/./%s %s" % (route_remote, subdir, route_local)
+        cmd = f"rsync -avP -LK --delete --relative {route_remote}/./{subdir} {route_local}"
         log(cmd)
-        p = Popen(
+        with Popen(
             cmd,
             shell=True,
             stdout=subprocess.PIPE,
             stdin=subprocess.PIPE,
             universal_newlines=True,
             stderr=subprocess.PIPE,
-        )
-        stdout, stderr = p.communicate()
+        ) as p:
+            stdout, stderr = p.communicate()
         if p.returncode != 0 and mandatory:
-            log("Mandatory folder %s failed to rsync" % subdir)
+            log(f"Mandatory folder {subdir} failed to rsync")
             raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT) + "\n" + stderr, subdir)
 
     if is_local_tomcat(cfg):
@@ -448,11 +514,11 @@ def get_webapps(cfg):
 
         if war_local != war_remote:
             commands = [
-                'cd "%s/webapps"' % route_local,
-                'rm -f "%s"' % war_local,  # the war file itself
-                'mv "%s" "%s"' % (war_remote, war_local),
-                'rm -rf "%s"' % war_local[:-4],  # the directory
-                'mv "%s" "%s"' % (war_remote[:-4], war_local[:-4]),
+                f'cd "{route_local}/webapps"',
+                f'rm -f "{war_local}"',  # the war file itself
+                f'mv "{war_remote}" "{war_local}"',
+                f'rm -rf "{war_local[:-4]}"',  # the directory
+                f'mv "{war_remote[:-4]}" "{war_local[:-4]}"',
             ]
             run("; ".join(commands))
 
@@ -469,35 +535,34 @@ def get_db(cfg, args):
         db_remote = args.db_remote
 
         if args.use_backup:
-            dump = "zcat '%s'" % (args.use_backup)
+            dump = f"zcat '{args.use_backup}'"
         else:
-            dump = "pg_dump -U dhis -d '%s' --no-owner %s" % (db_remote, exclude)
+            dump = f"pg_dump -U dhis -d '{db_remote}' --no-owner {exclude}"
 
         db_local = args.db_local
         empty_db(db_local)
-        cmd = "ssh %s %s | psql -d '%s'" % (cfg["hostname_remote"], dump, db_local)
+        cmd = f"ssh {cfg['hostname_remote']} {dump} | psql -d '{db_local}'"
 
         run(cmd + " 2>&1 | paste - - - | uniq -c")  # run with more compact output
     elif is_local_d2docker(cfg):
         db_remote = args.db_remote
-        dump = "pg_dump -U dhis -d '%s' --no-owner %s" % (db_remote, exclude)
+        dump = f"pg_dump -U dhis -d '{db_remote}' --no-owner {exclude}"
         sql_path = os.path.join(dir_local, "db.sql.gz")
-        cmd = "ssh %s %s | gzip > %s" % (cfg["hostname_remote"], dump, sql_path)
+        cmd = f"ssh {cfg['hostname_remote']} {dump} | gzip > {sql_path}"
         run(cmd)
         apps_dir = os.path.join(dir_local, "files", "apps")
         documents_dir = os.path.join(dir_local, "files", "document")
         datavalues_dir = os.path.join(dir_local, "files", "dataValue")
         temp_folder = cfg.get("docker_temp_folder", None)
 
+        temp_directory_opt = f"--temp-directory '{temp_folder}'" if temp_folder else ""
+        apps_dir_opt = f"--apps-dir '{apps_dir}'" if os.path.isdir(apps_dir) else ""
+        documents_dir_opt = f"--documents-dir '{documents_dir}'" if os.path.isdir(documents_dir) else ""
+        datavalues_dir_opt = f"--datavalues-dir '{datavalues_dir}'" if os.path.isdir(datavalues_dir) else ""
+
         run(
-            "d2-docker {} create data {} --sql={} {} {} {}".format(
-                (("--temp-directory '%s'" % temp_folder) if temp_folder else ""),
-                get_local_docker_image(cfg, args, "stop"),
-                sql_path,
-                (("--apps-dir '%s'" % apps_dir) if os.path.isdir(apps_dir) else ""),
-                (("--documents-dir '%s'" % documents_dir) if os.path.isdir(documents_dir) else ""),
-                (("--datavalues-dir '%s'" % datavalues_dir) if os.path.isdir(datavalues_dir) else ""),
-            )
+            f"d2-docker {temp_directory_opt} create data {get_local_docker_image(cfg, args, 'stop')} "
+            f"--sql={sql_path} {apps_dir_opt} {documents_dir_opt} {datavalues_dir_opt}"
         )
 
     # Errors like 'ERROR: role "u_dhis2" does not exist' are expected
@@ -533,14 +598,13 @@ def empty_db(db_local):
             def fetch(name):
                 prefix = {"views": "table", "tables": "table", "sequences": "sequence"}[name]
                 cur.execute(
-                    "SELECT %(prefix)s_name FROM information_schema.%(name)s "
-                    "WHERE %(prefix)s_schema='public' "
-                    "AND %(prefix)s_catalog='%(db_name)s'"
-                    "AND %(prefix)s_name NOT IN ("
+                    f"SELECT {prefix}_name FROM information_schema.{name} "
+                    f"WHERE {prefix}_schema='public' "
+                    f"AND {prefix}_catalog='{db_name}'"
+                    f"AND {prefix}_name NOT IN ("
                     "  SELECT objid::regclass::text FROM pg_depend "
                     "  WHERE deptype = 'e'"
                     ")"
-                    % {"prefix": prefix, "name": name, "db_name": db_name}
                 )
                 results_tuples = cur.fetchall()
                 results = set(list(zip(*results_tuples))[0] if results_tuples else [])
@@ -549,14 +613,14 @@ def empty_db(db_local):
 
             def drop(name):
                 xs = fetch(name)
-                log("Dropping %d %s..." % (len(xs), name))
+                log(f"Dropping {len(xs)} {name}...")
                 kind = name[:-1].upper()  # "tables" -> "TABLE"
                 for x in xs:
                     try:
-                        cur.execute("DROP %s IF EXISTS %s CASCADE" % (kind, x))
+                        cur.execute(f"DROP {kind} IF EXISTS {x} CASCADE")
                         conn.commit()
                     except Exception as e:
-                        log("Error dropping %s %s: %s" % (kind, x, e))
+                        log(f"Error dropping {kind} {x}: {e}")
                         conn.rollback()
                         sys.exit(1)
 
@@ -573,8 +637,7 @@ def empty_db(db_local):
 def run_sql(cfg, args):
     if is_local_tomcat(cfg):
         for fname in args.post_sql:
-            log("Running postsql...  "+fname)
-            run("psql -d '%s' < '%s'" % (args.db_local, fname))
+            run(f"psql -d '{args.db_local}' < '{fname}'", label=os.path.basename(fname))
 
 
 if __name__ == "__main__":
