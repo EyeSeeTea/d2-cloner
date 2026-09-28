@@ -36,16 +36,16 @@ def step(name):
     t0 = time.time()
     entry = [name, "FAILED", 0.0]
     STEPS.append(entry)
+    error = ""
     try:
         yield
-    except BaseException as e:
-        entry[2] = time.time() - t0
-        log("==== FAILED: %s (%.1fs) - %s ====" % (name, entry[2], e))
-        raise
-    else:
         entry[1] = "OK"
+    except BaseException as e:
+        error = " - %s" % e
+        raise
+    finally:
         entry[2] = time.time() - t0
-        log("==== OK: %s (%.1fs) ====" % (name, entry[2]))
+        log("==== %s: %s (%.1fs)%s ====" % (entry[1], name, entry[2], error))
 
 
 def print_summary():
