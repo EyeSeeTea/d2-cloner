@@ -114,10 +114,13 @@ def delete_all_tracker_programs_not_in_lists(trackers, f):
 
 def create_index_to_improve_deletion(f):
     write(f, """
-        CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_tei_to_remove_trid ON tei_to_remove({trackedentityid}); 
+        CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_tei_to_remove_trid ON tei_to_remove({trackedentityid});
         CREATE INDEX IF NOT EXISTS idx_events_to_remove ON events_to_remove ({eventid});
         CREATE INDEX IF NOT EXISTS idx_enrollments_to_remove ON enrollments_to_remove ({enrollmentid});
         CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_programs_to_remove_pid ON programs_to_remove(programid);
+        CREATE INDEX IF NOT EXISTS temp_idx_teav_trackedentityid ON trackedentityattributevalue ({trackedentityid});
+        CREATE INDEX IF NOT EXISTS temp_idx_teavaudit_trackedentityid ON trackedentityattributevalueaudit ({trackedentityid});
+        CREATE INDEX IF NOT EXISTS temp_idx_teprogowner_trackedentityid ON trackedentityprogramowner ({trackedentityid});
     """.format(trackedentityid=get_tracker_identifier_name(), event=get_event_table_name(),
                eventid=get_event_identifier_name(),enrollmentid=get_enrollment_identifier_name()))
 

@@ -162,7 +162,10 @@ def create_org_units_to_remove_views_and_indexes(f):
         CREATE INDEX IF NOT EXISTS idx_event_comment_eventid ON {event_comment}             ({eventid}); 
         CREATE INDEX IF NOT EXISTS idx_programstagenotification_psi                        ON programnotificationinstance              ({eventid}); 
         CREATE INDEX IF NOT EXISTS idx_relationshipitem_eventid             ON relationshipitem                         ({eventid}); 
-        CREATE INDEX IF NOT EXISTS idx_s9i10v8xg7d22hlhmesia51l                            ON event_messageconversation ({eventid}); 
+        CREATE INDEX IF NOT EXISTS idx_s9i10v8xg7d22hlhmesia51l                            ON event_messageconversation ({eventid});
+        CREATE INDEX IF NOT EXISTS temp_idx_teav_trackedentityid ON trackedentityattributevalue ({trackedentityid});
+        CREATE INDEX IF NOT EXISTS temp_idx_teavaudit_trackedentityid ON trackedentityattributevalueaudit ({trackedentityid});
+        CREATE INDEX IF NOT EXISTS temp_idx_teprogowner_organisationunitid ON trackedentityprogramowner (organisationunitid);
     """.format(eventid=get_event_identifier_name(), event=get_event_table_name(),enrollmentid=get_enrollment_identifier_name(),
                enrollment=get_enrollment_table_name(), trackedentity=get_tracker_table_name(), trackedentityid = get_tracker_identifier_name(),
                event_comment=get_event_comment_table()))
