@@ -86,6 +86,7 @@ def delete_all_event_programs_from_lists(programs, f):
 def create_index_to_improve_deletion(f):
     write(f, """
         CREATE INDEX IF NOT EXISTS idx_events_to_remove ON events_to_remove ({eventid});
+        ANALYZE events_to_remove;
     """.format(trackedentityid=get_tracker_identifier_name(), event=get_event_table_name(),
                eventid=get_event_identifier_name()))
 

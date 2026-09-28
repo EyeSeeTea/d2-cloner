@@ -121,8 +121,21 @@ def create_index_to_improve_deletion(f):
         CREATE INDEX IF NOT EXISTS temp_idx_teav_trackedentityid ON trackedentityattributevalue ({trackedentityid});
         CREATE INDEX IF NOT EXISTS temp_idx_teavaudit_trackedentityid ON trackedentityattributevalueaudit ({trackedentityid});
         CREATE INDEX IF NOT EXISTS temp_idx_teprogowner_trackedentityid ON trackedentityprogramowner ({trackedentityid});
+        CREATE INDEX IF NOT EXISTS temp_idx_programmessage_enrollmentid ON programmessage ({enrollmentid});
+        CREATE INDEX IF NOT EXISTS temp_idx_progmessage_trackedentityid ON programmessage ({trackedentityid});
+        CREATE INDEX IF NOT EXISTS temp_idx_progmessage_trackereventid ON programmessage ({tracker_event_column});
+        CREATE INDEX IF NOT EXISTS temp_idx_prognotifinst_enrollmentid ON programnotificationinstance ({enrollmentid});
+        CREATE INDEX IF NOT EXISTS temp_idx_prognotifinst_trackereventid ON programnotificationinstance ({tracker_event_column});
+        CREATE INDEX IF NOT EXISTS temp_idx_progownerhist_trackedentityid ON programownershiphistory ({trackedentityid});
+        CREATE INDEX IF NOT EXISTS temp_idx_progtempowner_trackedentityid ON programtempowner ({trackedentityid});
+        CREATE INDEX IF NOT EXISTS temp_idx_progtempownaudit_trackedentityid ON programtempownershipaudit ({trackedentityid});
+        ANALYZE tei_to_remove;
+        ANALYZE events_to_remove;
+        ANALYZE enrollments_to_remove;
+        ANALYZE programs_to_remove;
     """.format(trackedentityid=get_tracker_identifier_name(), event=get_event_table_name(),
-               eventid=get_event_identifier_name(),enrollmentid=get_enrollment_identifier_name()))
+               eventid=get_event_identifier_name(),enrollmentid=get_enrollment_identifier_name(),
+               tracker_event_column=get_tracker_event_reference_column()))
 
 
 def delete_all_tracker_programs(trackers, f, exclude=False):

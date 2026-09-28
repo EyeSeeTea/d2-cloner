@@ -166,6 +166,29 @@ def create_org_units_to_remove_views_and_indexes(f):
         CREATE INDEX IF NOT EXISTS temp_idx_teav_trackedentityid ON trackedentityattributevalue ({trackedentityid});
         CREATE INDEX IF NOT EXISTS temp_idx_teavaudit_trackedentityid ON trackedentityattributevalueaudit ({trackedentityid});
         CREATE INDEX IF NOT EXISTS temp_idx_teprogowner_organisationunitid ON trackedentityprogramowner (organisationunitid);
+        CREATE INDEX IF NOT EXISTS temp_idx_interpretation_ouid ON interpretation (organisationunitid);
+        CREATE INDEX IF NOT EXISTS temp_idx_categoryoption_ou_ouid ON categoryoption_organisationunits (organisationunitid);
+        CREATE INDEX IF NOT EXISTS temp_idx_completedsreg_sourceid ON completedatasetregistration (sourceid);
+        CREATE INDEX IF NOT EXISTS temp_idx_dataapproval_ouid ON dataapproval (organisationunitid);
+        CREATE INDEX IF NOT EXISTS temp_idx_dataapprovalaudit_ouid ON dataapprovalaudit (organisationunitid);
+        CREATE INDEX IF NOT EXISTS temp_idx_eventvis_ou_ouid ON eventvisualization_organisationunits (organisationunitid);
+        CREATE INDEX IF NOT EXISTS temp_idx_lockexception_ouid ON lockexception (organisationunitid);
+        CREATE INDEX IF NOT EXISTS temp_idx_mapview_ou_ouid ON mapview_organisationunits (organisationunitid);
+        CREATE INDEX IF NOT EXISTS temp_idx_progmessage_ouid ON programmessage (organisationunitid);
+        CREATE INDEX IF NOT EXISTS temp_idx_progownerhist_ouid ON programownershiphistory (organisationunitid);
+        CREATE INDEX IF NOT EXISTS temp_idx_userdataviewou_ouid ON userdatavieworgunits (organisationunitid);
+        CREATE INDEX IF NOT EXISTS temp_idx_usermembership_ouid ON usermembership (organisationunitid);
+        CREATE INDEX IF NOT EXISTS temp_idx_userteisearchou_ouid ON userteisearchorgunits (organisationunitid);
+        CREATE INDEX IF NOT EXISTS temp_idx_validationresult_ouid ON validationresult (organisationunitid);
+        CREATE INDEX IF NOT EXISTS temp_idx_visualization_ou_ouid ON visualization_organisationunits (organisationunitid);
+        ANALYZE orgUnitsToDelete;
+        ANALYZE rm_trackedentity;
+        ANALYZE rm_enrollment;
+        ANALYZE rm_event_orgs;
+        ANALYZE rm_event_enrollment;
+        ANALYZE rm_event;
+        ANALYZE rm_interpretation;
+        ANALYZE rm_programmessage;
     """.format(eventid=get_event_identifier_name(), event=get_event_table_name(),enrollmentid=get_enrollment_identifier_name(),
                enrollment=get_enrollment_table_name(), trackedentity=get_tracker_table_name(), trackedentityid = get_tracker_identifier_name(),
                event_comment=get_event_comment_table()))
