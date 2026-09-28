@@ -337,7 +337,7 @@ def get_version(config):
 def run(cmd, label=None, capture=True):
     log(cmd)
     if not capture:
-        exit_code = subprocess.call(cmd, shell=True)
+        exit_code = subprocess.run(cmd, shell=True).returncode
         if exit_code != 0:
             log("FAILED (exit %d): %s" % (exit_code, label or cmd))
             sys.exit(exit_code)
