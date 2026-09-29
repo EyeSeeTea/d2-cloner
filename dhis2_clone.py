@@ -47,6 +47,13 @@ def step(name):
         log("==== OK: %s (%.1fs) ====" % (name, entry[2]))
 
 
+def record_step(name, ok, seconds):
+    "Log a step's outcome, for phases (like post_clone_scripts) whose success is a returned bool, not whether an exception was raised."
+    status = "OK" if ok else "FAILED"
+    STEPS.append([name, status, seconds])
+    log("==== %s: %s (%.1fs) ====" % (status, name, seconds))
+
+
 def print_summary():
     if not STEPS:
         return
@@ -113,8 +120,11 @@ def main():
                 run_sql(cfg, args)
 
         if args.post_clone_scripts:
-            with step("post_clone_scripts (pre-tomcat)"):
-                scripts_ok = execute_scripts(cfg, args) and scripts_ok
+            log("==== START: post_clone_scripts (pre-tomcat) ====")
+            t0 = time.time()
+            ok = execute_scripts(cfg, args)
+            scripts_ok = ok and scripts_ok
+            record_step("post_clone_scripts (pre-tomcat)", ok, time.time() - t0)
         if not args.keep_temp and is_local_d2docker(cfg):
             d2_docker_tmp_dir = cfg["server_dir_local"]
             # Only the d2-docker files are truly temporary files (Tomcat files shouldn't be deleted).
@@ -136,8 +146,11 @@ def main():
                 log("No postprocessing done.")
 
             if args.post_clone_scripts:
-                with step("post_clone_scripts (post-tomcat)"):
-                    scripts_ok = execute_scripts(cfg, args, is_post_tomcat=True) and scripts_ok
+                log("==== START: post_clone_scripts (post-tomcat) ====")
+                t0 = time.time()
+                ok = execute_scripts(cfg, args, is_post_tomcat=True)
+                scripts_ok = ok and scripts_ok
+                record_step("post_clone_scripts (post-tomcat)", ok, time.time() - t0)
         else:
             log("Server not started automatically, as requested.")
             if args.no_postprocess:
@@ -395,7 +408,7 @@ def execute_scripts(cfg, args, is_post_tomcat=False):
     failed_scripts = []
     for script in sorted(filter(is_script, files_list)):
         t0 = time.time()
-        ret = run('"%s/%s" "%s"' % (dirname, script, base_url), label=script, fatal=False)
+        ret = run('"%s/%s" "%s"' % (dirname, script, base_url), label=script, fatal=False, capture=False)
         elapsed = time.time() - t0
         status = "OK" if ret == 0 else "FAILED"
         STEPS.append(["  " + script, status, elapsed])
