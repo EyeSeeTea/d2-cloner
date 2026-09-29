@@ -26,6 +26,16 @@ def convert_to_possible_paths_in_sql_format(list_uid):
                                 "".join(["'%{}%'".format(uid) for uid in list_uid]) + \
         ")".replace("(or", " ")
 
+def analyze_before_delete(f):
+    """Refresh statistics on the whole database before any DELETE below. A freshly
+    restored/imported database has no statistics until autovacuum catches up, which
+    can make the planner pick a bad plan (e.g. a seq scan) for the deletion queries."""
+    write(f, """
+        SELECT 'Refreshing statistics before deletion....' AS D2_DOCKER_PRESQL_SCRIPT;
+        ANALYZE;
+    """)
+
+
 def drop_temp_indexes(f):
     """Drop every index created as temp_idx_* to speed up the deletion above, once it's no longer needed"""
     write(f, """
