@@ -1,4 +1,5 @@
 from src.preprocess.sql_generation.sql_common import write
+from src.preprocess.sql_generation.versioned_table_names import get_event_tables
 
 
 def remove_all_unnecessary_dependencies(f, preprocess_api_version):
@@ -50,7 +51,7 @@ DELETE FROM intepretation_likedby;
 DELETE FROM messageconversation_messages;
 DELETE FROM messageconversation_usermessages;
 DELETE FROM messageconversation;
-delete from event_notes;
+{delete_event_notes}
 delete from enrollment_notes;
 delete from note;
 delete from trackedentityaudit;
@@ -60,7 +61,8 @@ delete from programmessage_deliverychannels;
 delete from programmessage;
 delete from programownershiphistory;
 delete from programtempownershipaudit;
-    """)
+    """.format(delete_event_notes="\n".join(
+            "delete from {};".format(et.comment_table) for et in get_event_tables())))
     write(f, f"""
         SELECT 'Close DELETE DEPENDENCIES Block' AS D2_DOCKER_PRESQL_SCRIPT;
         """)

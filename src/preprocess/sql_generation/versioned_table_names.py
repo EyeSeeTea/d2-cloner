@@ -1,3 +1,5 @@
+from typing import NamedTuple
+
 from src.common.config import Config
 from src.preprocess.sql_generation.table_key import TableKey
 
@@ -73,3 +75,26 @@ def get_tracker_event_reference_column() -> str:
     if Config.get_pre_api_version() >= 43:
         return "trackereventid"
     return "eventid"
+
+
+class EventTable(NamedTuple):
+    """One physical table holding events. Before DHIS2 2.43 there is a single table; from 2.43 on
+    events are split into trackerevent (with enrollment) and singleevent (without enrollment)."""
+    table: str
+    identifier: str
+    comment_table: str
+    # Column used by programmessage, programnotificationinstance and relationshipitem to reference this table
+    reference_column: str
+    has_enrollment: bool
+    # Suffix for the temporary materialized views of this table (empty keeps the legacy view names)
+    view_suffix: str
+
+
+def get_event_tables() -> list:
+    if Config.get_pre_api_version() >= 43:
+        return [
+            EventTable("trackerevent", "eventid", "trackerevent_notes", "trackereventid", True, "_trackerevent"),
+            EventTable("singleevent", "eventid", "singleevent_notes", "singleeventid", False, "_singleevent"),
+        ]
+    return [EventTable(get_event_table_name(), get_event_identifier_name(), get_event_comment_table(),
+                       get_event_identifier_name(), True, "")]

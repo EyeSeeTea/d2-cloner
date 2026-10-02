@@ -30,8 +30,10 @@ def generate_delete_event_rules(event_program, data_elements, org_units,
                 || ' | org_unit_descendants: ' || quote_literal($${sql_org_unit_descendants or 'NO_IDS'}$$)
             AS "D2_DOCKER_PRESQL_SCRIPT";
         """)
-        sql_query = compose_custom_query(event_program_uids_sql, sql_data_elements, sql_org_units, sql_org_unit_descendants)
-        write(f, fix_final_query(sql_query) + "\n")
+        for event_table in get_event_tables():
+            sql_query = compose_custom_query(event_table, event_program_uids_sql, sql_data_elements, sql_org_units,
+                                             sql_org_unit_descendants)
+            write(f, fix_final_query(sql_query) + "\n")
     else:
         delete_all_event_programs(event_program_uids_sql, f)
 
@@ -40,12 +42,12 @@ def generate_delete_event_rules(event_program, data_elements, org_units,
     """)
 
 
-def compose_custom_query(event_program_uids, sql_data_elements, sql_org_units, sql_org_unit_descendants):
+def compose_custom_query(event_table, event_program_uids, sql_data_elements, sql_org_units, sql_org_unit_descendants):
     sql_query = """ 
                     DELETE FROM {event} where programstageid in 
                     (select programstageid from programstage where programid in 
                     (select programid from program where uid in {uids})) and 
-                 """.format(event=get_event_table_name(),
+                 """.format(event=event_table.table,
                             uids=event_program_uids)
     if sql_data_elements != "":
         sql_data_elements = sql_data_elements.replace("(", "").replace(")", "")
@@ -53,7 +55,7 @@ def compose_custom_query(event_program_uids, sql_data_elements, sql_org_units, s
                 update {event} set eventdatavalues = eventdatavalues - {dataelements_to_remove} 
                 where eventdatavalues ? {dataelement_filtered} and 
              """.format(
-            event=get_event_table_name(),
+            event=event_table.table,
             dataelements_to_remove=sql_data_elements,
             dataelement_filtered=sql_data_elements)
 
@@ -83,60 +85,58 @@ def delete_all_event_programs_from_lists(programs, f):
     programs_uids_sql = convert_to_sql_format(programs)
     delete_all_event_programs(programs_uids_sql, f)
 
-def create_index_to_improve_deletion(f):
+def create_index_to_improve_deletion(f, event_table):
     write(f, """
-        CREATE INDEX IF NOT EXISTS idx_events_to_remove ON events_to_remove ({eventid});
-        ANALYZE events_to_remove;
-    """.format(trackedentityid=get_tracker_identifier_name(), event=get_event_table_name(),
-               eventid=get_event_identifier_name()))
+        CREATE INDEX IF NOT EXISTS idx_events_to_remove{suffix} ON events_to_remove{suffix} ({eventid});
+        ANALYZE events_to_remove{suffix};
+    """.format(eventid=event_table.identifier, suffix=event_table.view_suffix))
 
 def delete_all_event_programs(programs, f):
     write(f, f"""
     SELECT 'Starting DELETE block for eventPrograms All: '
            || quote_literal($${programs or 'NO_IDS'}$$) AS D2_DOCKER_PRESQL_SCRIPT;
     """)
+    for event_table in get_event_tables():
+        delete_all_events_from_table(event_table, programs, f)
+    write(f, f"""
+    SELECT 'Close DELETE EVENT PROGRAMS Block' AS D2_DOCKER_PRESQL_SCRIPT;
+    """)
+
+def delete_all_events_from_table(event_table, programs, f):
+    params = dict(event=event_table.table, eventid=event_table.identifier, programs=programs,
+                  event_comment=event_table.comment_table, suffix=event_table.view_suffix)
     write(f, """
-            DROP MATERIALIZED VIEW IF EXISTS events_to_remove;
-            CREATE MATERIALIZED VIEW events_to_remove AS
+            DROP MATERIALIZED VIEW IF EXISTS events_to_remove{suffix};
+            CREATE MATERIALIZED VIEW events_to_remove{suffix} AS
             select e.{eventid}  from {event} e
             where e.programstageid in 
                 (SELECT programstageid FROM programstage where programid in 
                     (SELECT programid FROM program where uid in {programs})
                 );
-        """.format(event=get_event_table_name(), eventid=get_event_identifier_name(),programs=programs))
-    create_index_to_improve_deletion(f)
+        """.format(**params))
+    create_index_to_improve_deletion(f, event_table)
     write(f, """
-      SELECT 'Events to be deleted: ' || COUNT(*)::text AS D2_DOCKER_PRESQL_SCRIPT FROM events_to_remove;
-    """)
+      SELECT 'Events to be deleted from {event}: ' || COUNT(*)::text AS D2_DOCKER_PRESQL_SCRIPT FROM events_to_remove{suffix};
+    """.format(**params))
     #remove event audit values
     write(f, "SELECT 'Deleting trackedentitydatavalueaudit....' AS D2_DOCKER_PRESQL_SCRIPT;\n")
     write(f, """
         DELETE FROM trackedentitydatavalueaudit 
-        WHERE {eventid} IN (SELECT {eventid} FROM events_to_remove);
-    """.format(eventid=get_event_identifier_name(),
-               event=get_event_table_name(),
-               programs=programs))
+        WHERE {eventid} IN (SELECT {eventid} FROM events_to_remove{suffix});
+    """.format(**params))
     # Remove event_comments in programs
     write(f, "SELECT 'Deleting event_comment....' AS D2_DOCKER_PRESQL_SCRIPT;\n")
-    write(f,
-          """
+    write(f, """
         DELETE FROM {event_comment} 
-        WHERE {eventid} IN (SELECT {eventid} FROM events_to_remove);
-        """.format(event_comment=get_event_comment_table(),
-                   eventid=get_event_identifier_name(),
-                   event=get_event_table_name(),
-                   programs=programs))
+        WHERE {eventid} IN (SELECT {eventid} FROM events_to_remove{suffix});
+        """.format(**params))
     # Remove events in programs
     write(f, "SELECT 'Deleting events....' AS D2_DOCKER_PRESQL_SCRIPT;\n")
     write(f, """
         DELETE FROM {event} 
-        WHERE {eventid} IN (SELECT {eventid} FROM events_to_remove);
+        WHERE {eventid} IN (SELECT {eventid} FROM events_to_remove{suffix});
         --end remove events block
-    """.format(eventid=get_event_identifier_name(),
-           event=get_event_table_name(), programs=programs))
+    """.format(**params))
     write(f, """
-        DROP MATERIALIZED VIEW IF EXISTS events_to_remove;
-    """)
-    write(f, f"""
-    SELECT 'Close DELETE EVENT PROGRAMS Block' AS D2_DOCKER_PRESQL_SCRIPT;
-    """)
+        DROP MATERIALIZED VIEW IF EXISTS events_to_remove{suffix};
+    """.format(**params))

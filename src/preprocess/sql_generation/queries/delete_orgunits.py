@@ -8,8 +8,10 @@ def delete_org_unit_data_and_views(f):
         SELECT 'orgUnitsToDelete: ' || COUNT(*)::text AS d2_docker_presql_script FROM orgUnitsToDelete;
         SELECT 'rm_trackedentity: ' || COUNT(*)::text AS d2_docker_presql_script FROM rm_trackedentity;
         SELECT 'rm_enrollment: ' || COUNT(*)::text AS d2_docker_presql_script FROM rm_enrollment;
-        SELECT 'rm_event: ' || COUNT(*)::text AS d2_docker_presql_script FROM rm_event;
     """)
+    for event_table in get_event_tables():
+        write(f, "SELECT 'rm_event{suffix}: ' || COUNT(*)::text AS d2_docker_presql_script FROM rm_event{suffix};\n"
+              .format(suffix=event_table.view_suffix))
 
     if Config.get_pre_api_version() <= 36:
         write(f, """
@@ -17,9 +19,7 @@ def delete_org_unit_data_and_views(f):
         """.format(enrollmentid=get_enrollment_identifier_name()))
 
     write(f, """
-        DELETE FROM trackedentitydatavalueaudit      WHERE {eventid}  IN (SELECT * FROM rm_event);
-        DELETE FROM {event_comment}     WHERE {eventid}  IN (SELECT * FROM rm_event);
-        DELETE FROM {event}             WHERE {eventid}  IN (SELECT * FROM rm_event);
+        {delete_events}
         
         DELETE FROM {enrollment_comment}          WHERE {enrollmentid}       IN (SELECT * FROM rm_enrollment);
         DELETE FROM {enrollment}                  WHERE {enrollmentid}       IN (SELECT * FROM rm_enrollment);
@@ -30,8 +30,13 @@ def delete_org_unit_data_and_views(f):
         DELETE FROM trackedentityattributevalueaudit WHERE {trackedentityid} IN (SELECT * FROM rm_trackedentity);
         DELETE FROM trackedentityprogramowner        WHERE organisationunitid      IN (SELECT * FROM orgUnitsToDelete);
         DELETE FROM {trackedentity}            WHERE {trackedentityid} IN (SELECT * FROM rm_trackedentity);
-    """.format(eventid = get_event_identifier_name(), event = get_event_table_name(),
-                   event_comment=get_event_comment_table(), enrollmentid= get_enrollment_identifier_name(),
+    """.format(delete_events="\n        ".join("""
+        DELETE FROM trackedentitydatavalueaudit      WHERE {eventid}  IN (SELECT * FROM rm_event{suffix});
+        DELETE FROM {event_comment}     WHERE {eventid}  IN (SELECT * FROM rm_event{suffix});
+        DELETE FROM {event}             WHERE {eventid}  IN (SELECT * FROM rm_event{suffix});""".format(
+                       eventid=et.identifier, event=et.table, event_comment=et.comment_table, suffix=et.view_suffix)
+                       for et in get_event_tables()),
+                   enrollmentid= get_enrollment_identifier_name(),
                    enrollment=get_enrollment_table_name(), trackedentityid=get_tracker_identifier_name(),
                    enrollment_comment=get_enrollment_comment_table(),
                    trackedentity=get_tracker_table_name()))
@@ -126,16 +131,7 @@ def create_org_units_to_remove_views_and_indexes(f):
                 organisationunitid IN (SELECT * FROM orgUnitsToDelete); 
         CREATE UNIQUE INDEX idx_enrollment ON rm_enrollment ({enrollmentid}); 
         
-        CREATE MATERIALIZED VIEW rm_event_orgs 
-            AS SELECT {eventid} FROM {event} WHERE 
-                organisationunitid IN (SELECT * FROM orgUnitsToDelete); 
-        CREATE MATERIALIZED VIEW rm_event_enrollment 
-            AS SELECT {eventid} FROM {event} WHERE 
-                {enrollmentid} IN (SELECT * FROM rm_enrollment); 
-        CREATE MATERIALIZED VIEW rm_event 
-            AS SELECT * FROM rm_event_orgs 
-            UNION ALL SELECT * FROM rm_event_enrollment; 
-        CREATE UNIQUE INDEX idx_event ON rm_event ({eventid}); 
+        {create_event_views}
         
         CREATE MATERIALIZED VIEW rm_interpretation 
             AS SELECT interpretationid FROM interpretation WHERE organisationunitid IN (SELECT * FROM orgUnitsToDelete); 
@@ -145,7 +141,7 @@ def create_org_units_to_remove_views_and_indexes(f):
             AS SELECT id FROM programmessage WHERE 
                 organisationunitid      IN (SELECT * FROM orgUnitsToDelete) OR 
                 {trackedentityid} IN (SELECT * FROM rm_trackedentity) OR 
-                {eventid}  IN (SELECT * FROM rm_event) OR 
+                {programmessage_event_conditions}
                 {enrollmentid}       IN (SELECT * FROM rm_enrollment); 
         CREATE UNIQUE INDEX idx_programmessage ON rm_programmessage (id); 
         CREATE INDEX IF NOT EXISTS idx_datavalue_organisationunitid                 ON datavalue                 (sourceid); 
@@ -155,14 +151,10 @@ def create_org_units_to_remove_views_and_indexes(f):
         CREATE INDEX IF NOT EXISTS idx_enrollment_organisationunitid           ON {enrollment}           (organisationunitid); 
         CREATE INDEX IF NOT EXISTS idx_dataset_organisationunit                     ON datasetsource             (sourceid); 
         CREATE INDEX IF NOT EXISTS idx_parentid                                     ON organisationunit          (parentid); 
-        CREATE INDEX IF NOT EXISTS idx_event_organisationunitid      ON {event}      (organisationunitid); 
+        {event_organisationunit_indexes}
         CREATE INDEX IF NOT EXISTS idx_trackedentity_organisationunitid     ON {trackedentity}     (organisationunitid); 
         CREATE INDEX IF NOT EXISTS idx_entityinstancedatavalueaudit_eventid ON trackedentitydatavalueaudit              ({eventid}); 
-        CREATE INDEX IF NOT EXISTS idx_programmessage_eventid               ON programmessage                           ({eventid}); 
-        CREATE INDEX IF NOT EXISTS idx_event_comment_eventid ON {event_comment}             ({eventid}); 
-        CREATE INDEX IF NOT EXISTS idx_programstagenotification_psi                        ON programnotificationinstance              ({eventid}); 
-        CREATE INDEX IF NOT EXISTS idx_relationshipitem_eventid             ON relationshipitem                         ({eventid}); 
-        CREATE INDEX IF NOT EXISTS idx_s9i10v8xg7d22hlhmesia51l                            ON event_messageconversation ({eventid});
+        {event_reference_indexes}
         CREATE INDEX IF NOT EXISTS temp_idx_teav_trackedentityid ON trackedentityattributevalue ({trackedentityid});
         CREATE INDEX IF NOT EXISTS temp_idx_teavaudit_trackedentityid ON trackedentityattributevalueaudit ({trackedentityid});
         CREATE INDEX IF NOT EXISTS temp_idx_teprogowner_organisationunitid ON trackedentityprogramowner (organisationunitid);
@@ -184,14 +176,65 @@ def create_org_units_to_remove_views_and_indexes(f):
         ANALYZE orgUnitsToDelete;
         ANALYZE rm_trackedentity;
         ANALYZE rm_enrollment;
-        ANALYZE rm_event_orgs;
-        ANALYZE rm_event_enrollment;
-        ANALYZE rm_event;
+        {analyze_event_views}
         ANALYZE rm_interpretation;
         ANALYZE rm_programmessage;
-    """.format(eventid=get_event_identifier_name(), event=get_event_table_name(),enrollmentid=get_enrollment_identifier_name(),
+    """.format(eventid=get_event_identifier_name(), enrollmentid=get_enrollment_identifier_name(),
                enrollment=get_enrollment_table_name(), trackedentity=get_tracker_table_name(), trackedentityid = get_tracker_identifier_name(),
-               event_comment=get_event_comment_table()))
+               create_event_views=_create_event_views(), analyze_event_views=_analyze_event_views(),
+               programmessage_event_conditions=" ".join(
+                   "{} IN (SELECT * FROM rm_event{}) OR".format(et.reference_column, et.view_suffix)
+                   for et in get_event_tables()),
+               event_organisationunit_indexes="\n        ".join(
+                   "CREATE INDEX IF NOT EXISTS idx_{event}_organisationunitid ON {event} (organisationunitid);".format(event=et.table)
+                   for et in get_event_tables()),
+               event_reference_indexes=_event_reference_indexes()))
+
+
+def _create_event_views():
+    views = []
+    for et in get_event_tables():
+        # Single events (DHIS2 >= 2.43) have no enrollment
+        enrollment_view = """
+        CREATE MATERIALIZED VIEW rm_event_enrollment{suffix} 
+            AS SELECT {eventid} FROM {event} WHERE 
+                {enrollmentid} IN (SELECT * FROM rm_enrollment); """ if et.has_enrollment else ""
+        union_enrollment = "UNION ALL SELECT * FROM rm_event_enrollment{suffix}" if et.has_enrollment else ""
+        views.append(("""
+        CREATE MATERIALIZED VIEW rm_event_orgs{suffix} 
+            AS SELECT {eventid} FROM {event} WHERE 
+                organisationunitid IN (SELECT * FROM orgUnitsToDelete); """ + enrollment_view + """
+        CREATE MATERIALIZED VIEW rm_event{suffix} 
+            AS SELECT * FROM rm_event_orgs{suffix} {union_enrollment}; 
+        CREATE UNIQUE INDEX idx_event{suffix} ON rm_event{suffix} ({eventid}); """).format(
+            suffix=et.view_suffix, eventid=et.identifier, event=et.table, union_enrollment=union_enrollment.format(suffix=et.view_suffix),
+            enrollmentid=get_enrollment_identifier_name()))
+    return "\n".join(views)
+
+
+def _analyze_event_views():
+    lines = []
+    for et in get_event_tables():
+        lines.append("ANALYZE rm_event_orgs{0};".format(et.view_suffix))
+        if et.has_enrollment:
+            lines.append("ANALYZE rm_event_enrollment{0};".format(et.view_suffix))
+        lines.append("ANALYZE rm_event{0};".format(et.view_suffix))
+    return "\n        ".join(lines)
+
+
+def _event_reference_indexes():
+    lines = []
+    for et in get_event_tables():
+        lines.append("""
+        CREATE INDEX IF NOT EXISTS idx_programmessage_{ref} ON programmessage ({ref});
+        CREATE INDEX IF NOT EXISTS idx_event_comment_{table} ON {comment} ({eventid});
+        CREATE INDEX IF NOT EXISTS idx_programnotificationinstance_{ref} ON programnotificationinstance ({ref});
+        CREATE INDEX IF NOT EXISTS idx_relationshipitem_{ref} ON relationshipitem ({ref});""".format(
+            ref=et.reference_column, table=et.table, comment=et.comment_table, eventid=et.identifier))
+    if Config.get_pre_api_version() < 43:
+        lines.append("CREATE INDEX IF NOT EXISTS idx_s9i10v8xg7d22hlhmesia51l ON event_messageconversation ({});".format(
+            get_event_identifier_name()))
+    return "\n".join(lines)
 
 
 def generate_delete_org_unit_tree_rules(orgunits, f):
