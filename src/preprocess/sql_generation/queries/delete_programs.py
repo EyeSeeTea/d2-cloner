@@ -94,8 +94,17 @@ def delete_all_event_programs(programs, f):
     SELECT 'Starting DELETE block for eventPrograms All: '
            || quote_literal($${programs or 'NO_IDS'}$$) AS D2_DOCKER_PRESQL_SCRIPT;
     """)
+    # Fail if residual materialized views exist from a previous failed execution.
     write(f, """
-            DROP MATERIALIZED VIEW IF EXISTS events_to_remove;
+        DO $$
+        BEGIN
+            IF EXISTS (SELECT 1 FROM pg_matviews WHERE matviewname = 'events_to_remove') THEN
+                RAISE EXCEPTION 'Residual materialized view events_to_remove detected. A previous deletion execution failed before cleanup. The database may contain data that should have been deleted. Manual intervention is required.';
+            END IF;
+        END
+        $$;
+    """)
+    write(f, """
             CREATE MATERIALIZED VIEW events_to_remove AS
             select e.{eventid}  from {event} e
             where e.programstageid in 

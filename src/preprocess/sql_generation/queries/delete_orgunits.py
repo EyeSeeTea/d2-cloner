@@ -86,7 +86,14 @@ def delete_org_unit_data_and_views(f):
         DELETE FROM minmaxdataelement WHERE sourceid in (select * from orgUnitsToDelete);
         DELETE FROM visualization_organisationunits WHERE organisationunitid in (select * from orgUnitsToDelete);
         DELETE FROM organisationunit WHERE organisationunitid in (select * from orgUnitsToDelete);
-        DROP MATERIALIZED VIEW if exists orgUnitsToDelete CASCADE;
+        DROP MATERIALIZED VIEW IF EXISTS rm_programmessage;
+        DROP MATERIALIZED VIEW IF EXISTS rm_interpretation;
+        DROP MATERIALIZED VIEW IF EXISTS rm_event;
+        DROP MATERIALIZED VIEW IF EXISTS rm_event_enrollment;
+        DROP MATERIALIZED VIEW IF EXISTS rm_event_orgs;
+        DROP MATERIALIZED VIEW IF EXISTS rm_enrollment;
+        DROP MATERIALIZED VIEW IF EXISTS rm_trackedentity;
+        DROP MATERIALIZED VIEW IF EXISTS orgUnitsToDelete;
     """)
 
     write(f, f"""
@@ -101,9 +108,15 @@ def delete_org_units(f):
 
 
 def start_ou_materialized_view(f):
+    # Fail if residual materialized views exist from a previous failed execution.
     write(f, """
-        --remove organisationUnits -- org unit
-        DROP MATERIALIZED VIEW if exists orgUnitsToDelete CASCADE;
+        DO $$
+        BEGIN
+            IF EXISTS (SELECT 1 FROM pg_matviews WHERE matviewname IN ('orgunitstodelete', 'rm_trackedentity', 'rm_enrollment', 'rm_event_orgs', 'rm_event_enrollment', 'rm_event', 'rm_interpretation', 'rm_programmessage')) THEN
+                RAISE EXCEPTION 'Residual materialized views detected (orgUnitsToDelete, rm_trackedentity, etc). A previous deletion execution failed before cleanup. The database may contain data that should have been deleted. Manual intervention is required.';
+            END IF;
+        END
+        $$;
     """)
 
     write(f, """
