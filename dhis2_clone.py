@@ -59,7 +59,7 @@ def print_summary():
         return
     log("==== SUMMARY ====")
     for name, status, seconds in STEPS:
-        log("%-6s %-30s %6.1fs" % (status, name, seconds))
+        log("%-8s %-30s %6.1fs" % (status, name, seconds))
 
 
 def main():
@@ -82,6 +82,12 @@ def main():
     if args.update_config:
         update_config(args.config)
         sys.exit()
+
+    # Fail now, before stopping the server and downloading the db, not hours later in start_tomcat
+    try:
+        check_d2docker_post_sql(cfg, args)
+    except ValueError as e:
+        sys.exit(str(e))
 
     scripts_ok = True
     try:
@@ -116,8 +122,13 @@ def main():
             log("No detected preprocessing rules, skipping.")
 
         if args.post_sql:
-            with step("run_sql"):
-                run_sql(cfg, args)
+            if is_local_d2docker(cfg):
+                # d2-docker runs the sql files inside "d2-docker start --run-sql", so the time is counted in start_tomcat
+                log("post-sql for d2-docker is executed during start_tomcat, skipping run_sql step")
+                STEPS.append(["run_sql (in start_tomcat)", "DEFERRED", 0.0])
+            else:
+                with step("run_sql"):
+                    run_sql(cfg, args)
 
         if args.post_clone_scripts:
             log("==== START: post_clone_scripts (pre-tomcat) ====")
@@ -450,10 +461,9 @@ def start_tomcat(cfg, args):
         dhis_conf_path = cfg.get("local_docker_dhis_conf", None)
         temp_folder = cfg.get("docker_temp_folder", None)
         if post_sql:
-            if len(args.post_sql) != 1 or not os.path.isdir(post_sql):
-                log("--post-sql for d2-docker requires a single directory")
-                return
-            elif args.strict_sql:
+            # Checked again here because preprocessing may have set post_sql to pre_sql_dir after the initial check
+            check_d2docker_post_sql(cfg, args)
+            if args.strict_sql:
                 add_strict_to_filenames(post_sql)
 
         post_scripts_dir = cfg.get("local_docker_post_clone_scripts_dir", None)
@@ -473,6 +483,13 @@ def start_tomcat(cfg, args):
             ),
             capture=False,
         )
+
+
+def check_d2docker_post_sql(cfg, args):
+    "d2-docker runs --post-sql through 'd2-docker start --run-sql', which only accepts a single directory."
+    if is_local_d2docker(cfg) and args.post_sql:
+        if len(args.post_sql) != 1 or not os.path.isdir(args.post_sql[0]):
+            raise ValueError("--post-sql for d2-docker requires a single directory, got: %s" % args.post_sql)
 
 
 def add_strict_to_filenames(post_sql):
