@@ -356,8 +356,13 @@ def get_version(config):
     raise ValueError("Unknown version of configuration file.")
 
 
-def run(cmd, label=None, capture=True, fatal=True):
-    log(cmd)
+# user:password@ in URLs. Like the one in log(), but without ".*?" so it stays fast on very long lines.
+URL_PASSWORD_RE = re.compile(r'://([^:/@\s"]+):[^/@\s"]*@')
+
+
+def run(cmd, label=None, capture=True, fatal=True, hide=None):
+    "hide: secret (e.g. a password passed to the command) replaced by PASSWORD in the output shown."
+    log(cmd.replace(hide, "PASSWORD") if hide else cmd)
     if not capture:
         exit_code = subprocess.call(cmd, shell=True)
         if exit_code != 0:
@@ -370,10 +375,14 @@ def run(cmd, label=None, capture=True, fatal=True):
         return exit_code
     prefix = "  [%s] " % label if label else "  "
     p = Popen(
-        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True, bufsize=1
+        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True, bufsize=1,
+        errors="replace",
     )
     for line in p.stdout:
-        print(prefix + line.rstrip("\n"))
+        line = line.rstrip("\n")
+        if hide:
+            line = URL_PASSWORD_RE.sub(r"://\1:PASSWORD@", line.replace(hide, "PASSWORD"))
+        print(prefix + line)
     sys.stdout.flush()
     exit_code = p.wait()
     if exit_code != 0:
@@ -419,7 +428,8 @@ def execute_scripts(cfg, args, is_post_tomcat=False):
     failed_scripts = []
     for script in sorted(filter(is_script, files_list)):
         t0 = time.time()
-        ret = run('"%s/%s" "%s"' % (dirname, script, base_url), label=script, fatal=False, capture=False)
+        # Scripts get the password in $1: hide it if they print it (e.g. an argparse "unrecognized arguments" error)
+        ret = run('"%s/%s" "%s"' % (dirname, script, base_url), label=script, fatal=False, hide=args.api_local_password)
         elapsed = time.time() - t0
         status = "OK" if ret == 0 else "FAILED"
         STEPS.append(["  " + script, status, elapsed])
