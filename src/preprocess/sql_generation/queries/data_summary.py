@@ -1,4 +1,5 @@
 from src.preprocess.sql_generation.sql_common import write
+from src.preprocess.sql_generation.versioned_table_names import get_event_tables
 
 
 def show_data_summary(f):
@@ -31,12 +32,12 @@ SELECT
     p.uid AS program_uid,
     p.name AS program_name,
     COUNT(e.*) AS event_count
-FROM event e
+FROM ({events}) e
 JOIN programstage ps ON e.programstageid = ps.programstageid
 JOIN program p ON ps.programid = p.programid
 GROUP BY p.uid, p.name
 ORDER BY p.name DESC;
-""")
+""".format(events=" UNION ALL ".join("SELECT programstageid FROM {}".format(et.table) for et in get_event_tables())))
 
 def count_enrollments_grouped_per_program(f):
     write(f, "\n-- Enrollments per program\n")
@@ -65,3 +66,4 @@ JOIN program p ON p.programid = e.programid
 GROUP BY p.uid, p.name
 ORDER BY p.name DESC;
 """)
+
