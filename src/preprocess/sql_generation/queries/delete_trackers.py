@@ -1,5 +1,7 @@
 from src.preprocess.sql_generation.sql_common import write, convert_to_sql_format, fix_final_query
 from src.preprocess.sql_generation.versioned_table_names import *
+from src.preprocess.sql_generation.queries.delete_relationships import delete_relationship_items, \
+    delete_relationship_items_for_custom_event_deletion
 
 
 
@@ -38,6 +40,10 @@ def generate_delete_tracker_rules(trackers, data_elements, org_units, org_unit_d
         """)
         delete_mandatory_dependencies(f, tracker_program_uids_sql)
         for event_table in get_event_tables():
+            if sql_data_elements == "":
+                # Without data elements the custom query deletes the events instead of updating them
+                delete_relationship_items_for_custom_event_deletion(f, event_table, tracker_program_uids_sql,
+                                                                    sql_org_units, sql_org_unit_descendants)
             sql_query = compose_custom_query(event_table, tracker_program_uids_sql, sql_data_elements, sql_org_units,
                                              sql_org_unit_descendants)
             write(f, fix_final_query(sql_query) + "\n")
@@ -254,6 +260,13 @@ def delete_all_tracker_programs(trackers, f, exclude=False):
         trackedentityid=get_tracker_identifier_name(),
         enrollment=get_enrollment_table_name()
     ))
+
+    delete_relationship_items(f, [
+        (get_tracker_identifier_name(), "SELECT trackedentityid FROM tei_to_remove"),
+        (get_enrollment_identifier_name(),
+         "SELECT {enrollmentid} FROM enrollments_to_remove".format(enrollmentid=get_enrollment_identifier_name())),
+    ] + [(et.reference_column, "SELECT {eventid} FROM events_to_remove{suffix}".format(
+        eventid=et.identifier, suffix=et.view_suffix)) for et in get_event_tables()])
 
     # Delete events from the selected programs and any events linked via enrollments of tracked entities marked for removal (even if they belong to other programs)
     write(f, "SELECT 'Deleting event....' AS D2_DOCKER_PRESQL_SCRIPT;\n")

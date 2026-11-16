@@ -1,5 +1,6 @@
 from src.preprocess.sql_generation.sql_common import write, convert_to_possible_paths_in_sql_format
 from src.preprocess.sql_generation.versioned_table_names import *
+from src.preprocess.sql_generation.queries.delete_relationships import delete_relationship_items
 
 
 def delete_org_unit_data_and_views(f):
@@ -17,6 +18,11 @@ def delete_org_unit_data_and_views(f):
         write(f, """
             DELETE FROM enrollmentaudit             WHERE {enrollmentid}       IN (SELECT * FROM rm_enrollment);
         """.format(enrollmentid=get_enrollment_identifier_name()))
+
+    delete_relationship_items(f, [
+        (get_tracker_identifier_name(), "SELECT * FROM rm_trackedentity"),
+        (get_enrollment_identifier_name(), "SELECT * FROM rm_enrollment"),
+    ] + [(et.reference_column, "SELECT * FROM rm_event{}".format(et.view_suffix)) for et in get_event_tables()])
 
     write(f, """
         {delete_events}
