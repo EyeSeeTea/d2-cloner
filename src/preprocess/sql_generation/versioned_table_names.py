@@ -69,6 +69,13 @@ def get_user_identifier_name() -> str:
     return _get_identifier_name(TableKey.USER)
 
 
+def get_interpretation_likedby_table() -> str:
+    """Renamed from the misspelled intepretation_likedby in DHIS2 2.43 (V2_43_33)"""
+    if Config.get_pre_api_version() >= 43:
+        return "interpretation_likedby"
+    return "intepretation_likedby"
+
+
 def get_changelog_tables() -> list:
     """Change log tables with a foreign key (no ON DELETE CASCADE) to tracked entities or events.
     2.42 adds trackedentitychangelog (V2_42_31) and eventchangelog (V2_42_25);

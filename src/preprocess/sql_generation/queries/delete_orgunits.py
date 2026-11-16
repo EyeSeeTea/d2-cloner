@@ -50,7 +50,7 @@ def delete_org_unit_data_and_views(f):
 
     write(f, """
         DELETE FROM interpretation_comments          WHERE interpretationid        IN (SELECT * FROM rm_interpretation);
-        DELETE FROM intepretation_likedby            WHERE interpretationid        IN (SELECT * FROM rm_interpretation);
+        DELETE FROM {interpretation_likedby}            WHERE interpretationid        IN (SELECT * FROM rm_interpretation);
         DELETE FROM interpretation                   WHERE interpretationid        IN (SELECT * FROM rm_interpretation);
         
         -- delete org unit, views and other dependencies
@@ -75,7 +75,7 @@ def delete_org_unit_data_and_views(f):
         DELETE FROM programmessage_emailaddresses   WHERE programmessageemailaddressid      IN (SELECT * FROM rm_programmessage);
         DELETE FROM programmessage_deliverychannels  WHERE programmessagedeliverychannelsid IN (SELECT * FROM rm_programmessage);
         DELETE FROM programmessage                   WHERE id                               IN (SELECT * FROM rm_programmessage);
-    """)
+    """.format(interpretation_likedby=get_interpretation_likedby_table()))
     if Config.get_pre_api_version() <= 38:
         write(f, """
             DELETE FROM reporttable_organisationunits where organisationunitid in (select * from orgUnitsToDelete);

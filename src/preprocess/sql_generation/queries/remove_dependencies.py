@@ -1,5 +1,6 @@
 from src.preprocess.sql_generation.sql_common import write
-from src.preprocess.sql_generation.versioned_table_names import get_event_tables, get_changelog_tables
+from src.preprocess.sql_generation.versioned_table_names import get_event_tables, get_changelog_tables, \
+    get_interpretation_likedby_table
 
 
 def remove_all_unnecessary_dependencies(f, preprocess_api_version):
@@ -47,7 +48,7 @@ DELETE FROM trackedentityattributevalueaudit;
 DELETE FROM dataapprovalaudit;
 DELETE FROM interpretation_comments;
 DELETE FROM interpretationcomment;
-DELETE FROM intepretation_likedby;
+DELETE FROM {interpretation_likedby};
 DELETE FROM messageconversation_messages;
 DELETE FROM messageconversation_usermessages;
 DELETE FROM messageconversation;
@@ -65,7 +66,8 @@ delete from programtempownershipaudit;
     """.format(delete_event_notes="\n".join(
             "delete from {};".format(et.comment_table) for et in get_event_tables()),
                # Change logs reference events/tracked entities without cascade, so they would block their deletion
-               delete_changelogs="\n".join("delete from {};".format(t) for t in get_changelog_tables())))
+               delete_changelogs="\n".join("delete from {};".format(t) for t in get_changelog_tables()),
+               interpretation_likedby=get_interpretation_likedby_table()))
     write(f, f"""
         SELECT 'Close DELETE DEPENDENCIES Block' AS D2_DOCKER_PRESQL_SCRIPT;
         """)
