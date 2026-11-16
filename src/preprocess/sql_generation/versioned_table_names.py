@@ -91,6 +91,15 @@ def get_changelog_tables() -> list:
     return tables
 
 
+def get_orgunit_resource_tables() -> list:
+    """Analytics resource tables with an organisationunitid column. Named _<name> until DHIS2 2.40 and
+    analytics_rs_<name> from 2.41 (2.43 renames the old ones to _deprecated_<name>). They only exist once the
+    resource tables have been generated, so callers must check that they exist."""
+    prefix = "analytics_rs_" if Config.get_pre_api_version() >= 41 else "_"
+    return [prefix + name for name in ("orgunitstructure", "datasetorganisationunitcategory",
+                                       "organisationunitgroupsetstructure")]
+
+
 def get_tracker_event_reference_column() -> str:
     """Column used by programmessage/programnotificationinstance to reference a tracker program event.
     Split into trackereventid/singleeventid from DHIS2 2.43 onward; a single eventid column before that."""

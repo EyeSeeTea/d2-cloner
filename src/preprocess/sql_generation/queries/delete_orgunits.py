@@ -59,9 +59,17 @@ def delete_org_unit_data_and_views(f):
         DELETE FROM orgunitgroupmembers where organisationunitid in (select * from orgUnitsToDelete);
         DELETE FROM program_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
         DELETE FROM programownershiphistory              WHERE organisationunitid      IN (SELECT * FROM orgUnitsToDelete);
-        DELETE FROM _orgunitstructure where organisationunitid in (select * from orgUnitsToDelete);
-        DELETE FROM _datasetorganisationunitcategory where organisationunitid in (select * from orgUnitsToDelete);
-        DELETE FROM _organisationunitgroupsetstructure where organisationunitid in (select * from orgUnitsToDelete);
+        -- analytics resource tables only exist once they have been generated
+        DO $$
+        DECLARE
+            resource_table text;
+        BEGIN
+            FOREACH resource_table IN ARRAY ARRAY[{resource_tables}] LOOP
+                IF to_regclass('public.' || resource_table) IS NOT NULL THEN
+                    EXECUTE format('DELETE FROM %I WHERE organisationunitid IN (SELECT * FROM orgUnitsToDelete)', resource_table);
+                END IF;
+            END LOOP;
+        END $$;
         DELETE FROM datavalueaudit where organisationunitid in (select * from orgUnitsToDelete);
         DELETE FROM categoryoption_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
         DELETE FROM dataapproval where organisationunitid in (select * from orgUnitsToDelete);
@@ -75,7 +83,8 @@ def delete_org_unit_data_and_views(f):
         DELETE FROM programmessage_emailaddresses   WHERE programmessageemailaddressid      IN (SELECT * FROM rm_programmessage);
         DELETE FROM programmessage_deliverychannels  WHERE programmessagedeliverychannelsid IN (SELECT * FROM rm_programmessage);
         DELETE FROM programmessage                   WHERE id                               IN (SELECT * FROM rm_programmessage);
-    """.format(interpretation_likedby=get_interpretation_likedby_table()))
+    """.format(interpretation_likedby=get_interpretation_likedby_table(),
+               resource_tables=", ".join("'{}'".format(t) for t in get_orgunit_resource_tables())))
     if Config.get_pre_api_version() <= 38:
         write(f, """
             DELETE FROM reporttable_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
