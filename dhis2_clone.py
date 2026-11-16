@@ -478,12 +478,18 @@ def start_tomcat(cfg, args):
 
         post_scripts_dir = cfg.get("local_docker_post_clone_scripts_dir", None)
         api_url = cfg["api_local_url"]
+        # Without them d2-docker uses its default core image (taken from the data image tag) and java options,
+        # so the clone may boot another DHIS2 version than the usual start of the instance
+        core_image = cfg.get("local_docker_core_image", None)
+        java_opts = cfg.get("local_docker_java_opts", None)
 
         run(
-            "d2-docker {} start {} --port={} --detach {} {} {} {} {} {}".format(
+            "d2-docker {} start {} --port={} --detach {} {} {} {} {} {} {} {}".format(
                 (("--temp-directory '%s'" % temp_folder) if temp_folder else ""),
                 get_local_docker_image(cfg, args, "start"),
                 cfg["local_docker_port"],
+                (("--core-image='%s'" % core_image) if core_image else ""),
+                (("--java-opts='%s'" % java_opts) if java_opts else ""),
                 (("--deploy-path '%s'" % deploy_path) if deploy_path else ""),
                 (("--tomcat-server-xml '%s'" % server_xml_path) if server_xml_path else ""),
                 (("--dhis-conf '%s'" % dhis_conf_path) if dhis_conf_path else ""),
