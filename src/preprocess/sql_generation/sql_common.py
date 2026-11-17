@@ -64,6 +64,8 @@ def vacuum_full_analyze(f):
 
 def fix_final_query(sql_query):
     """This method is required now to create the sql with the ; and remove possible unnecessary and;"""
+    # Optional conditions are appended with their own leading/trailing "and", so two of them can end up together
+    sql_query = re.sub(r'\band(\s+and\b)+', 'and', sql_query)
     sql_query = sql_query + ";"
     sql_query = remove_spaces_before_semicolon(sql_query)
     sql_query = sql_query.replace("and;", ";")

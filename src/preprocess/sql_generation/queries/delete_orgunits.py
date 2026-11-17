@@ -1,5 +1,6 @@
 from src.preprocess.sql_generation.sql_common import write, convert_to_possible_paths_in_sql_format
 from src.preprocess.sql_generation.versioned_table_names import *
+from src.preprocess.sql_generation.queries.delete_relationships import delete_relationship_items
 
 
 def delete_org_unit_data_and_views(f):
@@ -17,6 +18,11 @@ def delete_org_unit_data_and_views(f):
         write(f, """
             DELETE FROM enrollmentaudit             WHERE {enrollmentid}       IN (SELECT * FROM rm_enrollment);
         """.format(enrollmentid=get_enrollment_identifier_name()))
+
+    delete_relationship_items(f, [
+        (get_tracker_identifier_name(), "SELECT * FROM rm_trackedentity"),
+        (get_enrollment_identifier_name(), "SELECT * FROM rm_enrollment"),
+    ] + [(et.reference_column, "SELECT * FROM rm_event{}".format(et.view_suffix)) for et in get_event_tables()])
 
     write(f, """
         {delete_events}
@@ -50,7 +56,7 @@ def delete_org_unit_data_and_views(f):
 
     write(f, """
         DELETE FROM interpretation_comments          WHERE interpretationid        IN (SELECT * FROM rm_interpretation);
-        DELETE FROM intepretation_likedby            WHERE interpretationid        IN (SELECT * FROM rm_interpretation);
+        DELETE FROM {interpretation_likedby}            WHERE interpretationid        IN (SELECT * FROM rm_interpretation);
         DELETE FROM interpretation                   WHERE interpretationid        IN (SELECT * FROM rm_interpretation);
         
         -- delete org unit, views and other dependencies
@@ -59,9 +65,17 @@ def delete_org_unit_data_and_views(f):
         DELETE FROM orgunitgroupmembers where organisationunitid in (select * from orgUnitsToDelete);
         DELETE FROM program_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
         DELETE FROM programownershiphistory              WHERE organisationunitid      IN (SELECT * FROM orgUnitsToDelete);
-        DELETE FROM _orgunitstructure where organisationunitid in (select * from orgUnitsToDelete);
-        DELETE FROM _datasetorganisationunitcategory where organisationunitid in (select * from orgUnitsToDelete);
-        DELETE FROM _organisationunitgroupsetstructure where organisationunitid in (select * from orgUnitsToDelete);
+        -- analytics resource tables only exist once they have been generated
+        DO $$
+        DECLARE
+            resource_table text;
+        BEGIN
+            FOREACH resource_table IN ARRAY ARRAY[{resource_tables}] LOOP
+                IF to_regclass('public.' || resource_table) IS NOT NULL THEN
+                    EXECUTE format('DELETE FROM %I WHERE organisationunitid IN (SELECT * FROM orgUnitsToDelete)', resource_table);
+                END IF;
+            END LOOP;
+        END $$;
         DELETE FROM datavalueaudit where organisationunitid in (select * from orgUnitsToDelete);
         DELETE FROM categoryoption_organisationunits where organisationunitid in (select * from orgUnitsToDelete);
         DELETE FROM dataapproval where organisationunitid in (select * from orgUnitsToDelete);
@@ -75,7 +89,8 @@ def delete_org_unit_data_and_views(f):
         DELETE FROM programmessage_emailaddresses   WHERE programmessageemailaddressid      IN (SELECT * FROM rm_programmessage);
         DELETE FROM programmessage_deliverychannels  WHERE programmessagedeliverychannelsid IN (SELECT * FROM rm_programmessage);
         DELETE FROM programmessage                   WHERE id                               IN (SELECT * FROM rm_programmessage);
-    """)
+    """.format(interpretation_likedby=get_interpretation_likedby_table(),
+               resource_tables=", ".join("'{}'".format(t) for t in get_orgunit_resource_tables())))
     if Config.get_pre_api_version() <= 38:
         write(f, """
             DELETE FROM reporttable_organisationunits where organisationunitid in (select * from orgUnitsToDelete);

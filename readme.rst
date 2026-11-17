@@ -112,6 +112,8 @@ The sections in the configuration file are:
   "local_docker_image_start_transformed": If ``--start-transformed`` options is used, then instead of using ``local_docker_image``, it will use entry ``local_docker_image_start_transformed``. This "start" action is then used in the following d2-docker commands: start_tomcat -> d2-docker start.
 * ``local_docker_port``: Docker port.
 * ``local_docker_deploy_path``: Docker instance deploy path namespace.
+* ``local_docker_core_image`` (optional): core image passed to ``d2-docker start --core-image`` (example: "eyeseetea/dhis2-core:2.43"). Use the same one as the usual start of the instance, so the database is migrated in the first boot. Without it, d2-docker uses its default core image, taken from the data image tag (dhis2-data:2.42-name -> dhis2-core:2.42).
+* ``local_docker_java_opts`` (optional): value passed to ``d2-docker start --java-opts`` (example: "-Xmx8000m -Xms6000m").
 * ``backups_dir``: directory where it will store the backups.
 * ``backup_name``: an identifier that it will append to the name of
   the war file and database backups.

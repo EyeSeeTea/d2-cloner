@@ -69,6 +69,37 @@ def get_user_identifier_name() -> str:
     return _get_identifier_name(TableKey.USER)
 
 
+def get_interpretation_likedby_table() -> str:
+    """Renamed from the misspelled intepretation_likedby in DHIS2 2.43 (V2_43_33)"""
+    if Config.get_pre_api_version() >= 43:
+        return "interpretation_likedby"
+    return "intepretation_likedby"
+
+
+def get_changelog_tables() -> list:
+    """Change log tables with a foreign key (no ON DELETE CASCADE) to tracked entities or events.
+    2.42 adds trackedentitychangelog (V2_42_31) and eventchangelog (V2_42_25);
+    2.43 splits eventchangelog into trackereventchangelog and singleeventchangelog (V2_43_21)."""
+    version = Config.get_pre_api_version()
+    tables = []
+    if version >= 42:
+        tables.append("trackedentitychangelog")
+    if version == 42:
+        tables.append("eventchangelog")
+    if version >= 43:
+        tables.extend(["trackereventchangelog", "singleeventchangelog"])
+    return tables
+
+
+def get_orgunit_resource_tables() -> list:
+    """Analytics resource tables with an organisationunitid column. Named _<name> until DHIS2 2.40 and
+    analytics_rs_<name> from 2.41 (2.43 renames the old ones to _deprecated_<name>). They only exist once the
+    resource tables have been generated, so callers must check that they exist."""
+    prefix = "analytics_rs_" if Config.get_pre_api_version() >= 41 else "_"
+    return [prefix + name for name in ("orgunitstructure", "datasetorganisationunitcategory",
+                                       "organisationunitgroupsetstructure")]
+
+
 def get_tracker_event_reference_column() -> str:
     """Column used by programmessage/programnotificationinstance to reference a tracker program event.
     Split into trackereventid/singleeventid from DHIS2 2.43 onward; a single eventid column before that."""

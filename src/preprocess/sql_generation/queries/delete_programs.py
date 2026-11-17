@@ -1,5 +1,7 @@
 from src.preprocess.sql_generation.sql_common import write, convert_to_sql_format, fix_final_query
 from src.preprocess.sql_generation.versioned_table_names import *
+from src.preprocess.sql_generation.queries.delete_relationships import delete_relationship_items, \
+    delete_relationship_items_for_custom_event_deletion
 
 def generate_delete_event_rules(event_program, data_elements, org_units,
                                 org_unit_descendants, all_uid, f):
@@ -31,6 +33,10 @@ def generate_delete_event_rules(event_program, data_elements, org_units,
             AS "D2_DOCKER_PRESQL_SCRIPT";
         """)
         for event_table in get_event_tables():
+            if sql_data_elements == "":
+                # Without data elements the custom query deletes the events instead of updating them
+                delete_relationship_items_for_custom_event_deletion(f, event_table, event_program_uids_sql,
+                                                                    sql_org_units, sql_org_unit_descendants)
             sql_query = compose_custom_query(event_table, event_program_uids_sql, sql_data_elements, sql_org_units,
                                              sql_org_unit_descendants)
             write(f, fix_final_query(sql_query) + "\n")
@@ -130,6 +136,8 @@ def delete_all_events_from_table(event_table, programs, f):
         DELETE FROM {event_comment} 
         WHERE {eventid} IN (SELECT {eventid} FROM events_to_remove{suffix});
         """.format(**params))
+    delete_relationship_items(f, [(event_table.reference_column,
+                                   "SELECT {eventid} FROM events_to_remove{suffix}".format(**params))])
     # Remove events in programs
     write(f, "SELECT 'Deleting events....' AS D2_DOCKER_PRESQL_SCRIPT;\n")
     write(f, """
